@@ -29,9 +29,11 @@ import {
   X,
   LayoutDashboard,
   ChevronDown,
+  ChevronUp,
   BarChart3,
   Receipt,
   LogOut,
+  Info,
   Lock,
   UserPlus,
   Calendar,
@@ -243,14 +245,21 @@ export default function App() {
   });
   const [users, setUsers] = useState<UserAccount[]>(() => {
     const saved = localStorage.getItem(USERS_KEY);
-    if (saved) return JSON.parse(saved);
-    return [{
+    const defaultAdmin: UserAccount = {
       id: 'admin-1',
       email: 'cosogiaoduchoanggia269@gmail.com',
       password: 'Laichau@123',
       role: 'admin',
       createdAt: new Date().toISOString()
-    }];
+    };
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (!parsed.some((u: any) => u.email.toLowerCase() === defaultAdmin.email.toLowerCase())) {
+        return [defaultAdmin, ...parsed];
+      }
+      return parsed;
+    }
+    return [defaultAdmin];
   });
 
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -258,6 +267,26 @@ export default function App() {
   const [isStudentsOpen, setIsStudentsOpen] = useState(true);
   const [isFinanceOpen, setIsFinanceOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [tabOrder, setTabOrder] = useState<string[]>(() => {
+    const saved = localStorage.getItem('TAB_ORDER_KEY');
+    return saved ? JSON.parse(saved) : ['dashboard', 'business', 'program', 'students_group', 'finance_group', 'users'];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('TAB_ORDER_KEY', JSON.stringify(tabOrder));
+  }, [tabOrder]);
+
+  const moveTab = (id: string, direction: 'up' | 'down') => {
+    const index = tabOrder.indexOf(id);
+    if (index === -1) return;
+    const newOrder = [...tabOrder];
+    if (direction === 'up' && index > 0) {
+      [newOrder[index], newOrder[index - 1]] = [newOrder[index - 1], newOrder[index]];
+    } else if (direction === 'down' && index < newOrder.length - 1) {
+      [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+    }
+    setTabOrder(newOrder);
+  };
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo>({
     name: '',
     address: '',
@@ -308,7 +337,30 @@ export default function App() {
   // Save users to localStorage
   useEffect(() => {
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    
+    // Ensure default admin is always present
+    const defaultAdminEmail = 'cosogiaoduchoanggia269@gmail.com';
+    if (!users.some(u => u.email.toLowerCase() === defaultAdminEmail.toLowerCase())) {
+      const defaultAdmin: UserAccount = {
+        id: 'admin-1',
+        email: defaultAdminEmail,
+        password: 'Laichau@123',
+        role: 'admin',
+        createdAt: new Date().toISOString()
+      };
+      setUsers(prev => [defaultAdmin, ...prev]);
+    }
   }, [users]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('--- HỆ THỐNG QUẢN LÝ CƠ SỞ DẠY THÊM HOÀNG GIA ---');
+      console.log('Tài khoản quản trị mặc định:');
+      console.log('Email:', 'cosogiaoduchoanggia269@gmail.com');
+      console.log('Mật khẩu:', 'Laichau@123');
+      console.log('--------------------------------------------------');
+    }
+  }, []);
 
   // Save auth to localStorage
   useEffect(() => {
@@ -361,12 +413,18 @@ export default function App() {
     { id: 'users', label: 'Quản lý Tài khoản', icon: Users, adminOnly: true },
   ];
 
-  const filteredTabs = tabs.filter(tab => {
-    if (currentUser?.role === 'admin') return true;
-    if (tab.adminOnly) return false;
-    // User can only access 4 items: Dashboard, Program, Students, Finance
-    return ['dashboard', 'program', 'students_group', 'finance_group'].includes(tab.id);
-  });
+  const filteredTabs = tabs
+    .filter(tab => {
+      if (currentUser?.role === 'admin') return true;
+      if (tab.adminOnly) return false;
+      // User can only access 4 items: Dashboard, Program, Students, Finance
+      return ['dashboard', 'program', 'students_group', 'finance_group'].includes(tab.id);
+    })
+    .sort((a, b) => {
+      const indexA = tabOrder.indexOf(a.id);
+      const indexB = tabOrder.indexOf(b.id);
+      return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+    });
 
   const monthlyRevenue = useMemo(() => {
     return incomeData.reduce((sum, item) => sum + item.amount, 0);
@@ -384,9 +442,9 @@ export default function App() {
     <div className="flex h-screen bg-neutral-100 font-sans text-neutral-900 overflow-hidden">
       {/* Mobile Menu Toggle */}
       <div className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-neutral-200 z-50 px-4 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-bold text-indigo-600 flex items-center gap-2">
+        <h1 className="text-sm font-bold text-indigo-600 flex items-center gap-2">
           <GraduationCap className="w-5 h-5" />
-          Quản lý cơ sở Dạy thêm
+          HỆ THỐNG QUẢN LÝ CƠ SỞ DẠY THÊM HOÀNG GIA
         </h1>
         <button 
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -415,16 +473,33 @@ export default function App() {
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="p-6 border-b border-neutral-200">
-          <h1 className="text-xl font-bold tracking-tight text-indigo-600 flex items-center gap-2">
-            <GraduationCap className="w-6 h-6" />
-            Quản lý cơ sở Dạy thêm
+          <h1 className="text-sm font-bold tracking-tight text-indigo-600 flex items-center gap-2 leading-tight">
+            <GraduationCap className="w-6 h-6 shrink-0" />
+            HỆ THỐNG QUẢN LÝ CƠ SỞ DẠY THÊM HOÀNG GIA
           </h1>
-          <p className="text-xs text-neutral-500 mt-1 uppercase tracking-widest font-semibold">Hệ thống quản lý cơ sở Dạy thêm</p>
         </div>
         
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {filteredTabs.map((tab) => (
-            <div key={tab.id} className="space-y-1">
+          {filteredTabs.map((tab, index) => (
+            <div key={tab.id} className="group relative space-y-1">
+              {currentUser?.role === 'admin' && (
+                <div className="absolute -left-2 top-1/2 -translate-y-1/2 flex flex-col opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); moveTab(tab.id, 'up'); }}
+                    disabled={index === 0}
+                    className="p-0.5 text-neutral-400 hover:text-indigo-600 disabled:opacity-0"
+                  >
+                    <ChevronUp className="w-3 h-3" />
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); moveTab(tab.id, 'down'); }}
+                    disabled={index === filteredTabs.length - 1}
+                    className="p-0.5 text-neutral-400 hover:text-indigo-600 disabled:opacity-0"
+                  >
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
               {tab.subTabs ? (
                 <>
                   <button
@@ -1893,13 +1968,6 @@ function ClassJournalSection({ plans, setPlans, deletePlan, businessInfo }: {
               }),
             ],
           }),
-          new Paragraph({
-            alignment: AlignmentType.RIGHT,
-            spacing: { before: 400 },
-            children: [
-              new TextRun({ text: "Bản quyền: Đào Minh Tâm - Zalo 0366000555", size: 16, color: "999999" }),
-            ],
-          }),
         ],
       }],
     });
@@ -2313,13 +2381,6 @@ function StudentManagementSection({
           }),
         ],
       }),
-      new Paragraph({
-        alignment: AlignmentType.RIGHT,
-        spacing: { before: 400 },
-        children: [
-          new TextRun({ text: "Bản quyền: Đào Minh Tâm - Zalo 0366000555", size: 16, color: "999999" }),
-        ],
-      }),
     ];
   };
 
@@ -2472,7 +2533,7 @@ function LoginPage({ onLogin, users }: { onLogin: (user: UserAccount) => void, u
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const user = users.find(u => u.email === email && u.password === password);
+    const user = users.find(u => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === password.trim());
     
     if (user) {
       if (user.expiryDate && new Date(user.expiryDate) < new Date()) {
@@ -2543,6 +2604,12 @@ function LoginPage({ onLogin, users }: { onLogin: (user: UserAccount) => void, u
             <ArrowRight className="w-5 h-5" />
           </button>
         </form>
+
+        <div className="mt-8 pt-6 border-t border-neutral-100 text-center">
+          <p className="text-[10px] text-neutral-400">
+            Bản quyền: Đào Minh Tâm - Zalo 0366000555
+          </p>
+        </div>
       </motion.div>
     </div>
   );
@@ -2863,334 +2930,6 @@ function FinancialManagementSection({
       alert("Lỗi khi đồng bộ dữ liệu.");
     } finally {
       setIsSyncing(false);
-    }
-  };
-
-  const exportVouchersToPDF = async () => {
-    if (incomeData.length === 0 && expenseData.length === 0) {
-      alert("Chưa có dữ liệu để xuất phiếu.");
-      return;
-    }
-
-    const container = document.createElement('div');
-    container.style.width = '165mm'; // A4 width (210) - margins (20+25) = 165mm
-    container.style.margin = '0';
-    container.style.backgroundColor = 'white';
-    
-    const allItems = [
-      ...incomeData.map(item => ({ type: 'receipt' as const, data: item })),
-      ...expenseData.map(item => ({ type: 'payment' as const, data: item }))
-    ];
-
-    allItems.forEach((item, index) => {
-      const isReceipt = item.type === 'receipt';
-      const data = item.data;
-      const dateStr = isReceipt ? config.receiptDate : config.paymentDate;
-      const dateObj = dateStr ? new Date(dateStr) : new Date();
-      const day = dateObj.getDate().toString().padStart(2, '0');
-      const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-      const year = dateObj.getFullYear();
-      const voucherNo = (index + 1).toString().padStart(3, '0');
-      const prefix = isReceipt ? 'PT' : 'PC';
-
-      const voucherDiv = document.createElement('div');
-      voucherDiv.style.width = '100%';
-      voucherDiv.style.height = '125mm'; // Approx half A4 height
-      voucherDiv.style.boxSizing = 'border-box';
-      voucherDiv.style.fontFamily = "'Times New Roman', serif";
-      voucherDiv.style.position = 'relative';
-      voucherDiv.style.backgroundColor = 'white';
-      
-      // Second voucher in page has 2cm gap from separator
-      if (index % 2 !== 0) {
-        voucherDiv.style.marginTop = '20mm';
-      }
-
-      voucherDiv.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-          <div style="width: 55%;">
-            <div style="font-weight: bold; font-size: 12pt;">HỘ, CÁ NHÂN KINH DOANH: <span style="font-weight: normal;">${businessInfo.name}</span></div>
-            <div style="font-weight: bold; font-size: 12pt;">Địa chỉ: <span style="font-weight: normal;">${businessInfo.address}</span></div>
-          </div>
-          <div style="width: 45%; text-align: center;">
-            <div style="font-weight: bold; font-size: 12pt;">Mẫu số 0${isReceipt ? '1' : '2'} – TT</div>
-            <div style="font-size: 10pt; font-style: italic; line-height: 1.2;">
-              (Ban hành kèm theo Thông tư số 88/2021/TT-BTC<br/>
-              ngày 11 tháng 10 năm 2021 của Bộ trưởng Bộ Tài chính)
-            </div>
-          </div>
-        </div>
-        
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-          <div style="width: 30%;"></div>
-          <div style="width: 40%; text-align: center;">
-            <h2 style="font-size: 18pt; font-weight: bold; margin: 0; text-transform: uppercase;">${isReceipt ? 'PHIẾU THU' : 'PHIẾU CHI'}</h2>
-            <div style="font-style: italic; font-size: 12pt;">Ngày ${day} tháng ${month} năm ${year}</div>
-          </div>
-          <div style="width: 30%; font-size: 12pt;">
-            <div>Quyển số: ...................</div>
-            <div>Số: <span style="font-weight: bold;">${prefix}${voucherNo}</span></div>
-          </div>
-        </div>
-        
-        <div style="margin-bottom: 20px; font-size: 13pt; line-height: 1.6;">
-          <div style="display: flex; font-size: 13pt;">
-            <span style="white-space: nowrap;">Họ và tên người ${isReceipt ? 'nộp' : 'nhận'} tiền:</span>
-            <span style="flex-grow: 1; border-bottom: 1px dotted #000; margin-left: 5px; font-weight: bold; padding-left: 5px;">${data.name}</span>
-          </div>
-          <div style="display: flex; font-size: 13pt;">
-            <span style="white-space: nowrap;">Địa chỉ:</span>
-            <span style="flex-grow: 1; border-bottom: 1px dotted #000; margin-left: 5px; padding-left: 5px;">${data.address}</span>
-          </div>
-          <div style="display: flex; font-size: 13pt;">
-            <span style="white-space: nowrap;">Lý do ${isReceipt ? 'nộp' : 'chi'}:</span>
-            <span style="flex-grow: 1; border-bottom: 1px dotted #000; margin-left: 5px; padding-left: 5px;">${isReceipt ? 'Thu tiền học phí, dịch vụ giáo dục' : 'Chi phí hoạt động cơ sở'}</span>
-          </div>
-          <div style="display: flex; align-items: baseline; font-size: 13pt;">
-            <span style="white-space: nowrap;">Số tiền:</span>
-            <span style="border-bottom: 1px dotted #000; padding: 0 10px; font-weight: bold;">${data.amount.toLocaleString()} VNĐ</span>
-            <span style="white-space: nowrap; margin-left: 5px;">(Viết bằng chữ):</span>
-            <span style="flex-grow: 1; border-bottom: 1px dotted #000; margin-left: 5px; font-style: italic; padding-left: 5px;">${numberToVietnameseWords(data.amount)}</span>
-          </div>
-          <div style="border-bottom: 1px dotted #000; height: 1.6em;"></div>
-          <div style="display: flex; font-size: 13pt;">
-            <span style="white-space: nowrap;">Kèm theo:</span>
-            <span style="flex-grow: 1; border-bottom: 1px dotted #000; margin-left: 5px;"></span>
-            <span style="white-space: nowrap; margin-left: 10px;">Chứng từ gốc:</span>
-            <span style="width: 100px; border-bottom: 1px dotted #000; margin-left: 5px;"></span>
-          </div>
-        </div>
-        
-        <div style="text-align: right; font-style: italic; font-size: 11pt; margin-bottom: 5px; padding-right: 40px;">
-          Ngày ${day} tháng ${month} năm ${year}
-        </div>
-        
-        <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 11pt;">
-          <tr>
-            <td style="width: 30%; vertical-align: top;">
-              <div style="font-weight: bold; line-height: 1.2;">NGƯỜI ĐẠI DIỆN<br/>HỘ KINH DOANH/<br/>CA NHÂN KINH DOANH</div>
-              <div style="font-style: italic; font-size: 11pt;">(Ký, họ tên, đóng dấu)</div>
-              <div style="margin-top: 40px; font-weight: bold;">${businessInfo.owner || ""}</div>
-            </td>
-            <td style="width: 20%; vertical-align: top;">
-              <div style="font-weight: bold;">NGƯỜI LẬP<br/>BIỂU</div>
-              <div style="font-style: italic; font-size: 11pt;">(Ký, họ tên)</div>
-              <div style="margin-top: 40px; font-weight: bold;">${config.preparer || ""}</div>
-            </td>
-            <td style="width: 25%; vertical-align: top;">
-              <div style="font-weight: bold;">NGƯỜI ${isReceipt ? 'NỘP' : 'NHẬN'}<br/>TIỀN</div>
-              <div style="font-style: italic; font-size: 11pt;">(Ký, họ tên)</div>
-              <div style="margin-top: 40px; font-weight: bold;">${data.name}</div>
-            </td>
-            <td style="width: 25%; vertical-align: top;">
-              <div style="font-weight: bold;">THỦ QUỸ</div>
-              <div style="font-style: italic; font-size: 11pt;">(Ký, họ tên)</div>
-              <div style="margin-top: 40px; font-weight: bold;">${config.treasurer || ""}</div>
-            </td>
-          </tr>
-        </table>
-        
-        <div style="font-size: 11pt; margin-top: 15px; display: flex;">
-          <span style="white-space: nowrap;">Đã nhận đủ số tiền (viết bằng chữ):</span>
-          <span style="flex-grow: 1; border-bottom: 1px dotted #000; margin-left: 5px;"></span>
-        </div>
-        
-        <div style="position: absolute; bottom: 5px; right: 5px; font-size: 8pt; color: #999;">
-          Bản quyền: Đào Minh Tâm - Zalo 0366000555
-        </div>
-      `;
-      
-      container.appendChild(voucherDiv);
-      
-      // Separator line after first voucher
-      if (index % 2 === 0 && index < allItems.length - 1) {
-        const separator = document.createElement('div');
-        separator.style.width = '100%';
-        separator.style.borderBottom = '1px dashed #ccc';
-        separator.style.margin = '5mm 0 20mm 0'; // 2cm margin bottom for the separator to push the next voucher
-        container.appendChild(separator);
-      }
-
-      // Page break after every 2 vouchers
-      if ((index + 1) % 2 === 0 && index < allItems.length - 1) {
-        const pageBreak = document.createElement('div');
-        pageBreak.style.pageBreakAfter = 'always';
-        container.appendChild(pageBreak);
-      }
-    });
-
-    const opt = {
-      margin: [20, 20, 10, 25] as [number, number, number, number], // [top, left, bottom, right] in mm
-      filename: `Phieu_Thu_Chi_${new Date().getTime()}.pdf`,
-      image: { type: 'jpeg' as const, quality: 0.98 },
-      html2canvas: { 
-        scale: 2, 
-        useCORS: true,
-        logging: false,
-        letterRendering: true
-      },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
-    };
-
-    // Append to body to ensure it's rendered correctly
-    document.body.appendChild(container);
-    container.style.position = 'fixed';
-    container.style.left = '-9999px';
-    container.style.top = '0';
-    container.style.display = 'block';
-    container.style.zIndex = '-1';
-
-    try {
-      // Small delay to ensure DOM is ready
-      await new Promise(resolve => setTimeout(resolve, 100));
-      await html2pdf().from(container).set(opt).save();
-    } catch (err) {
-      console.error("PDF Export error:", err);
-      alert("Lỗi khi xuất PDF. Vui lòng thử lại.");
-    } finally {
-      document.body.removeChild(container);
-    }
-  };
-
-  const exportSingleVoucherPDF = async (item: IncomeItem | ExpenseItem, type: 'receipt' | 'payment') => {
-    const isReceipt = type === 'receipt';
-    const dateStr = isReceipt ? config.receiptDate : config.paymentDate;
-    const dateObj = dateStr ? new Date(dateStr) : new Date();
-    const day = dateObj.getDate().toString().padStart(2, '0');
-    const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-    const year = dateObj.getFullYear();
-    const voucherNo = "001";
-    const prefix = isReceipt ? 'PT' : 'PC';
-
-    const container = document.createElement('div');
-    container.style.width = '165mm';
-    container.style.backgroundColor = 'white';
-    container.style.fontFamily = "'Times New Roman', serif";
-
-    container.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-        <div style="width: 55%;">
-          <div style="font-weight: bold; font-size: 12pt;">HỘ, CÁ NHÂN KINH DOANH: <span style="font-weight: normal;">${businessInfo.name}</span></div>
-          <div style="font-weight: bold; font-size: 12pt;">Địa chỉ: <span style="font-weight: normal;">${businessInfo.address}</span></div>
-        </div>
-        <div style="width: 45%; text-align: center;">
-          <div style="font-weight: bold; font-size: 12pt;">Mẫu số 0${isReceipt ? '1' : '2'} – TT</div>
-          <div style="font-size: 10pt; font-style: italic; line-height: 1.2;">
-            (Ban hành kèm theo Thông tư số 88/2021/TT-BTC<br/>
-            ngày 11 tháng 10 năm 2021 của Bộ trưởng Bộ Tài chính)
-          </div>
-        </div>
-      </div>
-      
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <div style="width: 30%;"></div>
-        <div style="width: 40%; text-align: center;">
-          <h2 style="font-size: 18pt; font-weight: bold; margin: 0; text-transform: uppercase;">${isReceipt ? 'PHIẾU THU' : 'PHIẾU CHI'}</h2>
-          <div style="font-style: italic; font-size: 12pt;">Ngày ${day} tháng ${month} năm ${year}</div>
-        </div>
-        <div style="width: 30%; font-size: 12pt;">
-          <div>Quyển số: ...................</div>
-          <div>Số: <span style="font-weight: bold;">${prefix}${voucherNo}</span></div>
-        </div>
-      </div>
-      
-      <div style="margin-bottom: 20px; font-size: 13pt; line-height: 1.6;">
-        <div style="display: flex; font-size: 13pt;">
-          <span style="white-space: nowrap;">Họ và tên người ${isReceipt ? 'nộp' : 'nhận'} tiền:</span>
-          <span style="flex-grow: 1; border-bottom: 1px dotted #000; margin-left: 5px; font-weight: bold; padding-left: 5px;">${item.name}</span>
-        </div>
-        <div style="display: flex; font-size: 13pt;">
-          <span style="white-space: nowrap;">Địa chỉ:</span>
-          <span style="flex-grow: 1; border-bottom: 1px dotted #000; margin-left: 5px; padding-left: 5px;">${item.address}</span>
-        </div>
-        <div style="display: flex; font-size: 13pt;">
-          <span style="white-space: nowrap;">Lý do ${isReceipt ? 'nộp' : 'chi'}:</span>
-          <span style="flex-grow: 1; border-bottom: 1px dotted #000; margin-left: 5px; padding-left: 5px;">${isReceipt ? 'Thu tiền học phí, dịch vụ giáo dục' : 'Chi phí hoạt động cơ sở'}</span>
-        </div>
-        <div style="display: flex; align-items: baseline; font-size: 13pt;">
-          <span style="white-space: nowrap;">Số tiền:</span>
-          <span style="border-bottom: 1px dotted #000; padding: 0 10px; font-weight: bold;">${item.amount.toLocaleString()} VNĐ</span>
-          <span style="white-space: nowrap; margin-left: 5px;">(Viết bằng chữ):</span>
-          <span style="flex-grow: 1; border-bottom: 1px dotted #000; margin-left: 5px; font-style: italic; padding-left: 5px;">${numberToVietnameseWords(item.amount)}</span>
-        </div>
-        <div style="border-bottom: 1px dotted #000; height: 1.6em;"></div>
-        <div style="display: flex; font-size: 13pt;">
-          <span style="white-space: nowrap;">Kèm theo:</span>
-          <span style="flex-grow: 1; border-bottom: 1px dotted #000; margin-left: 5px;"></span>
-          <span style="white-space: nowrap; margin-left: 10px;">Chứng từ gốc:</span>
-          <span style="width: 100px; border-bottom: 1px dotted #000; margin-left: 5px;"></span>
-        </div>
-      </div>
-      
-      <div style="text-align: right; font-style: italic; font-size: 11pt; margin-bottom: 5px; padding-right: 40px;">
-        Ngày ${day} tháng ${month} năm ${year}
-      </div>
-      
-      <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 11pt;">
-        <tr>
-          <td style="width: 30%; vertical-align: top;">
-            <div style="font-weight: bold; line-height: 1.2;">NGƯỜI ĐẠI DIỆN<br/>HỘ KINH DOANH/<br/>CA NHÂN KINH DOANH</div>
-            <div style="font-style: italic; font-size: 11pt;">(Ký, họ tên, đóng dấu)</div>
-            <div style="margin-top: 40px; font-weight: bold;">${businessInfo.owner || ""}</div>
-          </td>
-          <td style="width: 20%; vertical-align: top;">
-            <div style="font-weight: bold;">NGƯỜI LẬP<br/>BIỂU</div>
-            <div style="font-style: italic; font-size: 11pt;">(Ký, họ tên)</div>
-            <div style="margin-top: 40px; font-weight: bold;">${config.preparer || ""}</div>
-          </td>
-          <td style="width: 25%; vertical-align: top;">
-            <div style="font-weight: bold;">NGƯỜI ${isReceipt ? 'NỘP' : 'NHẬN'}<br/>TIỀN</div>
-            <div style="font-style: italic; font-size: 11pt;">(Ký, họ tên)</div>
-            <div style="margin-top: 40px; font-weight: bold;">${item.name}</div>
-          </td>
-          <td style="width: 25%; vertical-align: top;">
-            <div style="font-weight: bold;">THỦ QUỸ</div>
-            <div style="font-style: italic; font-size: 11pt;">(Ký, họ tên)</div>
-            <div style="margin-top: 40px; font-weight: bold;">${config.treasurer || ""}</div>
-          </td>
-        </tr>
-      </table>
-      
-      <div style="font-size: 11pt; margin-top: 15px; display: flex;">
-        <span style="white-space: nowrap;">Đã nhận đủ số tiền (viết bằng chữ):</span>
-        <span style="flex-grow: 1; border-bottom: 1px dotted #000; margin-left: 5px;"></span>
-      </div>
-
-      <div style="position: absolute; bottom: 5px; right: 5px; font-size: 8pt; color: #999;">
-        Bản quyền: Đào Minh Tâm - Zalo 0366000555
-      </div>
-    `;
-
-    const opt = {
-      margin: [20, 20, 10, 25] as [number, number, number, number],
-      filename: `${isReceipt ? 'PhieuThu' : 'PhieuChi'}_${item.name}.pdf`,
-      image: { type: 'jpeg' as const, quality: 0.98 },
-      html2canvas: { 
-        scale: 2, 
-        useCORS: true,
-        logging: false,
-        letterRendering: true
-      },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
-    };
-
-    // Append to body to ensure it's rendered correctly
-    document.body.appendChild(container);
-    container.style.position = 'fixed';
-    container.style.left = '-9999px';
-    container.style.top = '0';
-    container.style.display = 'block';
-    container.style.zIndex = '-1';
-
-    try {
-      // Small delay to ensure DOM is ready
-      await new Promise(resolve => setTimeout(resolve, 100));
-      await html2pdf().from(container).set(opt).save();
-    } catch (err) {
-      console.error("PDF Export error:", err);
-      alert("Lỗi khi xuất PDF. Vui lòng thử lại.");
-    } finally {
-      document.body.removeChild(container);
     }
   };
 
@@ -3525,13 +3264,6 @@ function FinancialManagementSection({
               }),
             ],
           }),
-          new Paragraph({
-            alignment: AlignmentType.RIGHT,
-            spacing: { before: 400 },
-            children: [
-              new TextRun({ text: "Bản quyền: Đào Minh Tâm - Zalo 0366000555", size: 16, color: "999999" }),
-            ],
-          }),
         ],
       }],
     });
@@ -3770,13 +3502,6 @@ function FinancialManagementSection({
           new TextRun({ text: "....................................................................................................", size: 20 }),
         ],
       }),
-      new Paragraph({
-        alignment: AlignmentType.RIGHT,
-        spacing: { before: 200 },
-        children: [
-          new TextRun({ text: "Bản quyền: Đào Minh Tâm - Zalo 0366000555", size: 16, color: "999999" }),
-        ],
-      }),
     ];
   };
 
@@ -4001,13 +3726,6 @@ function FinancialManagementSection({
               }),
             ],
           }),
-        ],
-      }),
-      new Paragraph({
-        alignment: AlignmentType.RIGHT,
-        spacing: { before: 200 },
-        children: [
-          new TextRun({ text: "Bản quyền: Đào Minh Tâm - Zalo 0366000555", size: 16, color: "999999" }),
         ],
       }),
     ];
@@ -4320,13 +4038,6 @@ function FinancialManagementSection({
                       <td className="px-4 py-3 text-sm text-emerald-600 font-medium">Thu</td>
                       <td className="px-4 py-3 text-sm text-neutral-900 text-right font-mono">{item.amount.toLocaleString()}</td>
                       <td className="px-4 py-3 text-sm text-center">
-                        <button 
-                          onClick={() => exportSingleVoucherPDF(item, 'receipt')}
-                          className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
-                          title="Xuất phiếu thu (PDF)"
-                        >
-                          <FileText className="w-4 h-4" />
-                        </button>
                       </td>
                     </tr>
                   ))}
@@ -4338,13 +4049,6 @@ function FinancialManagementSection({
                       <td className="px-4 py-3 text-sm text-orange-600 font-medium">Chi</td>
                       <td className="px-4 py-3 text-sm text-neutral-900 text-right font-mono">{item.amount.toLocaleString()}</td>
                       <td className="px-4 py-3 text-sm text-center">
-                        <button 
-                          onClick={() => exportSingleVoucherPDF(item, 'payment')}
-                          className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
-                          title="Xuất phiếu chi (PDF)"
-                        >
-                          <FileText className="w-4 h-4" />
-                        </button>
                       </td>
                     </tr>
                   ))}
@@ -4395,12 +4099,6 @@ function FinancialManagementSection({
               className="inline-flex items-center gap-2 px-6 py-3 bg-neutral-100 text-neutral-600 rounded-lg hover:bg-neutral-200 transition-colors shadow-sm font-medium"
             >
               <Download className="w-5 h-5" /> Xuất toàn bộ phiếu (.docx)
-            </button>
-            <button
-              onClick={exportVouchersToPDF}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors shadow-sm font-medium"
-            >
-              <FileText className="w-5 h-5" /> Xuất toàn bộ phiếu (.pdf)
             </button>
           </div>
         </div>
