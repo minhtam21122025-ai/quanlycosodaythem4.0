@@ -12,12 +12,14 @@ export interface BusinessInfo {
 }
 
 export interface ClassSubject {
+  id: string;
   grade: string;
   subject: string;
   subSubject: string;
 }
 
 export interface PPCTItem {
+  id: string;
   grade: string;
   subject: string;
   subSubject: string;

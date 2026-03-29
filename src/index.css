@@ -1,1 +1,89 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-primary: #1677FF;
+  --color-primary-hover: #4096ff;
+  --color-bg-light: #F5F7FA;
+  --color-bg-dark: #0F172A;
+  --color-card-light: #FFFFFF;
+  --color-card-dark: #1E293B;
+  
+  --radius-card: 16px;
+  --radius-button: 10px;
+  
+  --shadow-soft: 0 4px 12px rgba(0,0,0,0.05);
+  --shadow-hover: 0 8px 24px rgba(0,0,0,0.08);
+}
+
+@layer base {
+  body {
+    @apply font-sans antialiased text-neutral-900 bg-neutral-50;
+  }
+  
+  .dark body {
+    @apply text-neutral-100 bg-slate-950;
+  }
+}
+
+@layer components {
+  .glass-header {
+    @apply sticky top-0 z-50 backdrop-blur-md bg-white/80 border-b border-neutral-200/50;
+  }
+  
+  .dark .glass-header {
+    @apply bg-slate-900/80 border-slate-800/50;
+  }
+  
+  .saas-card {
+    @apply bg-white rounded-[--radius-card] border border-neutral-200/60 shadow-[--shadow-soft] transition-all duration-300 hover:shadow-[--shadow-hover] hover:-translate-y-1 hover:scale-[1.01];
+  }
+  
+  .dark .saas-card {
+    @apply bg-slate-800 border-slate-700/50 shadow-none hover:bg-slate-700/80;
+  }
+  
+  .btn-primary {
+    @apply px-4 py-2 bg-primary text-white rounded-[--radius-button] font-medium transition-all duration-200 active:scale-95 hover:bg-primary-hover hover:shadow-lg hover:shadow-primary/20 flex items-center justify-center gap-2;
+  }
+  
+  .btn-secondary {
+    @apply px-4 py-2 bg-white text-neutral-700 border border-neutral-200 rounded-[--radius-button] font-medium transition-all duration-200 active:scale-95 hover:bg-neutral-50 hover:border-neutral-300 flex items-center justify-center gap-2;
+  }
+  
+  .dark .btn-secondary {
+    @apply bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700;
+  }
+  
+  .sidebar-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden;
+  }
+  
+  .sidebar-item-active {
+    @apply bg-primary/10 text-primary font-semibold;
+  }
+  
+  .dark .sidebar-item-active {
+    @apply bg-primary/20 text-primary-hover;
+  }
+  
+  .sidebar-item:hover:not(.sidebar-item-active) {
+    @apply bg-neutral-100/80;
+  }
+  
+  .dark .sidebar-item:hover:not(.sidebar-item-active) {
+    @apply bg-slate-800/80;
+  }
+  
+  .shimmer {
+    @apply relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_2s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}

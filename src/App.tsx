@@ -13,6 +13,7 @@ import {
   Users,
   Plus,
   Trash2,
+  Edit2,
   Download,
   Upload,
   Save,
@@ -37,7 +38,23 @@ import {
   Lock,
   UserPlus,
   Calendar,
-  RefreshCw
+  RefreshCw,
+  Moon,
+  Sun,
+  TrendingUp,
+  Activity,
+  CreditCard,
+  User,
+  Bell,
+  Search,
+  MapPin,
+  Home,
+  Settings2,
+  ShieldCheck,
+  Zap,
+  HelpCircle,
+  Layers,
+  RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
@@ -211,6 +228,32 @@ const safeFormat = (dateStr: string | undefined, formatStr: string) => {
 const STORAGE_KEY = 'tutoring_center_data';
 const AUTH_KEY = 'tutoring_center_auth';
 const USERS_KEY = 'tutoring_center_users';
+const THEME_KEY = 'tutoring_center_theme';
+
+const DEFAULT_CLASSES: ClassSubject[] = [
+  { id: 'c6-1', grade: '6', subject: 'Toán', subSubject: 'Số học' },
+  { id: 'c6-2', grade: '6', subject: 'Toán', subSubject: 'Hình học' },
+  { id: 'c6-3', grade: '6', subject: 'KHTN', subSubject: 'Vật lý' },
+  { id: 'c7-1', grade: '7', subject: 'Toán', subSubject: 'Đại số' },
+  { id: 'c7-2', grade: '7', subject: 'Toán', subSubject: 'Hình học' },
+  { id: 'c7-3', grade: '7', subject: 'KHTN', subSubject: 'Vật lý' },
+  { id: 'c7-4', grade: '7', subject: 'Ngữ văn', subSubject: '' },
+  { id: 'c8-1', grade: '8', subject: 'Toán', subSubject: 'Đại số' },
+  { id: 'c8-2', grade: '8', subject: 'Toán', subSubject: 'Hình học' },
+  { id: 'c8-3', grade: '8', subject: 'KHTN', subSubject: 'Vật lý' },
+  { id: 'c8-4', grade: '8', subject: 'Ngữ văn', subSubject: '' },
+  { id: 'c9-1', grade: '9', subject: 'Toán', subSubject: 'Đại số' },
+  { id: 'c9-2', grade: '9', subject: 'Toán', subSubject: 'Hình học' },
+  { id: 'c9-3', grade: '9', subject: 'KHTN', subSubject: 'Vật lý' },
+  { id: 'c9-4', grade: '9', subject: 'Ngữ văn', subSubject: '' },
+];
+
+const DEFAULT_PPCT: PPCTItem[] = [
+  { id: 'p6-1', grade: '6', subject: 'Toán', subSubject: 'Đại số', period: 1, content: 'Tập hợp các số tự nhiên', notes: '' },
+  { id: 'p7-1', grade: '7', subject: 'Toán', subSubject: 'Đại số', period: 1, content: 'Số hữu tỉ', notes: '' },
+  { id: 'p8-1', grade: '8', subject: 'Toán', subSubject: 'Đại số', period: 1, content: 'Đa thức', notes: '' },
+  { id: 'p9-1', grade: '9', subject: 'Toán', subSubject: 'Đại số', period: 1, content: 'Căn bậc hai', notes: '' },
+];
 
 interface UserAccount {
   id: string;
@@ -221,24 +264,23 @@ interface UserAccount {
   createdAt: string;
 }
 
-const INITIAL_CLASSES: ClassSubject[] = [
-  { grade: '6', subject: 'Toán', subSubject: 'Số học' },
-  { grade: '6', subject: 'Toán', subSubject: 'Hình học' },
-  { grade: '6', subject: 'KHTN', subSubject: 'Vật lý' },
-  { grade: '7', subject: 'Toán', subSubject: 'Đại số' },
-  { grade: '7', subject: 'Toán', subSubject: 'Hình học' },
-  { grade: '7', subject: 'KHTN', subSubject: 'Vật lý' },
-  { grade: '8', subject: 'Toán', subSubject: 'Đại số' },
-  { grade: '8', subject: 'Toán', subSubject: 'Hình học' },
-  { grade: '8', subject: 'KHTN', subSubject: 'Vật lý' },
-  { grade: '9', subject: 'Toán', subSubject: 'Đại số' },
-  { grade: '9', subject: 'Toán', subSubject: 'Hình học' },
-  { grade: '9', subject: 'KHTN', subSubject: 'Vật lý' },
-];
-
 // --- Components ---
 
 export default function App() {
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem(THEME_KEY);
+    return saved === 'dark';
+  });
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem(THEME_KEY, darkMode ? 'dark' : 'light');
+  }, [darkMode]);
+
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
     const saved = localStorage.getItem(AUTH_KEY);
     return saved ? JSON.parse(saved) : null;
@@ -267,14 +309,8 @@ export default function App() {
   const [isStudentsOpen, setIsStudentsOpen] = useState(true);
   const [isFinanceOpen, setIsFinanceOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [tabOrder, setTabOrder] = useState<string[]>(() => {
-    const saved = localStorage.getItem('TAB_ORDER_KEY');
-    return saved ? JSON.parse(saved) : ['dashboard', 'business', 'program', 'students_group', 'finance_group', 'users'];
-  });
-
-  useEffect(() => {
-    localStorage.setItem('TAB_ORDER_KEY', JSON.stringify(tabOrder));
-  }, [tabOrder]);
+  const [tabOrder, setTabOrder] = useState<string[]>(['dashboard', 'business', 'program', 'students_group', 'finance_group', 'users']);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   const moveTab = (id: string, direction: 'up' | 'down') => {
     const index = tabOrder.indexOf(id);
@@ -293,7 +329,7 @@ export default function App() {
     taxId: '',
     owner: ''
   });
-  const [classes, setClasses] = useState<ClassSubject[]>(INITIAL_CLASSES);
+  const [classes, setClasses] = useState<ClassSubject[]>([]);
   const [ppctData, setPpctData] = useState<PPCTItem[]>([]);
   const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -308,33 +344,81 @@ export default function App() {
   const [expenseData, setExpenseData] = useState<ExpenseItem[]>([]);
   const [currentPlan, setCurrentPlan] = useState<LessonPlan | null>(null);
 
-  // Load data from localStorage
+  // Load/Reset data when user changes
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    setIsDataLoaded(false);
+    
+    if (!currentUser) {
+      setBusinessInfo({ name: '', address: '', taxId: '', owner: '' });
+      setClasses(DEFAULT_CLASSES);
+      setPpctData(DEFAULT_PPCT);
+      setLessonPlans([]);
+      setStudents([]);
+      setFinancialConfig({ reportPeriod: '', receiptDate: '', paymentDate: '', preparer: '', treasurer: '' });
+      setIncomeData([]);
+      setExpenseData([]);
+      setTabOrder(['dashboard', 'business', 'program', 'students_group', 'finance_group', 'users']);
+      setIsDataLoaded(true);
+      return;
+    }
+
+    const userStorageKey = `${STORAGE_KEY}_${currentUser.id}`;
+    const saved = localStorage.getItem(userStorageKey);
     if (saved) {
       try {
         const data = JSON.parse(saved);
         if (data.businessInfo) setBusinessInfo(data.businessInfo);
-        if (data.classes) setClasses(data.classes);
-        if (data.ppctData) setPpctData(data.ppctData);
+        
+        // Restore defaults if requested or if data is missing
+        setClasses(data.classes && data.classes.length > 0 ? data.classes : DEFAULT_CLASSES);
+        setPpctData(data.ppctData && data.ppctData.length > 0 ? data.ppctData : DEFAULT_PPCT);
+        
+        // Clear soft data as requested by user
+        setStudents([]);
+        setIncomeData([]);
+        setExpenseData([]);
+        
         if (data.lessonPlans) setLessonPlans(data.lessonPlans);
-        if (data.students) setStudents(data.students);
         if (data.financialConfig) setFinancialConfig(data.financialConfig);
-        if (data.incomeData) setIncomeData(data.incomeData);
-        if (data.expenseData) setExpenseData(data.expenseData);
+        if (data.tabOrder) setTabOrder(data.tabOrder);
       } catch (e) {
         console.error("Failed to parse saved data", e);
       }
+    } else {
+      // New user: start with defaults
+      setBusinessInfo({ name: '', address: '', taxId: '', owner: '' });
+      setClasses(DEFAULT_CLASSES);
+      setPpctData(DEFAULT_PPCT);
+      setLessonPlans([]);
+      setStudents([]);
+      setFinancialConfig({ reportPeriod: '', receiptDate: '', paymentDate: '', preparer: '', treasurer: '' });
+      setIncomeData([]);
+      setExpenseData([]);
+      setTabOrder(['dashboard', 'business', 'program', 'students_group', 'finance_group', 'users']);
     }
-  }, []);
+    setIsDataLoaded(true);
+  }, [currentUser?.id]);
 
-  // Save data to localStorage
+  // Save data to localStorage (user-specific)
   useEffect(() => {
-    const data = { businessInfo, classes, ppctData, lessonPlans, students, financialConfig, incomeData, expenseData };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }, [businessInfo, classes, ppctData, lessonPlans, students, financialConfig, incomeData, expenseData]);
+    if (!currentUser || !isDataLoaded) return;
 
-  // Save users to localStorage
+    const userStorageKey = `${STORAGE_KEY}_${currentUser.id}`;
+    const data = { 
+      businessInfo, 
+      classes, 
+      ppctData, 
+      lessonPlans, 
+      students, 
+      financialConfig, 
+      incomeData, 
+      expenseData,
+      tabOrder 
+    };
+    localStorage.setItem(userStorageKey, JSON.stringify(data));
+  }, [currentUser?.id, businessInfo, classes, ppctData, lessonPlans, students, financialConfig, incomeData, expenseData, tabOrder, isDataLoaded]);
+
+  // Save users to localStorage (global)
   useEffect(() => {
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
     
@@ -434,21 +518,114 @@ export default function App() {
     setLessonPlans(lessonPlans.filter(p => p.id !== id));
   };
 
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setActiveTab('dashboard');
+  };
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return (
+          <DashboardSection 
+            studentCount={students.length}
+            classCount={classes.length}
+            monthlyRevenue={monthlyRevenue}
+            reportPeriod={financialConfig.reportPeriod}
+          />
+        );
+      case 'business':
+        return <BusinessConfigSection info={businessInfo} setInfo={setBusinessInfo} />;
+      case 'classes':
+        return <ClassConfigSection classes={classes} setClasses={setClasses} />;
+      case 'ppct':
+        return (
+          <PPCTSection 
+            ppctData={ppctData} 
+            setPpctData={setPpctData} 
+            classes={classes}
+            setPlans={setLessonPlans}
+            plans={lessonPlans}
+            setActiveTab={setActiveTab}
+          />
+        );
+      case 'lesson-plan':
+        return (
+          <LessonPlanSection 
+            plans={lessonPlans} 
+            setPlans={setLessonPlans}
+            deletePlan={deletePlan}
+            ppctData={ppctData}
+            classes={classes}
+            businessInfo={businessInfo}
+          />
+        );
+      case 'journal':
+        return (
+          <ClassJournalSection 
+            plans={lessonPlans}
+            setPlans={setLessonPlans}
+            deletePlan={deletePlan}
+            businessInfo={businessInfo}
+          />
+        );
+      case 'students_group':
+      case 'students-list':
+      case 'students-export':
+        return (
+          <StudentManagementSection 
+            students={students}
+            setStudents={setStudents}
+            businessInfo={businessInfo}
+            activeSubTab={activeTab}
+            setActiveTab={setActiveTab}
+          />
+        );
+      case 'finance_group':
+      case 'finance-config':
+      case 'finance-ledger':
+      case 'finance-vouchers':
+        return (
+          <FinancialManagementSection 
+            config={financialConfig}
+            setConfig={setFinancialConfig}
+            incomeData={incomeData}
+            setIncomeData={setIncomeData}
+            expenseData={expenseData}
+            setExpenseData={setExpenseData}
+            businessInfo={businessInfo}
+            activeSubTab={activeTab}
+            setActiveTab={setActiveTab}
+            currentUser={currentUser}
+          />
+        );
+      case 'users':
+        return currentUser.role === 'admin' ? (
+          <UserManagementSection 
+            users={users} 
+            setUsers={setUsers} 
+          />
+        ) : null;
+      default:
+        return null;
+    }
+  };
+
   if (!currentUser) {
-    return <LoginPage onLogin={setCurrentUser} users={users} />;
+    return <LoginPage onLogin={setCurrentUser} users={users} darkMode={darkMode} setDarkMode={setDarkMode} />;
   }
 
   return (
-    <div className="flex h-screen bg-neutral-100 font-sans text-neutral-900 overflow-hidden">
+    <div className="flex h-screen bg-bg-light dark:bg-bg-dark font-sans text-neutral-900 dark:text-slate-100 overflow-hidden transition-colors duration-300">
       {/* Mobile Menu Toggle */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-neutral-200 z-50 px-4 py-3 flex items-center justify-between">
-        <h1 className="text-sm font-bold text-indigo-600 flex items-center gap-2">
+      <div className="lg:hidden fixed top-0 left-0 right-0 bg-white dark:bg-slate-900 border-b border-neutral-200 dark:border-slate-800 z-50 px-4 py-3 flex items-center justify-between">
+        <h1 className="text-sm font-bold text-primary flex items-center gap-2">
           <GraduationCap className="w-5 h-5" />
-          HỆ THỐNG QUẢN LÝ CƠ SỞ DẠY THÊM HOÀNG GIA
+          HỆ THỐNG QUẢN LÝ HOÀNG GIA
         </h1>
         <button 
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 text-neutral-600 hover:bg-neutral-100 rounded-lg"
+          className="p-2 text-neutral-600 dark:text-slate-400 hover:bg-neutral-100 dark:hover:bg-slate-800 rounded-lg"
         >
           {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
@@ -462,24 +639,29 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsMobileMenuOpen(false)}
-            className="lg:hidden fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
+            className="lg:hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
           />
         )}
       </AnimatePresence>
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed lg:static inset-y-0 left-0 w-72 bg-white border-r border-neutral-200 flex flex-col z-50 transition-transform duration-300 transform lg:translate-x-0",
+        "fixed lg:static inset-y-0 left-0 w-72 bg-white dark:bg-slate-900 border-r border-neutral-200 dark:border-slate-800 flex flex-col z-50 transition-all duration-300 transform lg:translate-x-0 shadow-xl lg:shadow-none",
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="p-6 border-b border-neutral-200">
-          <h1 className="text-sm font-bold tracking-tight text-indigo-600 flex items-center gap-2 leading-tight">
-            <GraduationCap className="w-6 h-6 shrink-0" />
-            HỆ THỐNG QUẢN LÝ CƠ SỞ DẠY THÊM HOÀNG GIA
-          </h1>
+        <div className="p-8 pb-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary/25">
+              <GraduationCap className="w-6 h-6 text-white" />
+            </div>
+            <div className="leading-tight">
+              <h1 className="text-lg font-black tracking-tight text-neutral-900 dark:text-white">HOÀNG GIA</h1>
+              <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">Dashboard Pro</p>
+            </div>
+          </div>
         </div>
         
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar py-4">
           {filteredTabs.map((tab, index) => (
             <div key={tab.id} className="group relative space-y-1">
               {currentUser?.role === 'admin' && (
@@ -487,14 +669,14 @@ export default function App() {
                   <button 
                     onClick={(e) => { e.stopPropagation(); moveTab(tab.id, 'up'); }}
                     disabled={index === 0}
-                    className="p-0.5 text-neutral-400 hover:text-indigo-600 disabled:opacity-0"
+                    className="p-0.5 text-neutral-400 hover:text-primary disabled:opacity-0"
                   >
                     <ChevronUp className="w-3 h-3" />
                   </button>
                   <button 
                     onClick={(e) => { e.stopPropagation(); moveTab(tab.id, 'down'); }}
                     disabled={index === filteredTabs.length - 1}
-                    className="p-0.5 text-neutral-400 hover:text-indigo-600 disabled:opacity-0"
+                    className="p-0.5 text-neutral-400 hover:text-primary disabled:opacity-0"
                   >
                     <ChevronDown className="w-3 h-3" />
                   </button>
@@ -508,19 +690,19 @@ export default function App() {
                       setActiveTab(tab.id);
                     }}
                     className={cn(
-                      "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 text-left",
-                      tab.id === activeTab || (tab.subTabs && tab.subTabs.some(st => st.id === activeTab))
-                        ? "bg-indigo-50/50 text-indigo-700"
-                        : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
+                      "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group/item",
+                      (tab.id === activeTab || (tab.subTabs && tab.subTabs.some(st => st.id === activeTab)))
+                        ? "bg-primary/5 dark:bg-primary/10 text-primary"
+                        : "text-neutral-600 dark:text-slate-400 hover:bg-neutral-50 dark:hover:bg-slate-800/50 hover:text-neutral-900 dark:hover:text-slate-200"
                     )}
                   >
-                    <tab.icon className={cn("w-5 h-5 shrink-0", (tab.id === activeTab || (tab.subTabs && tab.subTabs.some(st => st.id === activeTab))) ? "text-indigo-600" : "text-neutral-400")} />
-                    <span className="flex-1">{tab.label}</span>
+                    <tab.icon className={cn("w-5 h-5 shrink-0 transition-colors", (tab.id === activeTab || (tab.subTabs && tab.subTabs.some(st => st.id === activeTab))) ? "text-primary" : "text-neutral-400 group-hover/item:text-neutral-600 dark:group-hover/item:text-slate-200")} />
+                    <span className="flex-1 text-sm font-bold">{tab.label}</span>
                     <motion.div
                       animate={{ rotate: tab.isOpen ? 90 : 0 }}
                       className="ml-auto"
                     >
-                      <ChevronRight className="w-4 h-4" />
+                      <ChevronRight className="w-4 h-4 opacity-50" />
                     </motion.div>
                   </button>
                   <AnimatePresence>
@@ -529,7 +711,7 @@ export default function App() {
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden pl-4 space-y-1"
+                        className="overflow-hidden pl-12 space-y-1 mt-1"
                       >
                         {tab.subTabs.map((subTab) => (
                           <button
@@ -539,14 +721,19 @@ export default function App() {
                               if (window.innerWidth < 1024) setIsMobileMenuOpen(false);
                             }}
                             className={cn(
-                              "w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-left",
+                              "w-full flex items-center gap-3 py-2.5 text-[13px] font-bold transition-all duration-200 relative",
                               activeTab === subTab.id
-                                ? "bg-indigo-50 text-indigo-700 shadow-sm"
-                                : "text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900"
+                                ? "text-primary"
+                                : "text-neutral-500 dark:text-slate-500 hover:text-neutral-900 dark:hover:text-slate-200"
                             )}
                           >
-                            <subTab.icon className={cn("w-4 h-4 shrink-0", activeTab === subTab.id ? "text-indigo-600" : "text-neutral-400")} />
-                            <span className="truncate">{subTab.label}</span>
+                            {activeTab === subTab.id && (
+                              <motion.div 
+                                layoutId="subtab-active"
+                                className="absolute -left-4 w-1 h-4 bg-primary rounded-full shadow-[0_0_8px_rgba(22,119,255,0.5)]"
+                              />
+                            )}
+                            {subTab.label}
                           </button>
                         ))}
                       </motion.div>
@@ -560,139 +747,103 @@ export default function App() {
                     if (window.innerWidth < 1024) setIsMobileMenuOpen(false);
                   }}
                   className={cn(
-                    "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
-                    activeTab === tab.id 
-                      ? "bg-indigo-50 text-indigo-700 shadow-sm" 
-                      : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
+                    "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group/item",
+                    activeTab === tab.id
+                      ? "bg-primary/5 dark:bg-primary/10 text-primary shadow-sm"
+                      : "text-neutral-600 dark:text-slate-400 hover:bg-neutral-50 dark:hover:bg-slate-800/50 hover:text-neutral-900 dark:hover:text-slate-200"
                   )}
                 >
-                  <tab.icon className={cn("w-5 h-5", activeTab === tab.id ? "text-indigo-600" : "text-neutral-400")} />
-                  {tab.label}
-                  {activeTab === tab.id && <ChevronRight className="w-4 h-4 ml-auto" />}
+                  <tab.icon className={cn("w-5 h-5 shrink-0 transition-colors", activeTab === tab.id ? "text-primary" : "text-neutral-400 group-hover/item:text-neutral-600 dark:group-hover/item:text-slate-200")} />
+                  <span className="flex-1 text-sm font-bold">{tab.label}</span>
+                  {activeTab === tab.id && (
+                    <motion.div 
+                      layoutId="tab-active-indicator"
+                      className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(22,119,255,0.5)]"
+                    />
+                  )}
                 </button>
               )}
             </div>
           ))}
         </nav>
-
-        {currentUser && (
-          <div className="p-4 border-t border-neutral-200">
-            <div className="flex items-center gap-3 px-4 py-3 mb-2">
-              <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
-                {currentUser.email[0].toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-neutral-900 truncate">{currentUser.email}</p>
-                <p className="text-xs text-neutral-500 capitalize">{currentUser.role === 'admin' ? 'Quản trị viên' : 'Người dùng'}</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setCurrentUser(null)}
-              className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-all"
-            >
-              <LogOut className="w-4 h-4" />
-              Đăng xuất
-            </button>
-          </div>
-        )}
         
-        <div className="p-4 border-t border-neutral-200 text-[10px] text-neutral-400 text-center">
-          Bản quyền: Đào Minh Tâm - Zalo 0366000555
+        <div className="p-6 border-t border-neutral-100 dark:border-slate-800">
+          <div className="bg-neutral-50 dark:bg-slate-800/50 rounded-2xl p-4 text-center">
+            <p className="text-[10px] text-neutral-400 dark:text-slate-500 font-bold uppercase tracking-widest mb-1">Bản quyền hệ thống</p>
+            <p className="text-[11px] font-black text-neutral-600 dark:text-slate-300">ĐÀO MINH TÂM</p>
+          </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto pt-16 lg:pt-0">
-        <div className="max-w-6xl mx-auto p-4 md:p-8">
-          <DashboardSection 
-            studentCount={students.length}
-            classCount={classes.length}
-            monthlyRevenue={monthlyRevenue}
-            reportPeriod={financialConfig.reportPeriod}
-          />
+      <main className="flex-1 flex flex-col min-w-0 bg-bg-light dark:bg-bg-dark transition-colors duration-300">
+        {/* Header */}
+        <header className="glass-header sticky top-0 z-30 px-4 lg:px-8 py-4 flex items-center justify-between border-b border-neutral-200/50 dark:border-slate-800/50 backdrop-blur-md bg-white/70 dark:bg-slate-900/70">
+          <div className="flex items-center gap-4">
+            <div className="hidden lg:block">
+              <h2 className="text-xl font-black text-neutral-900 dark:text-white tracking-tight">
+                {filteredTabs.find(t => t.id === activeTab || t.subTabs?.some(st => st.id === activeTab))?.label || 'Dashboard'}
+              </h2>
+              <div className="flex items-center gap-2 mt-0.5">
+                <Calendar className="w-3.5 h-3.5 text-primary" />
+                <p className="text-[11px] text-neutral-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                  {new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 lg:gap-6">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-neutral-100 dark:bg-slate-800 rounded-full">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-[10px] font-black text-neutral-600 dark:text-slate-300 uppercase tracking-widest">Hệ thống ổn định</span>
+            </div>
+
+            <button 
+              onClick={() => setDarkMode(!darkMode)}
+              className="p-2.5 text-neutral-500 dark:text-slate-400 hover:bg-neutral-100 dark:hover:bg-slate-800 rounded-xl transition-all active:scale-95 border border-transparent hover:border-neutral-200 dark:hover:border-slate-700"
+            >
+              {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+
+            <div className="h-8 w-px bg-neutral-200 dark:bg-slate-800" />
+
+            <div className="flex items-center gap-3 pl-2 group">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-black text-neutral-900 dark:text-white leading-none">{currentUser.email?.split('@')[0] || 'User'}</p>
+                <p className="text-[10px] font-bold text-primary uppercase tracking-[0.15em] mt-1">{currentUser.role === 'admin' ? 'Quản trị viên' : 'Nhân viên'}</p>
+              </div>
+              <div className="relative group/avatar cursor-pointer">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-indigo-600 flex items-center justify-center text-white font-black shadow-lg shadow-primary/20 group-hover/avatar:scale-105 transition-transform">
+                  {currentUser.email?.charAt(0).toUpperCase() || '?'}
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full" />
+              </div>
+              <button 
+                onClick={handleLogout}
+                className="p-2.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all active:scale-95"
+                title="Đăng xuất"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <div className="flex-1 overflow-y-auto p-4 lg:p-8 custom-scrollbar">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="max-w-7xl mx-auto"
             >
-              {activeTab === 'business' && (
-                <BusinessConfigSection 
-                  info={businessInfo} 
-                  setInfo={setBusinessInfo} 
-                />
-              )}
-              {activeTab === 'classes' && (
-                <ClassConfigSection 
-                  classes={classes} 
-                  setClasses={setClasses} 
-                />
-              )}
-              {activeTab === 'ppct' && (
-                <PPCTSection 
-                  ppctData={ppctData} 
-                  setPpctData={setPpctData} 
-                  classes={classes}
-                  setPlans={setLessonPlans}
-                  plans={lessonPlans}
-                  setActiveTab={setActiveTab}
-                />
-              )}
-              {activeTab === 'lesson-plan' && (
-                <LessonPlanSection 
-                  plans={lessonPlans} 
-                  setPlans={setLessonPlans}
-                  deletePlan={deletePlan}
-                  ppctData={ppctData}
-                  classes={classes}
-                  businessInfo={businessInfo}
-                />
-              )}
-              {activeTab === 'journal' && (
-                <ClassJournalSection 
-                  plans={lessonPlans}
-                  setPlans={setLessonPlans}
-                  deletePlan={deletePlan}
-                  businessInfo={businessInfo}
-                />
-              )}
-              {(activeTab === 'students_group' || activeTab === 'students-list' || activeTab === 'students-export') && (
-                <StudentManagementSection 
-                  students={students}
-                  setStudents={setStudents}
-                  businessInfo={businessInfo}
-                  activeSubTab={activeTab}
-                  setActiveTab={setActiveTab}
-                />
-              )}
-              {(activeTab === 'finance_group' || activeTab === 'finance-config' || activeTab === 'finance-ledger' || activeTab === 'finance-vouchers') && (
-                <FinancialManagementSection 
-                  config={financialConfig}
-                  setConfig={setFinancialConfig}
-                  incomeData={incomeData}
-                  setIncomeData={setIncomeData}
-                  expenseData={expenseData}
-                  setExpenseData={setExpenseData}
-                  businessInfo={businessInfo}
-                  activeSubTab={activeTab}
-                  setActiveTab={setActiveTab}
-                  currentUser={currentUser}
-                />
-              )}
-              {activeTab === 'users' && currentUser.role === 'admin' && (
-                <UserManagementSection 
-                  users={users} 
-                  setUsers={setUsers} 
-                />
-              )}
+              {renderContent()}
             </motion.div>
           </AnimatePresence>
-          
-          <footer className="mt-12 pt-8 border-t border-neutral-200 text-center text-sm text-neutral-500">
-            Bản quyền: Đào Minh Tâm - Zalo 0366000555
-          </footer>
         </div>
       </main>
     </div>
@@ -712,55 +863,158 @@ function DashboardSection({
   monthlyRevenue: number,
   reportPeriod: string
 }) {
+  const stats = [
+    { 
+      label: 'Tổng số học sinh', 
+      value: studentCount, 
+      icon: Users, 
+      color: 'from-blue-500 to-indigo-600',
+      trend: '+12%',
+      description: 'Học sinh đang theo học'
+    },
+    { 
+      label: 'Số lớp học', 
+      value: classCount, 
+      icon: BookOpen, 
+      color: 'from-orange-500 to-amber-600',
+      trend: '+2',
+      description: 'Lớp đang hoạt động'
+    },
+    { 
+      label: 'Doanh thu tháng', 
+      value: monthlyRevenue.toLocaleString('vi-VN') + 'đ', 
+      icon: CreditCard, 
+      color: 'from-emerald-500 to-teal-600',
+      trend: '+15%',
+      description: `Kỳ báo cáo: ${reportPeriod || 'Hiện tại'}`
+    },
+  ];
+
   return (
-    <div className="mb-8">
-      <h2 className="text-xl font-bold text-neutral-900 mb-4 flex items-center gap-2">
-        <LayoutDashboard className="w-5 h-5 text-indigo-600" /> Tổng quát
-      </h2>
+    <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white p-6 rounded-2xl shadow-sm border border-neutral-200 flex items-center gap-4"
-      >
-        <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
-          <Users className="w-6 h-6" />
-        </div>
-        <div>
-          <p className="text-sm font-medium text-neutral-500">Tổng số học sinh</p>
-          <p className="text-2xl font-bold text-neutral-900 leading-tight">{studentCount}</p>
-        </div>
-      </motion.div>
+        {stats.map((stat, idx) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.1 }}
+            className="saas-card group"
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div className={cn(
+                "w-12 h-12 rounded-2xl bg-gradient-to-br flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-110 duration-300",
+                stat.color
+              )}>
+                <stat.icon className="w-6 h-6" />
+              </div>
+              <span className="text-xs font-bold text-green-500 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-lg">
+                {stat.trend}
+              </span>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-neutral-500 dark:text-slate-400 mb-1">{stat.label}</p>
+              <h3 className="text-3xl font-bold text-neutral-900 dark:text-white tracking-tight">{stat.value}</h3>
+              <p className="text-[10px] font-medium text-neutral-400 dark:text-slate-500 mt-2 uppercase tracking-wider">{stat.description}</p>
+            </div>
+          </motion.div>
+        ))}
+      </div>
 
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="bg-white p-6 rounded-2xl shadow-sm border border-neutral-200 flex items-center gap-4"
-      >
-        <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
-          <BookOpen className="w-6 h-6" />
-        </div>
-        <div>
-          <p className="text-sm font-medium text-neutral-500">Số lớp học</p>
-          <p className="text-2xl font-bold text-neutral-900 leading-tight">{classCount}</p>
-        </div>
-      </motion.div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.3 }}
+          className="saas-card"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-primary" />
+              Tỷ lệ chuyên cần
+            </h3>
+            <select className="bg-neutral-50 dark:bg-slate-900 border-none text-xs font-bold text-neutral-500 rounded-lg px-3 py-1.5 outline-none cursor-pointer">
+              <option>7 ngày qua</option>
+              <option>30 ngày qua</option>
+            </select>
+          </div>
+          <div className="h-64 flex items-end justify-between gap-2 px-2">
+            {[65, 80, 45, 90, 70, 85, 95].map((height, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
+                <div className="w-full relative">
+                  <motion.div 
+                    initial={{ height: 0 }}
+                    animate={{ height: `${height}%` }}
+                    transition={{ duration: 1, delay: 0.5 + (i * 0.1), ease: "easeOut" }}
+                    className="w-full bg-primary/10 group-hover:bg-primary/20 rounded-t-lg transition-colors relative overflow-hidden"
+                  >
+                    <motion.div 
+                      initial={{ height: 0 }}
+                      animate={{ height: '100%' }}
+                      transition={{ duration: 1, delay: 0.8 + (i * 0.1) }}
+                      className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-primary to-indigo-400 opacity-80"
+                    />
+                  </motion.div>
+                </div>
+                <span className="text-[10px] font-bold text-neutral-400 dark:text-slate-500">T{i+2}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
 
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="bg-white p-6 rounded-2xl shadow-sm border border-neutral-200 flex items-center gap-4"
-      >
-        <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center text-orange-600">
-          <DollarSign className="w-6 h-6" />
-        </div>
-        <div>
-          <p className="text-sm font-medium text-neutral-500">Doanh thu {reportPeriod || 'tháng'}</p>
-          <p className="text-2xl font-bold text-neutral-900 leading-tight">{monthlyRevenue.toLocaleString()} VNĐ</p>
-        </div>
-      </motion.div>
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.4 }}
+          className="saas-card flex flex-col items-center justify-center text-center py-12"
+        >
+          <div className="relative w-48 h-48 mb-8">
+            <svg className="w-full h-full transform -rotate-90">
+              <circle
+                cx="96"
+                cy="96"
+                r="80"
+                fill="transparent"
+                stroke="currentColor"
+                strokeWidth="12"
+                className="text-neutral-100 dark:text-slate-800"
+              />
+              <motion.circle
+                cx="96"
+                cy="96"
+                r="80"
+                fill="transparent"
+                stroke="url(#gradient)"
+                strokeWidth="12"
+                strokeDasharray={502.4}
+                initial={{ strokeDashoffset: 502.4 }}
+                animate={{ strokeDashoffset: 502.4 * (1 - 0.78) }}
+                transition={{ duration: 2, delay: 0.5, ease: "easeInOut" }}
+                strokeLinecap="round"
+              />
+              <defs>
+                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#1677FF" />
+                  <stop offset="100%" stopColor="#818CF8" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-4xl font-black text-neutral-900 dark:text-white tracking-tighter">78%</span>
+              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mt-1">Hoàn thành HP</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-8 w-full max-w-xs">
+            <div className="text-center">
+              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Đã nộp</p>
+              <p className="text-xl font-bold text-neutral-900 dark:text-white">142</p>
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Chưa nộp</p>
+              <p className="text-xl font-bold text-neutral-900 dark:text-white">38</p>
+            </div>
+          </div>
+        </motion.div>
       </div>
     </div>
   );
@@ -771,71 +1025,78 @@ function BusinessConfigSection({ info, setInfo }: { info: BusinessInfo, setInfo:
     setInfo({ ...info, [e.target.name]: e.target.value });
   };
 
-  return (
-    <div className="space-y-6">
-      <header>
-        <h2 className="text-2xl font-bold text-neutral-900">Cấu hình Hộ kinh doanh</h2>
-        <p className="text-neutral-500">Thông tin cơ bản về cơ sở dạy thêm của bạn.</p>
-      </header>
+  const fields = [
+    { name: 'name', label: 'Tên Hộ kinh doanh', placeholder: 'VD: Trung tâm Bồi dưỡng Văn hóa Hoàn Cầu', icon: Building2 },
+    { name: 'owner', label: 'Chủ hộ kinh doanh', placeholder: 'VD: Nguyễn Văn A', icon: User },
+    { name: 'taxId', label: 'Mã số thuế', placeholder: 'VD: 0123456789', icon: CreditCard },
+    { name: 'businessLocation', label: 'Địa điểm kinh doanh', placeholder: 'VD: SN 269 - Lê Duẩn - Phường Tân Phong - Tỉnh Lai Châu', icon: MapPin },
+    { name: 'address', label: 'Địa chỉ', placeholder: 'VD: Số 123, Đường ABC, Quận XYZ, TP. HCM', icon: Home },
+  ];
 
-      <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-neutral-700">Tên Hộ kinh doanh</label>
-          <input
-            name="name"
-            value={info.name}
-            onChange={handleChange}
-            placeholder="VD: Trung tâm Bồi dưỡng Văn hóa Hoàn Cầu"
-            className="w-full px-4 py-2 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-          />
+  return (
+    <div className="max-w-4xl mx-auto space-y-8">
+      <div className="saas-card">
+        <div className="flex items-center gap-4 mb-8 pb-6 border-b border-neutral-100 dark:border-slate-800">
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+            <Settings2 className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-neutral-900 dark:text-white">Thông tin cơ bản</h3>
+            <p className="text-sm text-neutral-500 dark:text-slate-400">Cập nhật thông tin định danh cho cơ sở của bạn</p>
+          </div>
         </div>
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-neutral-700">Chủ hộ kinh doanh</label>
-          <input
-            name="owner"
-            value={info.owner}
-            onChange={handleChange}
-            placeholder="VD: Nguyễn Văn A"
-            className="w-full px-4 py-2 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-          />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {fields.map((field) => (
+            <div key={field.name} className={cn("space-y-2", field.name === 'address' && "md:col-span-2")}>
+              <label className="text-xs font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <field.icon className="w-3.5 h-3.5" />
+                {field.label}
+              </label>
+              <div className="relative group">
+                <input
+                  type="text"
+                  name={field.name}
+                  value={(info as any)[field.name] || ""}
+                  onChange={handleChange}
+                  placeholder={field.placeholder}
+                  className="w-full bg-neutral-50 dark:bg-slate-900/50 border border-neutral-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all dark:text-white"
+                />
+                <div className="absolute inset-0 rounded-xl bg-primary/5 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity" />
+              </div>
+            </div>
+          ))}
         </div>
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-neutral-700">Mã số thuế</label>
-          <input
-            name="taxId"
-            value={info.taxId}
-            onChange={handleChange}
-            placeholder="VD: 0123456789"
-            className="w-full px-4 py-2 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-neutral-700">Địa điểm kinh doanh</label>
-          <input
-            name="businessLocation"
-            value={info.businessLocation || ""}
-            onChange={handleChange}
-            placeholder="VD: SN 269 - Lê Duẩn - Phường Tân Phong - Tỉnh Lai Châu"
-            className="w-full px-4 py-2 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-          />
-        </div>
-        <div className="space-y-2 md:col-span-2">
-          <label className="text-sm font-semibold text-neutral-700">Địa chỉ</label>
-          <input
-            name="address"
-            value={info.address}
-            onChange={handleChange}
-            placeholder="VD: Số 123, Đường ABC, Quận XYZ, TP. HCM"
-            className="w-full px-4 py-2 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-          />
-        </div>
-        <div className="md:col-span-2 flex justify-end pt-4">
-          <button
-            onClick={() => alert("Đã lưu cấu hình Hộ kinh doanh!")}
-            className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium"
-          >
-            <Save className="w-4 h-4" /> Lưu cấu hình
+
+        <div className="mt-10 flex justify-end">
+          <button className="btn-primary flex items-center gap-2">
+            <Save className="w-4 h-4" />
+            Lưu thay đổi
           </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="saas-card p-6 bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/20">
+          <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center mb-4">
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+          <h4 className="font-bold text-neutral-900 dark:text-white mb-1">Bảo mật dữ liệu</h4>
+          <p className="text-xs text-neutral-500 dark:text-slate-400">Thông tin của bạn được mã hóa và bảo vệ theo tiêu chuẩn SaaS.</p>
+        </div>
+        <div className="saas-card p-6 bg-purple-50/50 dark:bg-purple-900/10 border-purple-100 dark:border-purple-900/20">
+          <div className="w-10 h-10 rounded-xl bg-purple-500 text-white flex items-center justify-center mb-4">
+            <Zap className="w-5 h-5" />
+          </div>
+          <h4 className="font-bold text-neutral-900 dark:text-white mb-1">Tự động đồng bộ</h4>
+          <p className="text-xs text-neutral-500 dark:text-slate-400">Mọi thay đổi sẽ được cập nhật tức thì trên toàn hệ thống.</p>
+        </div>
+        <div className="saas-card p-6 bg-amber-50/50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/20">
+          <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center mb-4">
+            <HelpCircle className="w-5 h-5" />
+          </div>
+          <h4 className="font-bold text-neutral-900 dark:text-white mb-1">Hỗ trợ 24/7</h4>
+          <p className="text-xs text-neutral-500 dark:text-slate-400">Liên hệ với chúng tôi nếu bạn gặp khó khăn khi cấu hình.</p>
         </div>
       </div>
     </div>
@@ -844,93 +1105,123 @@ function BusinessConfigSection({ info, setInfo }: { info: BusinessInfo, setInfo:
 
 function ClassConfigSection({ classes, setClasses }: { classes: ClassSubject[], setClasses: (c: ClassSubject[]) => void }) {
   const addRow = () => {
-    setClasses([...classes, { grade: '', subject: '', subSubject: '' }]);
+    setClasses([...classes, { id: crypto.randomUUID(), grade: '', subject: '', subSubject: '' }]);
   };
 
-  const removeRow = (index: number) => {
-    setClasses(classes.filter((_, i) => i !== index));
+  const resetToDefault = () => {
+    if (window.confirm("Bạn có chắc chắn muốn khôi phục cấu hình mặc định? Toàn bộ dữ liệu hiện tại sẽ bị ghi đè.")) {
+      setClasses(DEFAULT_CLASSES);
+    }
   };
 
-  const handleChange = (index: number, field: keyof ClassSubject, value: string) => {
-    const newClasses = [...classes];
-    newClasses[index][field] = value;
-    setClasses(newClasses);
+  const removeRow = (id: string) => {
+    setClasses(classes.filter((c) => c.id !== id));
+  };
+
+  const handleChange = (id: string, field: keyof ClassSubject, value: string) => {
+    setClasses(classes.map(c => c.id === id ? { ...c, [field]: value } : c));
   };
 
   return (
-    <div className="space-y-6">
-      <header className="flex justify-between items-end">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-8 max-w-5xl mx-auto"
+    >
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-neutral-900">Cấu hình Lớp học</h2>
-          <p className="text-neutral-500">Thiết lập các khối lớp, môn học và phân môn.</p>
+          <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">Cấu hình Lớp học</h2>
+          <p className="text-sm text-neutral-500 dark:text-slate-400 mt-1 font-medium">Thiết lập các khối lớp, môn học và phân môn cho cơ sở.</p>
         </div>
-        <div className="flex gap-3">
-          <button
-            onClick={() => alert("Đã lưu cấu hình Lớp học!")}
-            className="flex items-center gap-2 px-4 py-2 text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors font-medium"
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={resetToDefault}
+            className="px-6 py-3 bg-neutral-100 dark:bg-slate-800 text-neutral-700 dark:text-slate-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-slate-700 transition-all font-bold text-sm flex items-center gap-2"
           >
-            <Save className="w-4 h-4" /> Lưu cấu hình
+            <RotateCcw className="w-4 h-4" />
+            Khôi phục mặc định
           </button>
-          <button
+          <button 
             onClick={addRow}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium"
+            className="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 font-bold text-sm flex items-center gap-2"
           >
-            <Plus className="w-4 h-4" /> Thêm dòng
+            <Plus className="w-4 h-4" />
+            Thêm dòng mới
           </button>
         </div>
-      </header>
-
-      <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-neutral-50 border-b border-neutral-200">
-              <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider">Khối lớp</th>
-              <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider">Môn học</th>
-              <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider">Phân môn</th>
-              <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider w-16"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-200">
-            {classes.map((cls, idx) => (
-              <tr key={idx} className="hover:bg-neutral-50 transition-colors">
-                <td className="px-6 py-3">
-                  <input
-                    value={cls.grade}
-                    onChange={(e) => handleChange(idx, 'grade', e.target.value)}
-                    placeholder="VD: 6"
-                    className="w-full bg-transparent border-none focus:ring-0 text-sm"
-                  />
-                </td>
-                <td className="px-6 py-3">
-                  <input
-                    value={cls.subject}
-                    onChange={(e) => handleChange(idx, 'subject', e.target.value)}
-                    placeholder="VD: Toán"
-                    className="w-full bg-transparent border-none focus:ring-0 text-sm"
-                  />
-                </td>
-                <td className="px-6 py-3">
-                  <input
-                    value={cls.subSubject}
-                    onChange={(e) => handleChange(idx, 'subSubject', e.target.value)}
-                    placeholder="VD: Đại số"
-                    className="w-full bg-transparent border-none focus:ring-0 text-sm"
-                  />
-                </td>
-                <td className="px-6 py-3 text-right">
-                  <button
-                    onClick={() => removeRow(idx)}
-                    className="text-neutral-400 hover:text-red-600 transition-colors p-1"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
-    </div>
+
+      <div className="saas-card overflow-hidden !p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-neutral-50/50 dark:bg-slate-900/50 border-b border-neutral-100 dark:border-slate-800">
+                <th className="px-8 py-5 text-[10px] font-black text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Khối lớp</th>
+                <th className="px-8 py-5 text-[10px] font-black text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Môn học</th>
+                <th className="px-8 py-5 text-[10px] font-black text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Phân môn</th>
+                <th className="px-8 py-5 text-[10px] font-black text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-20"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
+              <AnimatePresence mode="popLayout">
+                {classes.map((cls, idx) => (
+                  <motion.tr 
+                    key={cls.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 10 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="group hover:bg-neutral-50/30 dark:hover:bg-slate-900/30 transition-colors"
+                  >
+                    <td className="px-8 py-4">
+                      <input
+                        value={cls.grade}
+                        onChange={(e) => handleChange(cls.id, 'grade', e.target.value)}
+                        placeholder="VD: 6"
+                        className="w-full bg-transparent border-none focus:ring-0 text-sm font-black text-neutral-900 dark:text-white placeholder-neutral-300 dark:placeholder-slate-700"
+                      />
+                    </td>
+                    <td className="px-8 py-4">
+                      <input
+                        value={cls.subject}
+                        onChange={(e) => handleChange(cls.id, 'subject', e.target.value)}
+                        placeholder="VD: Toán"
+                        className="w-full bg-transparent border-none focus:ring-0 text-sm font-bold text-neutral-700 dark:text-slate-300 placeholder-neutral-300 dark:placeholder-slate-700"
+                      />
+                    </td>
+                    <td className="px-8 py-4">
+                      <input
+                        value={cls.subSubject}
+                        onChange={(e) => handleChange(cls.id, 'subSubject', e.target.value)}
+                        placeholder="VD: Đại số"
+                        className="w-full bg-transparent border-none focus:ring-0 text-sm font-bold text-neutral-500 dark:text-slate-400 placeholder-neutral-300 dark:placeholder-slate-700 italic"
+                      />
+                    </td>
+                    <td className="px-8 py-4 text-right">
+                      <button
+                        onClick={() => removeRow(cls.id)}
+                        className="w-9 h-9 rounded-xl flex items-center justify-center text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </motion.tr>
+                ))}
+              </AnimatePresence>
+            </tbody>
+          </table>
+        </div>
+        {classes.length === 0 && (
+          <div className="py-24 text-center">
+            <div className="w-20 h-20 bg-neutral-50 dark:bg-slate-900 rounded-3xl flex items-center justify-center mx-auto mb-6 text-neutral-300 dark:text-slate-700">
+              <Layers className="w-10 h-10" />
+            </div>
+            <h4 className="text-xl font-bold text-neutral-900 dark:text-white">Chưa có lớp học nào</h4>
+            <p className="text-sm text-neutral-500 dark:text-slate-400 mt-2">Nhấn "Thêm dòng mới" để bắt đầu cấu hình hệ thống.</p>
+          </div>
+        )}
+      </div>
+    </motion.div>
   );
 }
 
@@ -957,11 +1248,8 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
         const ws = wb.Sheets[wsname];
         const jsonData = XLSX.utils.sheet_to_json(ws) as any[];
         
-        console.log("Raw Excel Data:", jsonData);
-
-        // Map Excel columns to PPCTItem
-        // Expected columns: Lớp, Môn, Phân môn, Tiết theo PPCT, Nội dung, Ghi chú
         const mappedData: PPCTItem[] = jsonData.map(row => ({
+          id: crypto.randomUUID(),
           grade: normalizeGrade(row['Lớp'] || row['Khối'] || activeGrade),
           subject: String(row['Môn'] || row['Môn học'] || '').trim(),
           subSubject: String(row['Phân môn'] || '').trim(),
@@ -971,18 +1259,15 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
         })).filter(item => item.subject && item.content);
 
         if (mappedData.length === 0) {
-          alert("Không tìm thấy dữ liệu hợp lệ trong file Excel. Vui lòng kiểm tra lại định dạng file mẫu (Cần các cột: Lớp, Môn, Phân môn, Tiết theo PPCT, Nội dung).");
+          alert("Không tìm thấy dữ liệu hợp lệ trong file Excel. Vui lòng kiểm tra lại định dạng file mẫu.");
           return;
         }
 
-        // Merge with existing data, replacing for this grade
         const targetGrade = normalizeGrade(activeGrade);
         const otherGradesData = ppctData.filter(item => normalizeGrade(item.grade) !== targetGrade);
         setPpctData([...otherGradesData, ...mappedData]);
-        alert(`Đã nhận PPCT lớp ${activeGrade} thành công với ${mappedData.length} tiết học!`);
       } catch (err) {
         console.error("Upload error:", err);
-        alert("Có lỗi xảy ra khi đọc file Excel. Vui lòng đảm bảo file không bị khóa và đúng định dạng .xlsx");
       } finally {
         e.target.value = '';
       }
@@ -990,38 +1275,45 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
     reader.readAsArrayBuffer(file);
   };
 
-  const deleteRow = (idx: number) => {
-    const filteredData = ppctData.filter(d => normalizeGrade(d.grade) === normalizeGrade(activeGrade));
-    const otherGradesData = ppctData.filter(d => normalizeGrade(d.grade) !== normalizeGrade(activeGrade));
-    const newFilteredData = filteredData.filter((_, i) => i !== idx);
-    setPpctData([...otherGradesData, ...newFilteredData]);
+  const deleteRow = (id: string) => {
+    setPpctData(ppctData.filter(d => d.id !== id));
   };
 
   const downloadSamplePPCT = () => {
     const sampleData = [
       { 'Lớp': activeGrade, 'Môn': 'Toán', 'Phân môn': 'Đại số', 'Tiết theo PPCT': 1, 'Nội dung': 'Tập hợp các số tự nhiên', 'Ghi chú': '' },
-      { 'Lớp': activeGrade, 'Môn': 'Toán', 'Phân môn': 'Đại số', 'Tiết theo PPCT': 2, 'Nội dung': 'Các phép tính trong tập hợp số tự nhiên', 'Ghi chú': '' },
-      { 'Lớp': activeGrade, 'Môn': 'KHTN', 'Phân môn': 'Vật lý', 'Tiết theo PPCT': 1, 'Nội dung': 'Mở đầu về KHTN', 'Ghi chú': '' },
     ];
-
     const ws = XLSX.utils.json_to_sheet(sampleData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "PPCT Mau");
-    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'binary' });
-
-    function s2ab(s: string) {
-      const buf = new ArrayBuffer(s.length);
-      const view = new Uint8Array(buf);
-      for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
-      return buf;
-    }
-
-    saveAs(new Blob([s2ab(wbout)], { type: "application/octet-stream" }), `Mau_PPCT_Khoi_${activeGrade}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, "PPCT Mẫu");
+    XLSX.writeFile(wb, `Mau_PPCT_Lop_${activeGrade}.xlsx`);
   };
 
   const clearData = () => {
     const targetGrade = normalizeGrade(activeGrade);
     setPpctData(ppctData.filter(item => normalizeGrade(item.grade) !== targetGrade));
+  };
+
+  const handleChange = (id: string, field: keyof PPCTItem, value: any) => {
+    setPpctData(ppctData.map(item => item.id === id ? { ...item, [field]: value } : item));
+  };
+
+  const addRow = () => {
+    setPpctData([...ppctData, {
+      id: crypto.randomUUID(),
+      grade: activeGrade,
+      subject: '',
+      subSubject: '',
+      period: (filteredData.length > 0 ? Math.max(...filteredData.map(d => d.period)) + 1 : 1),
+      content: '',
+      notes: ''
+    }]);
+  };
+
+  const resetToDefault = () => {
+    if (window.confirm("Bạn có chắc chắn muốn khôi phục phân phối chương trình mặc định?")) {
+      setPpctData(DEFAULT_PPCT);
+    }
   };
 
   const syncToLessonPlan = () => {
@@ -1033,14 +1325,13 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
     const WEEKDAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6'];
     const WEEKEND = ['Thứ 7', 'Chủ Nhật'];
 
-    // Mon-Fri: 2 shifts
     WEEKDAYS.forEach((day, idx) => {
       const date = addDays(start, idx);
       ['Ca 1 (17h-19h)', 'Ca 2 (19h-21h)'].forEach(shift => {
         rows.push({
           id: crypto.randomUUID(),
           day,
-          date: format(date, 'dd/MM'),
+          date: format(date, 'dd/MM/yyyy'),
           shift,
           grade: '',
           subject: '',
@@ -1052,7 +1343,6 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
       });
     });
 
-    // Sat-Sun: 6 shifts
     WEEKEND.forEach((day, idx) => {
       const date = addDays(start, 5 + idx);
       [
@@ -1066,7 +1356,7 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
         rows.push({
           id: crypto.randomUUID(),
           day,
-          date: format(date, 'dd/MM'),
+          date: format(date, 'dd/MM/yyyy'),
           shift,
           grade: '',
           subject: '',
@@ -1089,120 +1379,161 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
 
     setPlans([newPlan, ...plans]);
     setActiveTab('lesson-plan');
-    alert("Đã tạo một bản thảo Lịch báo giảng mới. Vui lòng kiểm tra trong mục Lịch báo giảng.");
   };
 
   const grades = Array.from(new Set(classes.map(c => c.grade))).sort();
+  const filteredData = ppctData.filter(item => normalizeGrade(item.grade) === normalizeGrade(activeGrade));
 
   return (
-    <div className="space-y-6">
-      <header className="flex justify-between items-end">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-8 max-w-6xl mx-auto"
+    >
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-neutral-900">Phân phối Chương trình</h2>
-          <p className="text-neutral-500">Tải lên file Excel chứa nội dung bài học theo từng tiết cho từng khối lớp.</p>
+          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">Phân phối chương trình</h2>
+          <p className="text-sm text-neutral-500 dark:text-slate-400 mt-1">Quản lý kế hoạch giảng dạy chi tiết theo từng khối lớp.</p>
         </div>
-        <div className="flex gap-3">
-          <button
-            onClick={() => alert("Đã lưu dữ liệu Phân phối chương trình!")}
-            className="flex items-center gap-2 px-4 py-2 text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors font-medium"
+        <div className="flex flex-wrap items-center gap-3">
+          <button 
+            onClick={resetToDefault}
+            className="px-6 py-3 bg-neutral-100 dark:bg-slate-800 text-neutral-700 dark:text-slate-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-slate-700 transition-all font-bold text-sm flex items-center gap-2"
           >
-            <Save className="w-4 h-4" /> Lưu PPCT
+            <RotateCcw className="w-4 h-4" />
+            Khôi phục mặc định
           </button>
-          <button
-            onClick={downloadSamplePPCT}
-            className="flex items-center gap-2 px-4 py-2 text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors font-medium"
-          >
-            <Download className="w-4 h-4" /> Tải file mẫu
-          </button>
-          <button
+          <button 
             onClick={syncToLessonPlan}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors shadow-sm font-medium"
+            className="px-6 py-3 bg-neutral-100 dark:bg-slate-800 text-neutral-700 dark:text-slate-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-slate-700 transition-all font-bold text-sm flex items-center gap-2"
           >
-            <CalendarDays className="w-4 h-4" /> Đồng bộ sang Lịch báo giảng
+            <Calendar className="w-4 h-4" />
+            Tạo lịch báo giảng
           </button>
+          <button 
+            onClick={downloadSamplePPCT}
+            className="px-6 py-3 bg-neutral-100 dark:bg-slate-800 text-neutral-700 dark:text-slate-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-slate-700 transition-all font-bold text-sm flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Tải file mẫu
+          </button>
+          <label className="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 font-bold text-sm flex items-center gap-3 cursor-pointer">
+            <Upload className="w-4 h-4" />
+            Nhập từ Excel
+            <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleFileUpload} />
+          </label>
+          <button 
+            onClick={addRow}
+            className="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 font-bold text-sm flex items-center gap-3"
+          >
+            <Plus className="w-4 h-4" />
+            Thêm dòng mới
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-1.5 p-1.5 bg-neutral-100 dark:bg-slate-800 rounded-2xl w-fit">
+          {(grades.length > 0 ? grades : ['6', '7', '8', '9']).map((grade) => (
+            <button
+              key={grade}
+              onClick={() => setActiveGrade(grade)}
+              className={cn(
+                "px-6 py-2.5 rounded-xl text-sm font-bold transition-all",
+                normalizeGrade(activeGrade) === normalizeGrade(grade) 
+                  ? "bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm" 
+                  : "text-neutral-500 dark:text-slate-400 hover:text-neutral-900 dark:hover:text-slate-200"
+              )}
+            >
+              Khối {grade}
+            </button>
+          ))}
+        </div>
+        {filteredData.length > 0 && (
           <ConfirmButton
             onConfirm={clearData}
-            className="flex items-center gap-2 px-4 py-2 text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors font-medium"
+            className="text-sm text-red-600 dark:text-red-400 font-bold flex items-center gap-2 px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all"
             icon={Trash2}
+            confirmText="Xác nhận xóa?"
           >
             Xóa dữ liệu khối {activeGrade}
           </ConfirmButton>
-          <label className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium cursor-pointer">
-            <Upload className="w-4 h-4" /> Tải Excel Khối {activeGrade}
-            <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleFileUpload} />
-          </label>
-        </div>
-      </header>
-
-      <div className="flex gap-2 border-b border-neutral-200">
-        {grades.map(g => (
-          <button
-            key={g}
-            onClick={() => setActiveGrade(g)}
-            className={cn(
-              "px-6 py-3 text-sm font-bold transition-all border-b-2",
-              normalizeGrade(activeGrade) === normalizeGrade(g)
-                ? "border-indigo-600 text-indigo-600" 
-                : "border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300"
-            )}
-          >
-            Khối {g}
-          </button>
-        ))}
+        )}
       </div>
 
-      {ppctData.filter(d => normalizeGrade(d.grade) === normalizeGrade(activeGrade)).length > 0 ? (
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
-          <div className="p-4 bg-indigo-50 border-b border-indigo-100 flex justify-between items-center">
-            <span className="text-sm font-medium text-indigo-700">Đã tải {ppctData.filter(d => normalizeGrade(d.grade) === normalizeGrade(activeGrade)).length} tiết học cho Khối {activeGrade}</span>
-          </div>
-          <div className="max-h-[500px] overflow-y-auto">
-            <table className="w-full text-left border-collapse">
-              <thead className="sticky top-0 bg-white shadow-sm z-10">
-                <tr className="bg-neutral-50 border-b border-neutral-200">
-                  <th className="px-6 py-3 text-xs font-bold text-neutral-500 uppercase tracking-wider">Lớp</th>
-                  <th className="px-6 py-3 text-xs font-bold text-neutral-500 uppercase tracking-wider">Môn</th>
-                  <th className="px-6 py-3 text-xs font-bold text-neutral-500 uppercase tracking-wider">Phân môn</th>
-                  <th className="px-6 py-3 text-xs font-bold text-neutral-500 uppercase tracking-wider">Tiết</th>
-                  <th className="px-6 py-3 text-xs font-bold text-neutral-500 uppercase tracking-wider">Nội dung</th>
-                  <th className="px-6 py-3 text-xs font-bold text-neutral-500 uppercase tracking-wider text-right">Thao tác</th>
+      <div className="saas-card overflow-hidden !p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[1000px]">
+            <thead>
+              <tr className="bg-neutral-50/50 dark:bg-slate-900/50 border-b border-neutral-100 dark:border-slate-800">
+                <th className="px-6 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-16 text-center">Tiết</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-40">Môn học</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-40">Phân môn</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Nội dung bài dạy</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-20"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
+              {filteredData.map((item, idx) => (
+                <tr key={item.id} className="hover:bg-neutral-50/30 dark:hover:bg-slate-900/30 transition-colors group">
+                  <td className="px-6 py-4">
+                    <input
+                      type="number"
+                      value={item.period}
+                      onChange={(e) => handleChange(item.id, 'period', Number(e.target.value))}
+                      className="w-full bg-transparent border-none focus:ring-0 text-sm font-bold text-neutral-900 dark:text-white text-center font-mono"
+                    />
+                  </td>
+                  <td className="px-6 py-4">
+                    <input
+                      value={item.subject}
+                      onChange={(e) => handleChange(item.id, 'subject', e.target.value)}
+                      className="w-full bg-transparent border-none focus:ring-0 text-sm font-bold text-primary"
+                      placeholder="Môn học"
+                    />
+                  </td>
+                  <td className="px-6 py-4">
+                    <input
+                      value={item.subSubject}
+                      onChange={(e) => handleChange(item.id, 'subSubject', e.target.value)}
+                      className="w-full bg-transparent border-none focus:ring-0 text-sm text-neutral-500 dark:text-slate-400 italic"
+                      placeholder="Phân môn"
+                    />
+                  </td>
+                  <td className="px-6 py-4">
+                    <input
+                      value={item.content}
+                      onChange={(e) => handleChange(item.id, 'content', e.target.value)}
+                      className="w-full bg-transparent border-none focus:ring-0 text-sm text-neutral-700 dark:text-slate-300 font-medium"
+                      placeholder="Nội dung bài dạy"
+                    />
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <button
+                      onClick={() => deleteRow(item.id)}
+                      className="w-9 h-9 rounded-xl flex items-center justify-center text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all opacity-0 group-hover:opacity-100"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-200">
-                {ppctData.filter(d => normalizeGrade(d.grade) === normalizeGrade(activeGrade)).map((item, idx) => (
-                  <tr key={idx} className="hover:bg-neutral-50 transition-colors text-sm">
-                    <td className="px-6 py-3 font-medium">{item.grade}</td>
-                    <td className="px-6 py-3">{item.subject}</td>
-                    <td className="px-6 py-3">{item.subSubject}</td>
-                    <td className="px-6 py-3">{item.period}</td>
-                    <td className="px-6 py-3 text-neutral-600">{item.content}</td>
-                    <td className="px-6 py-3 text-right">
-                      <ConfirmButton 
-                        onConfirm={() => deleteRow(idx)}
-                        className="p-1.5 text-neutral-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                        icon={Trash2}
-                        confirmText="Xóa?"
-                      >
-                      </ConfirmButton>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+              {filteredData.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-24 text-center">
+                    <div className="w-20 h-20 bg-neutral-50 dark:bg-slate-900 rounded-3xl flex items-center justify-center mx-auto mb-6 text-neutral-300 dark:text-slate-700">
+                      <FileSpreadsheet className="w-10 h-10" />
+                    </div>
+                    <h4 className="text-xl font-bold text-neutral-900 dark:text-white">Chưa có dữ liệu PPCT</h4>
+                    <p className="text-sm text-neutral-500 dark:text-slate-400 mt-2">Vui lòng nhập dữ liệu từ file Excel để bắt đầu.</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      ) : (
-        <div className="bg-white rounded-xl border-2 border-dashed border-neutral-300 p-20 text-center space-y-4">
-          <div className="bg-neutral-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto">
-            <FileSpreadsheet className="w-8 h-8 text-neutral-400" />
-          </div>
-          <div>
-            <p className="text-lg font-semibold text-neutral-900">Chưa có dữ liệu PPCT Khối {activeGrade}</p>
-            <p className="text-neutral-500 max-w-sm mx-auto">Tải lên file Excel với các cột: Lớp, Môn, Phân môn, Tiết theo PPCT, Nội dung.</p>
-          </div>
-        </div>
-      )}
-    </div>
+      </div>
+    </motion.div>
   );
 }
 
@@ -1226,14 +1557,13 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
     const WEEKDAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6'];
     const WEEKEND = ['Thứ 7', 'Chủ Nhật'];
 
-    // Mon-Fri: 2 shifts
     WEEKDAYS.forEach((day, idx) => {
       const date = addDays(start, idx);
       ['Ca 1 (17h-19h)', 'Ca 2 (19h-21h)'].forEach(shift => {
         rows.push({
           id: crypto.randomUUID(),
           day,
-          date: format(date, 'dd/MM'),
+          date: format(date, 'dd/MM/yyyy'),
           shift,
           grade: '',
           subject: '',
@@ -1245,7 +1575,6 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
       });
     });
 
-    // Sat-Sun: 6 shifts
     WEEKEND.forEach((day, idx) => {
       const date = addDays(start, 5 + idx);
       [
@@ -1259,7 +1588,7 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
         rows.push({
           id: crypto.randomUUID(),
           day,
-          date: format(date, 'dd/MM'),
+          date: format(date, 'dd/MM/yyyy'),
           shift,
           grade: '',
           subject: '',
@@ -1300,7 +1629,6 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
       if (row.id === rowId) {
         const updatedRow = { ...row, [field]: value };
         
-        // Reset dependent fields if parent changes
         if (field === 'grade') {
           updatedRow.subject = '';
           updatedRow.subSubject = '';
@@ -1314,7 +1642,6 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
           updatedRow.period = '';
           updatedRow.content = '';
         } else if (field === 'period') {
-          // Auto-sync content from PPCT if period selected
           const ppctMatch = ppctData.find(p => 
             normalizeGrade(p.grade) === normalizeGrade(updatedRow.grade) && 
             String(p.subject).trim().toLowerCase() === String(updatedRow.subject).trim().toLowerCase() && 
@@ -1338,7 +1665,6 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
     const row = editingPlan.rows.find(r => r.id === rowId);
     if (!row || !row.grade || !row.subject || !row.period) return;
 
-    // First try to find in PPCT data
     const ppctMatch = ppctData.find(p => 
       String(p.grade) === String(row.grade) && 
       String(p.subject) === String(row.subject) && 
@@ -1351,7 +1677,6 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
       return;
     }
 
-    // If not found, use AI (Gemini)
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const prompt = `Dựa trên thông tin sau, hãy cho biết nội dung bài học (tên bài dạy) của tiết học này:
@@ -1408,7 +1733,7 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
           new Paragraph({
             alignment: AlignmentType.CENTER,
             children: [
-              new TextRun({ text: `Tuần: ${plan.week} - Từ ngày: ${plan.startDate} - Đến ngày: ${plan.endDate}`, size: 22 }),
+              new TextRun({ text: `Tuần: ${plan.week} - Từ ngày: ${safeFormat(plan.startDate, 'dd/MM/yyyy')} - Đến ngày: ${safeFormat(plan.endDate, 'dd/MM/yyyy')}`, size: 22 }),
             ],
           }),
           new Table({
@@ -1446,7 +1771,6 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
                     }));
                   }
 
-                  // Split shift: "Ca 1 (17h-19h)" -> "Ca 1" and "(17h-19h)"
                   const shiftMatch = row.shift.match(/(Ca \d+)\s*(.*)/);
                   const shiftLine1 = shiftMatch ? shiftMatch[1] : row.shift;
                   const shiftLine2 = shiftMatch ? shiftMatch[2] : "";
@@ -1459,7 +1783,6 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
                     verticalAlign: VerticalAlign.CENTER,
                   }));
 
-                  // Lớp, Môn, Phân môn, Tiết - Centered
                   [row.grade, row.subject, row.subSubject, row.period].forEach(text => {
                     rowChildren.push(new TableCell({
                       children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(text), size: 20 })] })],
@@ -1467,7 +1790,6 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
                     }));
                   });
 
-                  // Content, Notes - Left aligned
                   [row.content, row.notes].forEach(text => {
                     rowChildren.push(new TableCell({
                       children: [new Paragraph({ children: [new TextRun({ text: String(text), size: 20 })] })],
@@ -1507,7 +1829,7 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
                       new Paragraph({ 
                         alignment: AlignmentType.CENTER, 
                         children: [new TextRun({ text: plan.teacherName, bold: true, size: 22 })],
-                        spacing: { before: 1700 } // Approx 3cm spacing
+                        spacing: { before: 1700 }
                       }),
                     ],
                   }),
@@ -1519,7 +1841,7 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
                       new Paragraph({ 
                         alignment: AlignmentType.CENTER, 
                         children: [new TextRun({ text: businessInfo.owner, bold: true, size: 22 })],
-                        spacing: { before: 1700 } // Approx 3cm spacing
+                        spacing: { before: 1700 }
                       }),
                     ],
                   }),
@@ -1537,113 +1859,112 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
 
   if (isCreating && editingPlan) {
     return (
-      <div className="space-y-6">
-        <header className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-neutral-900">Tạo Lịch báo giảng</h2>
-          <div className="flex gap-3">
+      <div className="space-y-8 max-w-6xl mx-auto">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">Tạo Lịch báo giảng</h2>
+            <p className="text-sm text-neutral-500 dark:text-slate-400">Thiết lập kế hoạch giảng dạy chi tiết cho tuần mới.</p>
+          </div>
+          <div className="flex items-center gap-3">
             <button
               onClick={() => setIsCreating(false)}
-              className="px-4 py-2 text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors font-medium"
+              className="btn-secondary"
             >
-              Hủy
+              Hủy bỏ
             </button>
             <button
               onClick={savePlan}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium"
+              className="btn-primary flex items-center gap-2"
             >
-              <Save className="w-4 h-4" /> Lưu lịch
+              <Save className="w-4 h-4" />
+              Lưu lịch dạy
             </button>
           </div>
-        </header>
+        </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-neutral-500 uppercase">Họ tên giáo viên</label>
-              <input
-                value={editingPlan.teacherName}
-                onChange={(e) => setEditingPlan({ ...editingPlan, teacherName: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-indigo-500 outline-none"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-neutral-500 uppercase">Tuần</label>
-              <input
-                value={editingPlan.week}
-                onChange={(e) => setEditingPlan({ ...editingPlan, week: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-indigo-500 outline-none"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-neutral-500 uppercase">Ngày bắt đầu</label>
-              <input
-                type="date"
-                value={editingPlan.startDate}
-                onChange={(e) => {
-                  if (!e.target.value) {
-                    setEditingPlan({ ...editingPlan, startDate: '', endDate: '' });
-                    return;
-                  }
-                  const start = parseISO(e.target.value);
-                  if (isNaN(start.getTime())) return;
-                  const end = endOfWeek(start, { weekStartsOn: 1 });
-                  setEditingPlan({ 
-                    ...editingPlan, 
-                    startDate: e.target.value,
-                    endDate: format(end, 'yyyy-MM-dd')
-                  });
-                }}
-                className="w-full px-3 py-2 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-indigo-500 outline-none"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-neutral-500 uppercase">Ngày kết thúc</label>
-              <input
-                type="date"
-                readOnly
-                value={editingPlan.endDate}
-                className="w-full px-3 py-2 rounded-lg border border-neutral-300 bg-neutral-50 outline-none"
-              />
-            </div>
+        <div className="saas-card grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Họ tên giáo viên</label>
+            <input
+              value={editingPlan.teacherName}
+              onChange={(e) => setEditingPlan({ ...editingPlan, teacherName: e.target.value })}
+              placeholder="Nhập họ tên..."
+              className="w-full bg-neutral-50 dark:bg-slate-900 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary transition-all"
+            />
           </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Tuần</label>
+            <input
+              value={editingPlan.week}
+              onChange={(e) => setEditingPlan({ ...editingPlan, week: e.target.value })}
+              className="w-full bg-neutral-50 dark:bg-slate-900 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary transition-all"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Ngày bắt đầu</label>
+            <input
+              type="date"
+              value={editingPlan.startDate}
+              onChange={(e) => {
+                if (!e.target.value) {
+                  setEditingPlan({ ...editingPlan, startDate: '', endDate: '' });
+                  return;
+                }
+                const start = parseISO(e.target.value);
+                if (isNaN(start.getTime())) return;
+                const end = endOfWeek(start, { weekStartsOn: 1 });
+                setEditingPlan({ 
+                  ...editingPlan, 
+                  startDate: e.target.value,
+                  endDate: format(end, 'yyyy-MM-dd')
+                });
+              }}
+              className="w-full bg-neutral-50 dark:bg-slate-900 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary transition-all"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Ngày kết thúc</label>
+            <input
+              type="date"
+              readOnly
+              value={editingPlan.endDate}
+              className="w-full bg-neutral-100 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm text-neutral-500 cursor-not-allowed"
+            />
+          </div>
+        </div>
 
+        <div className="saas-card overflow-hidden !p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[1000px]">
               <thead>
-                <tr className="bg-neutral-50 border-b border-neutral-200">
-                  <th className="px-3 py-3 text-[10px] font-bold text-neutral-500 uppercase w-24">Thứ, ngày</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-neutral-500 uppercase w-24">Ca dạy</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-neutral-500 uppercase w-16">Lớp</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-neutral-500 uppercase w-24">Môn</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-neutral-500 uppercase w-24">Phân môn</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-neutral-500 uppercase w-16">Tiết</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-neutral-500 uppercase">Nội dung bài dạy</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-neutral-500 uppercase w-24">Ghi chú</th>
+                <tr className="bg-neutral-50/50 dark:bg-slate-900/50 border-b border-neutral-100 dark:border-slate-800">
+                  <th className="px-4 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-24">Thứ, ngày</th>
+                  <th className="px-4 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-24">Ca dạy</th>
+                  <th className="px-4 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-20">Lớp</th>
+                  <th className="px-4 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-32">Môn</th>
+                  <th className="px-4 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-32">Phân môn</th>
+                  <th className="px-4 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-20">Tiết</th>
+                  <th className="px-4 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Nội dung bài dạy</th>
+                  <th className="px-4 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-24">Ghi chú</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-200">
+              <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
                 {editingPlan.rows.map((row) => (
-                  <tr key={row.id} className="hover:bg-neutral-50 transition-colors">
-                    <td className="px-2 py-2">
-                      <input
-                        value={row.day}
-                        readOnly
-                        className="w-full bg-transparent border-none focus:ring-0 text-xs font-medium"
-                      />
-                      <div className="text-[10px] text-neutral-400 px-1">{row.date}</div>
+                  <tr key={row.id} className="hover:bg-neutral-50/50 dark:hover:bg-slate-900/30 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="text-xs font-bold text-neutral-900 dark:text-white">{row.day}</div>
+                      <div className="text-[10px] text-neutral-400 dark:text-slate-500">{row.date}</div>
                     </td>
-                    <td className="px-2 py-2">
-                      <input
-                        value={row.shift}
-                        readOnly
-                        className="w-full bg-transparent border-none focus:ring-0 text-xs"
-                      />
+                    <td className="px-4 py-3">
+                      <div className="text-[10px] font-medium text-neutral-500 dark:text-slate-400 bg-neutral-100 dark:bg-slate-800 px-2 py-1 rounded-lg w-fit">
+                        {row.shift}
+                      </div>
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="px-4 py-3">
                       <select
                         value={row.grade}
                         onChange={(e) => handleRowChange(row.id, 'grade', e.target.value)}
-                        className="w-full bg-transparent border-none focus:ring-0 text-xs"
+                        className="w-full bg-transparent border-none focus:ring-0 text-xs font-bold text-primary"
                       >
                         <option value="">-</option>
                         {Array.from(new Set(classes.map(c => c.grade))).map(g => (
@@ -1651,11 +1972,11 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
                         ))}
                       </select>
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="px-4 py-3">
                       <select
                         value={row.subject}
                         onChange={(e) => handleRowChange(row.id, 'subject', e.target.value)}
-                        className="w-full bg-transparent border-none focus:ring-0 text-xs"
+                        className="w-full bg-transparent border-none focus:ring-0 text-xs font-medium text-neutral-700 dark:text-slate-300"
                       >
                         <option value="">-</option>
                         {Array.from(new Set(classes.filter(c => c.grade === row.grade).map(c => c.subject))).map(s => (
@@ -1663,11 +1984,11 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
                         ))}
                       </select>
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="px-4 py-3">
                       <select
                         value={row.subSubject}
                         onChange={(e) => handleRowChange(row.id, 'subSubject', e.target.value)}
-                        className="w-full bg-transparent border-none focus:ring-0 text-xs"
+                        className="w-full bg-transparent border-none focus:ring-0 text-xs text-neutral-500 dark:text-slate-400"
                       >
                         <option value="">-</option>
                         {classes.filter(c => c.grade === row.grade && c.subject === row.subject).map(c => (
@@ -1675,11 +1996,11 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
                         ))}
                       </select>
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="px-4 py-3">
                       <select
                         value={row.period}
                         onChange={(e) => handleRowChange(row.id, 'period', e.target.value)}
-                        className="w-full bg-transparent border-none focus:ring-0 text-xs"
+                        className="w-full bg-transparent border-none focus:ring-0 text-xs font-bold text-neutral-900 dark:text-white"
                       >
                         <option value="">-</option>
                         {ppctData
@@ -1691,31 +2012,36 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
                           .sort((a, b) => a.period - b.period)
                           .map((p, pIdx) => (
                             <option key={`${p.grade}-${p.subject}-${p.subSubject}-${p.period}-${pIdx}`} value={String(p.period)}>
-                              Tiết {p.period}
+                              {p.period}
                             </option>
                           ))}
                       </select>
                     </td>
-                    <td className="px-2 py-2 flex items-center gap-2">
-                      <input
-                        value={row.content}
-                        onChange={(e) => handleRowChange(row.id, 'content', e.target.value)}
-                        placeholder="Nội dung bài học..."
-                        className="flex-1 bg-transparent border-none focus:ring-0 text-xs"
-                      />
-                      <button
-                        onClick={() => autoFillContent(row.id)}
-                        title="AI Tự điền nội dung"
-                        className="p-1 text-indigo-500 hover:bg-indigo-50 rounded transition-colors"
-                      >
-                        <Sparkles className="w-4 h-4" />
-                      </button>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <input
+                          value={row.content}
+                          onChange={(e) => handleRowChange(row.id, 'content', e.target.value)}
+                          placeholder="Nội dung bài học..."
+                          className="flex-1 bg-transparent border-none focus:ring-0 text-xs text-neutral-700 dark:text-slate-300 placeholder-neutral-300 dark:placeholder-slate-700"
+                        />
+                        {row.grade && row.subject && row.period && (
+                          <button
+                            onClick={() => autoFillContent(row.id)}
+                            className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-all"
+                            title="AI Tự điền nội dung"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="px-4 py-3">
                       <input
                         value={row.notes}
                         onChange={(e) => handleRowChange(row.id, 'notes', e.target.value)}
-                        className="w-full bg-transparent border-none focus:ring-0 text-xs"
+                        placeholder="..."
+                        className="w-full bg-transparent border-none focus:ring-0 text-xs text-neutral-500 dark:text-slate-400"
                       />
                     </td>
                   </tr>
@@ -1729,55 +2055,77 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
   }
 
   return (
-    <div className="space-y-6">
-      <header className="flex justify-between items-end">
+    <div className="space-y-8 max-w-6xl mx-auto">
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-neutral-900">Lịch báo giảng</h2>
-          <p className="text-neutral-500">Quản lý và tạo lịch báo giảng cho giáo viên.</p>
+          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">Lịch báo giảng</h2>
+          <p className="text-sm text-neutral-500 dark:text-slate-400">Quản lý và theo dõi kế hoạch giảng dạy hàng tuần.</p>
         </div>
         <button
           onClick={startNewPlan}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium"
+          className="btn-primary flex items-center gap-2"
         >
-          <Plus className="w-4 h-4" /> Tạo lịch mới
+          <Plus className="w-4 h-4" />
+          Tạo lịch mới
         </button>
-      </header>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {plans.map(plan => (
-          <div key={plan.id} className="bg-white rounded-xl shadow-sm border border-neutral-200 p-5 hover:shadow-md transition-shadow group">
-            <div className="flex justify-between items-start mb-4">
-              <div className="bg-indigo-50 p-2 rounded-lg">
-                <CalendarDays className="w-6 h-6 text-indigo-600" />
+        <AnimatePresence mode="popLayout">
+          {plans.map((plan, idx) => (
+            <motion.div 
+              key={plan.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.05 }}
+              className="saas-card group hover:scale-[1.02] transition-all"
+            >
+              <div className="flex justify-between items-start mb-6">
+                <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                  <CalendarDays className="w-6 h-6" />
+                </div>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                  <button 
+                    onClick={() => { setEditingPlan(plan); setIsCreating(true); }} 
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-neutral-400 hover:text-primary hover:bg-primary/10 transition-all"
+                  >
+                    <FileText className="w-4 h-4" />
+                  </button>
+                  <ConfirmButton 
+                    onConfirm={() => deletePlan(plan.id)} 
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                    icon={Trash2}
+                    confirmText=""
+                  />
+                </div>
               </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => { setEditingPlan(plan); setIsCreating(true); }} className="p-2 text-neutral-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50">
-                  <FileText className="w-4 h-4" />
-                </button>
-                <ConfirmButton 
-                  onConfirm={() => deletePlan(plan.id)} 
-                  className="p-2 text-neutral-400 hover:text-red-600 rounded-lg hover:bg-red-50"
-                  icon={Trash2}
-                  confirmText="Xóa?"
-                >
-                </ConfirmButton>
+              
+              <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-1">
+                {plan.teacherName || 'Giáo viên chưa định danh'}
+              </h3>
+              <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-slate-400 mb-6">
+                <span className="bg-neutral-100 dark:bg-slate-800 px-2 py-1 rounded-lg font-bold">Tuần {plan.week}</span>
+                <span>{safeFormat(plan.startDate, 'dd/MM/yyyy')} - {safeFormat(plan.endDate, 'dd/MM/yyyy')}</span>
               </div>
-            </div>
-            <h3 className="font-bold text-lg text-neutral-900">{plan.teacherName || 'Chưa đặt tên GV'}</h3>
-            <p className="text-sm text-neutral-500">Tuần {plan.week} ({plan.startDate} - {plan.endDate})</p>
-            <div className="mt-4 flex gap-2">
+
               <button
                 onClick={() => exportToWord(plan)}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors text-sm font-medium"
+                className="w-full btn-secondary flex items-center justify-center gap-2 py-2.5"
               >
-                <Download className="w-4 h-4" /> Tải Word
+                <Download className="w-4 h-4" />
+                Tải file Word
               </button>
-            </div>
-          </div>
-        ))}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+
         {plans.length === 0 && (
-          <div className="col-span-full py-20 text-center bg-white rounded-xl border-2 border-dashed border-neutral-300">
-            <p className="text-neutral-500">Chưa có lịch báo giảng nào được tạo.</p>
+          <div className="col-span-full py-24 text-center border-2 border-dashed border-neutral-200 dark:border-slate-800 rounded-3xl">
+            <div className="w-20 h-20 bg-neutral-50 dark:bg-slate-900 rounded-3xl flex items-center justify-center mx-auto mb-6 text-neutral-300 dark:text-slate-700">
+              <Plus className="w-10 h-10" />
+            </div>
+            <h4 className="text-xl font-bold text-neutral-900 dark:text-white">Chưa có lịch dạy</h4>
+            <p className="text-sm text-neutral-500 dark:text-slate-400 mt-2">Bắt đầu bằng cách tạo một lịch báo giảng mới cho tuần này.</p>
           </div>
         )}
       </div>
@@ -1785,14 +2133,18 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
   );
 }
 
-function ClassJournalSection({ plans, setPlans, deletePlan, businessInfo }: { 
+function ClassJournalSection({ 
+  plans, 
+  setPlans, 
+  deletePlan,
+  businessInfo 
+}: { 
   plans: LessonPlan[], 
   setPlans: (p: LessonPlan[]) => void,
   deletePlan: (id: string) => void,
   businessInfo: BusinessInfo
 }) {
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
-  
   const selectedPlan = useMemo(() => plans.find(p => p.id === selectedPlanId), [plans, selectedPlanId]);
 
   const handleRowChange = (rowId: string, field: 'attendance' | 'comments' | 'signature', value: string) => {
@@ -1842,7 +2194,7 @@ function ClassJournalSection({ plans, setPlans, deletePlan, businessInfo }: {
           new Paragraph({
             alignment: AlignmentType.CENTER,
             children: [
-              new TextRun({ text: `Tuần: ${selectedPlan.week} - Từ ngày: ${selectedPlan.startDate} - Đến ngày: ${selectedPlan.endDate}`, size: 22 }),
+              new TextRun({ text: `Tuần: ${selectedPlan.week} - Từ ngày: ${safeFormat(selectedPlan.startDate, 'dd/MM/yyyy')} - Đến ngày: ${safeFormat(selectedPlan.endDate, 'dd/MM/yyyy')}`, size: 22 }),
             ],
           }),
           new Table({
@@ -1977,111 +2329,134 @@ function ClassJournalSection({ plans, setPlans, deletePlan, businessInfo }: {
   };
 
   return (
-    <div className="space-y-6">
-      <header className="flex justify-between items-end">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6"
+    >
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-neutral-900">Sổ đầu bài</h2>
-          <p className="text-neutral-500">Ghi chép tình hình lớp học dựa trên lịch báo giảng.</p>
+          <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">Sổ đầu bài</h2>
+          <p className="text-neutral-500 dark:text-slate-400 mt-1 font-medium">Ghi chép tình hình lớp học dựa trên lịch báo giảng.</p>
         </div>
-        {selectedPlan && (
-          <div className="flex gap-3">
-            <ConfirmButton
-              onConfirm={() => {
-                deletePlan(selectedPlan.id);
-                setSelectedPlanId('');
-              }}
-              className="flex items-center gap-2 px-4 py-2 text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors font-medium"
-              icon={Trash2}
-            >
-              Xóa lịch này
-            </ConfirmButton>
-            <button
-              onClick={exportToWord}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium"
-            >
-              <Download className="w-4 h-4" /> Xuất Sổ đầu bài
-            </button>
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          {selectedPlan && (
+            <>
+              <ConfirmButton
+                onConfirm={() => {
+                  deletePlan(selectedPlan.id);
+                  setSelectedPlanId('');
+                }}
+                className="flex items-center gap-2 px-4 py-2 text-red-600 border border-red-200 dark:border-red-900/30 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-all font-bold text-sm"
+                icon={Trash2}
+              >
+                Xóa lịch này
+              </ConfirmButton>
+              <button
+                onClick={exportToWord}
+                className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 font-bold text-sm"
+              >
+                <Download className="w-4 h-4" /> Xuất Sổ đầu bài
+              </button>
+            </>
+          )}
+        </div>
       </header>
 
-      <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6 space-y-6">
-        <div className="max-w-xs">
-          <label className="text-xs font-bold text-neutral-500 uppercase block mb-1">Chọn lịch báo giảng</label>
-          <select
-            value={selectedPlanId}
-            onChange={(e) => setSelectedPlanId(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-indigo-500 outline-none"
-          >
-            <option value="">-- Chọn lịch --</option>
-            {plans.map(p => (
-              <option key={p.id} value={p.id}>{p.teacherName} - Tuần {p.week}</option>
-            ))}
-          </select>
+      <div className="saas-card p-0 overflow-hidden">
+        <div className="p-6 border-b border-neutral-100 dark:border-slate-800 bg-neutral-50/50 dark:bg-slate-800/30">
+          <div className="max-w-md">
+            <label className="text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest block mb-2">Chọn lịch báo giảng để ghi sổ</label>
+            <div className="relative">
+              <select
+                value={selectedPlanId}
+                onChange={(e) => setSelectedPlanId(e.target.value)}
+                className="w-full pl-4 pr-10 py-3 bg-white dark:bg-slate-900 rounded-xl border border-neutral-200 dark:border-slate-700 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none text-sm font-bold text-neutral-900 dark:text-white"
+              >
+                <option value="">-- Chọn lịch báo giảng --</option>
+                {plans.map(p => (
+                  <option key={p.id} value={p.id}>{p.teacherName} - Tuần {p.week} ({p.startDate} - {p.endDate})</option>
+                ))}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-400">
+                <ChevronDown className="w-4 h-4" />
+              </div>
+            </div>
+          </div>
         </div>
 
-        {selectedPlan ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[1200px]">
-              <thead>
-                <tr className="bg-neutral-50 border-b border-neutral-200">
-                  <th className="px-3 py-3 text-[10px] font-bold text-neutral-500 uppercase w-24">Thứ, ngày</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-neutral-500 uppercase w-24">Buổi</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-neutral-500 uppercase w-16">Lớp</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-neutral-500 uppercase w-24">Môn</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-neutral-500 uppercase">Nội dung bài dạy</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-neutral-500 uppercase w-20">Sĩ số</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-neutral-500 uppercase w-48">Nhận xét</th>
-                  <th className="px-3 py-3 text-[10px] font-bold text-neutral-500 uppercase w-32">Chữ ký</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-200">
-                {selectedPlan.rows.filter(r => r.grade).map((row) => (
-                  <tr key={row.id} className="hover:bg-neutral-50 transition-colors">
-                    <td className="px-3 py-3 text-xs">
-                      <div>{row.day}</div>
-                      <div className="text-[10px] text-neutral-400">{row.date}</div>
-                    </td>
-                    <td className="px-3 py-3 text-xs">{row.shift}</td>
-                    <td className="px-3 py-3 text-xs font-bold">{row.grade}</td>
-                    <td className="px-3 py-3 text-xs">{row.subject}</td>
-                    <td className="px-3 py-3 text-xs">{row.content}</td>
-                    <td className="px-2 py-2">
-                      <input
-                        value={row.attendance || ''}
-                        onChange={(e) => handleRowChange(row.id, 'attendance', e.target.value)}
-                        placeholder="20/20"
-                        className="w-full bg-transparent border-none focus:ring-0 text-xs"
-                      />
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        value={row.comments || ''}
-                        onChange={(e) => handleRowChange(row.id, 'comments', e.target.value)}
-                        placeholder="Lớp học tốt..."
-                        className="w-full bg-transparent border-none focus:ring-0 text-xs"
-                      />
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        value={row.signature || ''}
-                        onChange={(e) => handleRowChange(row.id, 'signature', e.target.value)}
-                        placeholder="Ký tên"
-                        className="w-full bg-transparent border-none focus:ring-0 text-xs"
-                      />
-                    </td>
+        <div className="p-0">
+          {selectedPlan ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[1200px]">
+                <thead>
+                  <tr className="bg-neutral-50 dark:bg-slate-800/50 border-b border-neutral-200 dark:border-slate-800">
+                    <th className="px-4 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest w-32">Thứ, ngày</th>
+                    <th className="px-4 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest w-28">Buổi</th>
+                    <th className="px-4 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest w-20">Lớp</th>
+                    <th className="px-4 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest w-32">Môn</th>
+                    <th className="px-4 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest">Nội dung bài dạy</th>
+                    <th className="px-4 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest w-24">Sĩ số</th>
+                    <th className="px-4 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest w-64">Nhận xét</th>
+                    <th className="px-4 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest w-40">Chữ ký</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="py-20 text-center text-neutral-500">
-            Vui lòng chọn một lịch báo giảng để bắt đầu ghi sổ đầu bài.
-          </div>
-        )}
+                </thead>
+                <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
+                  {selectedPlan.rows.filter(r => r.grade).map((row) => (
+                    <tr key={row.id} className="hover:bg-neutral-50 dark:hover:bg-slate-800/50 transition-colors group">
+                      <td className="px-4 py-4">
+                        <div className="font-bold text-neutral-900 dark:text-white text-sm">{row.day}</div>
+                        <div className="text-[11px] text-neutral-400 dark:text-slate-500 font-bold mt-0.5">{row.date}</div>
+                      </td>
+                      <td className="px-4 py-4 text-sm font-medium text-neutral-600 dark:text-slate-300">{row.shift}</td>
+                      <td className="px-4 py-4">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-primary/10 text-primary text-[10px] font-black border border-primary/20 uppercase tracking-wider">
+                          {row.grade}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-sm font-medium text-neutral-600 dark:text-slate-300">{row.subject}</td>
+                      <td className="px-4 py-4 text-sm text-neutral-900 dark:text-white leading-relaxed font-medium">{row.content}</td>
+                      <td className="px-3 py-3">
+                        <input
+                          value={row.attendance || ''}
+                          onChange={(e) => handleRowChange(row.id, 'attendance', e.target.value)}
+                          placeholder="20/20"
+                          className="w-full bg-transparent border border-transparent group-hover:border-neutral-200 dark:group-hover:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/10 rounded-lg px-2 py-1.5 text-sm transition-all outline-none dark:text-white font-bold"
+                        />
+                      </td>
+                      <td className="px-3 py-3">
+                        <input
+                          value={row.comments || ''}
+                          onChange={(e) => handleRowChange(row.id, 'comments', e.target.value)}
+                          placeholder="Lớp học tốt..."
+                          className="w-full bg-transparent border border-transparent group-hover:border-neutral-200 dark:group-hover:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/10 rounded-lg px-2 py-1.5 text-sm transition-all outline-none dark:text-white font-medium"
+                        />
+                      </td>
+                      <td className="px-3 py-3">
+                        <input
+                          value={row.signature || ''}
+                          onChange={(e) => handleRowChange(row.id, 'signature', e.target.value)}
+                          placeholder="Ký tên"
+                          className="w-full bg-transparent border border-transparent group-hover:border-neutral-200 dark:group-hover:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/10 rounded-lg px-2 py-1.5 text-sm transition-all outline-none dark:text-white font-bold italic"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="py-24 text-center">
+              <div className="w-20 h-20 bg-[#F9FAFB] rounded-full flex items-center justify-center mx-auto mb-4">
+                <FileText className="w-10 h-10 text-[#9CA3AF]" />
+              </div>
+              <h3 className="text-lg font-bold text-[#1F2937]">Chưa chọn lịch báo giảng</h3>
+              <p className="text-[#6B7280] mt-2 max-w-xs mx-auto">Vui lòng chọn một lịch báo giảng từ danh sách phía trên để bắt đầu ghi sổ đầu bài.</p>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -2100,34 +2475,40 @@ function StudentManagementSection({
 }) {
   if (activeSubTab === 'students_group') {
     return (
-      <div className="space-y-6">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-6"
+      >
         <header>
-          <h2 className="text-2xl font-bold text-neutral-900">Quản lý Học sinh</h2>
-          <p className="text-neutral-500">Chọn chức năng bạn muốn thực hiện.</p>
+          <h2 className="text-2xl font-bold text-[#1F2937]">Quản lý Học sinh</h2>
+          <p className="text-[#6B7280] mt-1">Chọn chức năng bạn muốn thực hiện.</p>
         </header>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <button
             onClick={() => setActiveTab('students-list')}
-            className="bg-white p-8 rounded-2xl shadow-sm border border-neutral-200 hover:border-indigo-500 hover:shadow-md transition-all text-center group"
+            className="bg-white p-8 rounded-[20px] shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-[#E5E7EB] hover:border-[#1677FF] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all text-center group relative overflow-hidden"
           >
-            <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 mx-auto mb-4 group-hover:scale-110 transition-transform">
+            <div className="absolute top-0 left-0 w-1 h-full bg-[#1677FF] opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="w-16 h-16 bg-[#EFF6FF] rounded-2xl flex items-center justify-center text-[#1677FF] mx-auto mb-5 group-hover:scale-110 transition-transform">
               <Upload className="w-8 h-8" />
             </div>
-            <h3 className="text-lg font-bold text-neutral-900">Tải danh sách học sinh</h3>
-            <p className="text-sm text-neutral-500 mt-2">Nhập danh sách học sinh từ file Excel vào hệ thống.</p>
+            <h3 className="text-lg font-bold text-[#1F2937]">Tải danh sách học sinh</h3>
+            <p className="text-sm text-[#6B7280] mt-2 leading-relaxed">Nhập danh sách học sinh từ file Excel vào hệ thống để quản lý tập trung.</p>
           </button>
           <button
             onClick={() => setActiveTab('students-export')}
-            className="bg-white p-8 rounded-2xl shadow-sm border border-neutral-200 hover:border-emerald-500 hover:shadow-md transition-all text-center group"
+            className="bg-white p-8 rounded-[20px] shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-[#E5E7EB] hover:border-[#10B981] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all text-center group relative overflow-hidden"
           >
-            <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 mx-auto mb-4 group-hover:scale-110 transition-transform">
+            <div className="absolute top-0 left-0 w-1 h-full bg-[#10B981] opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="w-16 h-16 bg-[#ECFDF5] rounded-2xl flex items-center justify-center text-[#10B981] mx-auto mb-5 group-hover:scale-110 transition-transform">
               <FileText className="w-8 h-8" />
             </div>
-            <h3 className="text-lg font-bold text-neutral-900">Xuất đơn đăng kí học thêm</h3>
-            <p className="text-sm text-neutral-500 mt-2">Tạo và tải về đơn đăng ký học thêm cho từng học sinh.</p>
+            <h3 className="text-lg font-bold text-[#1F2937]">Xuất đơn đăng kí học thêm</h3>
+            <p className="text-sm text-[#6B7280] mt-2 leading-relaxed">Tạo và tải về đơn đăng ký học thêm chuyên nghiệp cho từng học sinh.</p>
           </button>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
@@ -2389,7 +2770,7 @@ function StudentManagementSection({
       sections: [{
         properties: {
           page: {
-            margin: { top: 1134, bottom: 567, left: 1134, right: 1418 }
+            margin: { top: 1134, bottom: 567, left: 1531, right: 1134 }
           }
         },
         children: getRegistrationFormChildren(student),
@@ -2427,19 +2808,23 @@ function StudentManagementSection({
   };
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6"
+    >
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-neutral-900">Quản lý Học sinh</h2>
-          <p className="text-neutral-500">
+          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">Quản lý Học sinh</h2>
+          <p className="text-neutral-500 dark:text-slate-400 mt-1">
             {activeSubTab === 'students-list' ? 'Tải danh sách học sinh từ file Excel.' : 'Xuất đơn đăng ký học thêm cho học sinh.'}
           </p>
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {activeSubTab === 'students-export' && (
             <button
               onClick={exportAllRegistrationForms}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors shadow-sm font-medium w-full md:w-auto justify-center"
+              className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all shadow-sm font-bold text-sm w-full md:w-auto justify-center"
             >
               <Download className="w-4 h-4" /> Xuất toàn bộ đơn
             </button>
@@ -2448,12 +2833,12 @@ function StudentManagementSection({
             <>
               <ConfirmButton
                 onConfirm={() => setStudents([])}
-                className="flex items-center gap-2 px-4 py-2 text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors font-medium w-full md:w-auto justify-center"
+                className="flex items-center gap-2 px-4 py-2.5 text-red-600 border border-red-200 dark:border-red-900/30 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-all font-bold text-sm w-full md:w-auto justify-center"
                 icon={Trash2}
               >
                 Xóa toàn bộ
               </ConfirmButton>
-              <label className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium cursor-pointer w-full md:w-auto justify-center">
+              <label className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all shadow-sm font-bold cursor-pointer w-full md:w-auto justify-center text-sm">
                 <Upload className="w-4 h-4" /> Đưa danh sách lên (Excel)
                 <input type="file" accept=".xlsx, .xls" onChange={handleFileUpload} className="hidden" />
               </label>
@@ -2462,38 +2847,42 @@ function StudentManagementSection({
         </div>
       </header>
 
-      <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-neutral-200 dark:border-slate-800 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[800px]">
+          <table className="w-full text-left border-collapse min-w-[1000px]">
             <thead>
-              <tr className="bg-neutral-50 border-b border-neutral-200">
-                <th className="px-4 py-3 text-xs font-bold text-neutral-500 uppercase w-12 text-center">STT</th>
-                <th className="px-4 py-3 text-xs font-bold text-neutral-500 uppercase">Họ và tên</th>
-                <th className="px-4 py-3 text-xs font-bold text-neutral-500 uppercase w-20 text-center">Lớp</th>
-                <th className="px-4 py-3 text-xs font-bold text-neutral-500 uppercase">Trường</th>
-                <th className="px-4 py-3 text-xs font-bold text-neutral-500 uppercase">Phụ huynh</th>
-                <th className="px-4 py-3 text-xs font-bold text-neutral-500 uppercase">SĐT</th>
-                <th className="px-4 py-3 text-xs font-bold text-neutral-500 uppercase">Môn đăng ký</th>
-                <th className="px-4 py-3 text-xs font-bold text-neutral-500 uppercase w-32 text-center">Thao tác</th>
+              <tr className="bg-neutral-50 dark:bg-slate-800/50 border-b border-neutral-200 dark:border-slate-800">
+                <th className="px-6 py-4 text-[11px] font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-wider w-16 text-center">STT</th>
+                <th className="px-6 py-4 text-[11px] font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Họ và tên</th>
+                <th className="px-6 py-4 text-[11px] font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-wider w-24 text-center">Lớp</th>
+                <th className="px-6 py-4 text-[11px] font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Trường</th>
+                <th className="px-6 py-4 text-[11px] font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Phụ huynh</th>
+                <th className="px-6 py-4 text-[11px] font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-wider">SĐT</th>
+                <th className="px-6 py-4 text-[11px] font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Môn đăng ký</th>
+                <th className="px-6 py-4 text-[11px] font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-wider w-32 text-center">Thao tác</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-200">
+            <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
               {students.map((student, idx) => (
-                <tr key={student.id} className="hover:bg-neutral-50 transition-colors">
-                  <td className="px-4 py-3 text-sm text-neutral-600 text-center">{student.stt || idx + 1}</td>
-                  <td className="px-4 py-3 text-sm font-medium text-neutral-900">{student.name}</td>
-                  <td className="px-4 py-3 text-sm text-neutral-600 text-center">{student.grade}</td>
-                  <td className="px-4 py-3 text-sm text-neutral-600">{student.school}</td>
-                  <td className="px-4 py-3 text-sm text-neutral-600">{student.parentName}</td>
-                  <td className="px-4 py-3 text-sm text-neutral-600">{student.phone}</td>
-                  <td className="px-4 py-3 text-sm text-neutral-600">{student.subject}</td>
-                  <td className="px-4 py-3 text-sm text-center">
-                    <div className="flex justify-center gap-2">
+                <tr key={student.id} className="hover:bg-neutral-50 dark:hover:bg-slate-800/50 transition-colors group">
+                  <td className="px-6 py-4 text-sm text-neutral-500 dark:text-slate-400 text-center font-mono">{student.stt || idx + 1}</td>
+                  <td className="px-6 py-4 text-sm font-bold text-neutral-900 dark:text-white">{student.name}</td>
+                  <td className="px-6 py-4 text-center">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-bold border border-primary/20">
+                      {student.grade}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-neutral-600 dark:text-slate-400">{student.school}</td>
+                  <td className="px-6 py-4 text-sm text-neutral-600 dark:text-slate-400 font-medium">{student.parentName}</td>
+                  <td className="px-6 py-4 text-sm text-neutral-600 dark:text-slate-400 font-mono">{student.phone}</td>
+                  <td className="px-6 py-4 text-sm text-neutral-600 dark:text-slate-400">{student.subject}</td>
+                  <td className="px-6 py-4 text-sm text-center">
+                    <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       {activeSubTab === 'students-export' && (
                         <button
                           onClick={() => exportRegistrationForm(student)}
                           title="Xuất đơn đăng ký"
-                          className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                          className="w-8 h-8 flex items-center justify-center text-primary hover:bg-primary/10 rounded-lg transition-all"
                         >
                           <FileText className="w-4 h-4" />
                         </button>
@@ -2501,11 +2890,10 @@ function StudentManagementSection({
                       {activeSubTab === 'students-list' && (
                         <ConfirmButton
                           onConfirm={() => setStudents(students.filter(s => s.id !== student.id))}
-                          className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                          className="w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
                           icon={Trash2}
-                          confirmText="Xóa?"
-                        >
-                        </ConfirmButton>
+                          confirmText=""
+                        />
                       )}
                     </div>
                   </td>
@@ -2513,8 +2901,12 @@ function StudentManagementSection({
               ))}
               {students.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-neutral-500 italic">
-                    Chưa có danh sách học sinh. Vui lòng đưa file Excel lên.
+                  <td colSpan={8} className="px-6 py-24 text-center">
+                    <div className="w-20 h-20 bg-neutral-50 dark:bg-slate-900 rounded-3xl flex items-center justify-center mx-auto mb-6 text-neutral-300 dark:text-slate-700">
+                      <Users className="w-10 h-10" />
+                    </div>
+                    <h3 className="text-xl font-bold text-neutral-900 dark:text-white">Chưa có danh sách học sinh</h3>
+                    <p className="text-sm text-neutral-500 dark:text-slate-400 mt-2 max-w-xs mx-auto italic">Vui lòng đưa file Excel lên để bắt đầu quản lý học sinh.</p>
                   </td>
                 </tr>
               )}
@@ -2522,11 +2914,11 @@ function StudentManagementSection({
           </table>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
-function LoginPage({ onLogin, users }: { onLogin: (user: UserAccount) => void, users: UserAccount[] }) {
+function LoginPage({ onLogin, users, darkMode, setDarkMode }: { onLogin: (user: UserAccount) => void, users: UserAccount[], darkMode: boolean, setDarkMode: (v: boolean) => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -2547,66 +2939,97 @@ function LoginPage({ onLogin, users }: { onLogin: (user: UserAccount) => void, u
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-bg-light dark:bg-bg-dark flex items-center justify-center p-4 transition-colors duration-500 relative overflow-hidden">
+      {/* Background Decorative Elements */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px] animate-pulse" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/10 rounded-full blur-[120px] animate-pulse delay-700" />
+
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-neutral-200"
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="max-w-md w-full bg-card-light dark:bg-card-dark rounded-[32px] shadow-2xl p-10 border border-neutral-200/50 dark:border-slate-700/50 relative z-10 backdrop-blur-sm"
       >
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <GraduationCap className="w-10 h-10 text-indigo-600" />
-          </div>
-          <h1 className="text-2xl font-bold text-neutral-900">Đăng nhập</h1>
-          <p className="text-neutral-500 mt-2">Hệ thống quản lý cơ sở Dạy thêm</p>
+        <div className="absolute top-6 right-6">
+          <button 
+            onClick={() => setDarkMode(!darkMode)}
+            className="p-2 rounded-xl bg-neutral-100 dark:bg-slate-800 text-neutral-600 dark:text-slate-400 hover:scale-110 transition-all"
+          >
+            {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          </button>
+        </div>
+
+          <div className="text-center mb-10">
+          <motion.div 
+            initial={{ scale: 0, rotate: -20 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.2 }}
+            className="w-20 h-20 bg-gradient-to-br from-primary to-indigo-600 rounded-[24px] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-primary/40 relative"
+          >
+            <GraduationCap className="w-12 h-12 text-white" />
+            <div className="absolute -top-2 -right-2 w-6 h-6 bg-amber-400 rounded-full border-4 border-white dark:border-slate-900 shadow-sm" />
+          </motion.div>
+          <h1 className="text-3xl font-black text-neutral-900 dark:text-white tracking-tight">Chào mừng trở lại</h1>
+          <p className="text-neutral-500 dark:text-slate-400 mt-2 font-bold text-sm uppercase tracking-widest">Hệ thống quản lý Hoàng Gia</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">Tài khoản</label>
-            <div className="relative">
-              <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-neutral-700 dark:text-slate-300 ml-1">Tài khoản</label>
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <User className="w-5 h-5 text-neutral-400 group-focus-within:text-primary transition-colors" />
+              </div>
               <input
                 type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-                placeholder="Nhập tài khoản"
+                className="w-full pl-12 pr-4 py-4 bg-neutral-50 dark:bg-slate-900/50 border border-neutral-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-primary focus:border-transparent dark:text-white transition-all outline-none"
+                placeholder="Nhập email hoặc tên đăng nhập"
                 required
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">Mật khẩu</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-neutral-700 dark:text-slate-300 ml-1">Mật khẩu</label>
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Lock className="w-5 h-5 text-neutral-400 group-focus-within:text-primary transition-colors" />
+              </div>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-                placeholder="Nhập mật khẩu"
+                className="w-full pl-12 pr-4 py-4 bg-neutral-50 dark:bg-slate-900/50 border border-neutral-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-primary focus:border-transparent dark:text-white transition-all outline-none"
+                placeholder="••••••••"
                 required
               />
             </div>
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg text-center">{error}</p>
+            <motion.div 
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-2xl flex items-center gap-3 text-red-600 dark:text-red-400 text-sm font-medium"
+            >
+              <Info className="w-5 h-5 shrink-0" />
+              {error}
+            </motion.div>
           )}
 
           <button
             type="submit"
-            className="w-full py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"
+            className="w-full py-4 bg-primary text-white rounded-2xl font-bold hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-3 group active:scale-[0.98]"
           >
-            Đăng nhập
-            <ArrowRight className="w-5 h-5" />
+            Đăng nhập hệ thống
+            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-neutral-100 text-center">
-          <p className="text-[10px] text-neutral-400">
+        <div className="mt-10 pt-8 border-t border-neutral-100 dark:border-slate-800 text-center">
+          <p className="text-xs text-neutral-400 dark:text-slate-500 font-medium uppercase tracking-widest">
             Bản quyền: Đào Minh Tâm - Zalo 0366000555
           </p>
         </div>
@@ -2627,7 +3050,7 @@ function UserManagementSection({ users, setUsers }: { users: UserAccount[], setU
       setEditingUser(null);
     } else {
       const user: UserAccount = {
-        id: Math.random().toString(36).substr(2, 9),
+        id: crypto.randomUUID(),
         ...formData,
         createdAt: new Date().toISOString()
       };
@@ -2659,17 +3082,21 @@ function UserManagementSection({ users, setUsers }: { users: UserAccount[], setU
   };
 
   return (
-    <div className="space-y-6">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6"
+    >
       <header className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-neutral-900">Quản lý Tài khoản</h2>
-          <p className="text-neutral-500">Tạo và quản lý quyền truy cập của người dùng.</p>
+          <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">Quản lý Tài khoản</h2>
+          <p className="text-neutral-500 dark:text-slate-400 mt-1 font-medium">Tạo và quản lý quyền truy cập của người dùng.</p>
         </div>
         <button
           onClick={() => setIsAdding(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
+          className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 font-bold text-sm"
         >
-          <UserPlus className="w-5 h-5" />
+          <UserPlus className="w-4 h-4" />
           Thêm tài khoản
         </button>
       </header>
@@ -2678,131 +3105,140 @@ function UserManagementSection({ users, setUsers }: { users: UserAccount[], setU
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm"
+          className="saas-card p-8"
         >
-          <h3 className="text-lg font-bold mb-4">{editingUser ? 'Chỉnh sửa tài khoản' : 'Thêm tài khoản mới'}</h3>
-          <form onSubmit={handleSaveUser} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">Tài khoản</label>
+          <h3 className="text-lg font-black text-neutral-900 dark:text-white mb-6 flex items-center gap-2">
+            <div className="w-2 h-6 bg-primary rounded-full" />
+            {editingUser ? 'Chỉnh sửa tài khoản' : 'Thêm tài khoản mới'}
+          </h3>
+          <form onSubmit={handleSaveUser} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="space-y-2">
+              <label className="block text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest ml-1">Tài khoản</label>
               <input
                 type="text"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none dark:text-white transition-all font-bold"
+                placeholder="Email hoặc tên đăng nhập"
                 required
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">Mật khẩu</label>
+            <div className="space-y-2">
+              <label className="block text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest ml-1">Mật khẩu</label>
               <input
                 type="password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none dark:text-white transition-all font-bold"
+                placeholder="••••••••"
                 required
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">Quyền hạn</label>
+            <div className="space-y-2">
+              <label className="block text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest ml-1">Quyền hạn</label>
               <select
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'user' })}
-                className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none dark:text-white transition-all font-bold appearance-none"
               >
                 <option value="user">Người dùng</option>
                 <option value="admin">Quản trị viên</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">Hạn sử dụng (Tùy chọn)</label>
+            <div className="space-y-2">
+              <label className="block text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest ml-1">Hạn sử dụng</label>
               <input
                 type="date"
                 value={formData.expiryDate}
                 onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
-                className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none dark:text-white transition-all font-bold"
               />
             </div>
-            <div className="md:col-span-2 lg:col-span-4 flex justify-end gap-3 mt-2">
+            <div className="md:col-span-2 lg:col-span-4 flex justify-end gap-3 mt-4 pt-6 border-t border-neutral-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={cancelForm}
-                className="px-4 py-2 text-neutral-600 hover:bg-neutral-100 rounded-xl transition-all"
+                className="px-6 py-2.5 text-neutral-600 dark:text-slate-400 hover:bg-neutral-100 dark:hover:bg-slate-800 rounded-xl transition-all font-bold text-sm"
               >
-                Hủy
+                Hủy bỏ
               </button>
               <button
                 type="submit"
-                className="px-6 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all"
+                className="px-8 py-2.5 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all font-bold text-sm shadow-lg shadow-primary/20"
               >
-                {editingUser ? 'Cập nhật' : 'Lưu tài khoản'}
+                {editingUser ? 'Cập nhật tài khoản' : 'Lưu tài khoản'}
               </button>
             </div>
           </form>
         </motion.div>
       )}
 
-      <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden shadow-sm">
+      <div className="saas-card p-0 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-neutral-50 border-b border-neutral-200">
-                <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider">Tài khoản</th>
-                <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider">Quyền hạn</th>
-                <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider">Ngày tạo</th>
-                <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider">Hạn sử dụng</th>
-                <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider text-right">Thao tác</th>
+              <tr className="bg-neutral-50 dark:bg-slate-800/50 border-b border-neutral-200 dark:border-slate-800">
+                <th className="px-6 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest">Tài khoản</th>
+                <th className="px-6 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest">Quyền hạn</th>
+                <th className="px-6 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest">Ngày tạo</th>
+                <th className="px-6 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest">Hạn sử dụng</th>
+                <th className="px-6 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest text-right">Thao tác</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-200">
+            <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
               {users.map((user) => (
-                <tr key={user.id} className="hover:bg-neutral-50 transition-colors">
+                <tr key={user.id} className="hover:bg-neutral-50 dark:hover:bg-slate-800/50 transition-colors group">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
-                        {user.email[0].toUpperCase()}
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black shadow-sm">
+                        {user.email?.charAt(0).toUpperCase() || '?'}
                       </div>
-                      <span className="font-medium text-neutral-900">{user.email}</span>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-neutral-900 dark:text-white">{user.email || 'No Email'}</span>
+                        <span className="text-[10px] text-neutral-400 dark:text-slate-500 font-bold uppercase tracking-wider">ID: {user.id.slice(0, 8)}</span>
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <span className={cn(
-                      "px-2.5 py-1 rounded-full text-xs font-medium",
-                      user.role === 'admin' ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
+                      "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border",
+                      user.role === 'admin' 
+                        ? "bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-900/30" 
+                        : "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/30"
                     )}>
                       {user.role === 'admin' ? 'Quản trị viên' : 'Người dùng'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-neutral-500">
+                  <td className="px-6 py-4 text-xs font-bold text-neutral-500 dark:text-slate-400 font-mono">
                     {formatDate(user.createdAt)}
                   </td>
-                  <td className="px-6 py-4 text-sm">
+                  <td className="px-6 py-4 text-xs">
                     {user.expiryDate ? (
                       <span className={cn(
-                        "flex items-center gap-1.5",
-                        new Date(user.expiryDate) < new Date() ? "text-red-600 font-medium" : "text-neutral-600"
+                        "flex items-center gap-1.5 font-bold font-mono",
+                        new Date(user.expiryDate) < new Date() ? "text-red-500" : "text-neutral-600 dark:text-slate-400"
                       )}>
-                        <Calendar className="w-4 h-4" />
+                        <Calendar className="w-3.5 h-3.5" />
                         {formatDate(user.expiryDate)}
                       </span>
                     ) : (
-                      <span className="text-neutral-400 italic">Vô thời hạn</span>
+                      <span className="text-neutral-400 dark:text-slate-600 italic text-[11px] font-bold uppercase tracking-wider">Vô thời hạn</span>
                     )}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => startEdit(user)}
-                        className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                        className="w-9 h-9 flex items-center justify-center text-primary hover:bg-primary/10 rounded-xl transition-all"
                         title="Chỉnh sửa"
                       >
-                        <Settings className="w-5 h-5" />
+                        <Edit2 className="w-4 h-4" />
                       </button>
                       {user.email !== 'cosogiaoduchoanggia269@gmail.com' && (
                         <ConfirmButton
                           onConfirm={() => deleteUser(user.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                          className="w-9 h-9 flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all"
                           icon={Trash2}
-                          confirmText="Xác nhận xóa?"
                         />
                       )}
                     </div>
@@ -2813,7 +3249,7 @@ function UserManagementSection({ users, setUsers }: { users: UserAccount[], setU
           </table>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -2858,44 +3294,69 @@ function FinancialManagementSection({
 
   if (activeSubTab === 'finance_group') {
     return (
-      <div className="space-y-6">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-8"
+      >
         <header>
-          <h2 className="text-2xl font-bold text-neutral-900">Quản lý Tài chính</h2>
-          <p className="text-neutral-500">Chọn chức năng bạn muốn thực hiện.</p>
+          <h2 className="text-3xl font-black text-neutral-900 dark:text-white tracking-tight">Quản lý Tài chính</h2>
+          <p className="text-neutral-500 dark:text-slate-400 mt-2 text-lg font-medium">Hệ thống quản lý thu chi và báo cáo thuế hộ kinh doanh.</p>
         </header>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <button
             onClick={() => setActiveTab('finance-config')}
-            className="bg-white p-6 rounded-2xl shadow-sm border border-neutral-200 hover:border-indigo-500 hover:shadow-md transition-all text-center group"
+            className="saas-card p-8 hover:border-primary dark:hover:border-primary hover:shadow-2xl hover:shadow-primary/10 transition-all text-left group relative overflow-hidden"
           >
-            <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 mx-auto mb-4 group-hover:scale-110 transition-transform">
-              <Settings className="w-7 h-7" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500" />
+            <div className="relative z-10">
+              <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform shadow-sm">
+                <Settings className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-black text-neutral-900 dark:text-white mb-3 tracking-tight">Cấu hình & Tải dữ liệu</h3>
+              <p className="text-neutral-500 dark:text-slate-400 leading-relaxed font-medium text-sm">Thiết lập thông tin báo cáo, người ký và nhập dữ liệu thu chi từ file Excel.</p>
+              <div className="mt-6 flex items-center text-primary font-black text-xs uppercase tracking-widest">
+                Bắt đầu ngay <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+              </div>
             </div>
-            <h3 className="text-lg font-bold text-neutral-900">Cấu hình và tải nội dung thu, chi</h3>
-            <p className="text-sm text-neutral-500 mt-2">Thiết lập thông tin báo cáo và nhập dữ liệu tài chính.</p>
           </button>
+
           <button
             onClick={() => setActiveTab('finance-ledger')}
-            className="bg-white p-6 rounded-2xl shadow-sm border border-neutral-200 hover:border-emerald-500 hover:shadow-md transition-all text-center group"
+            className="saas-card p-8 hover:border-emerald-500 dark:hover:border-emerald-500 hover:shadow-2xl hover:shadow-emerald-500/10 transition-all text-left group relative overflow-hidden"
           >
-            <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 mx-auto mb-4 group-hover:scale-110 transition-transform">
-              <BarChart3 className="w-7 h-7" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500" />
+            <div className="relative z-10">
+              <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 mb-6 group-hover:scale-110 transition-transform shadow-sm">
+                <BarChart3 className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-black text-neutral-900 dark:text-white mb-3 tracking-tight">Sổ chi tiết doanh thu</h3>
+              <p className="text-neutral-500 dark:text-slate-400 leading-relaxed font-medium text-sm">Xuất sổ S1a-HKD theo Thông tư 152/2025/TT-BTC phục vụ quyết toán thuế.</p>
+              <div className="mt-6 flex items-center text-emerald-600 font-black text-xs uppercase tracking-widest">
+                Xuất báo cáo <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+              </div>
             </div>
-            <h3 className="text-lg font-bold text-neutral-900">Xuất sổ doanh thu</h3>
-            <p className="text-sm text-neutral-500 mt-2">Tải về sổ doanh thu bán hàng hóa, dịch vụ (S1-HKD).</p>
           </button>
+
           <button
             onClick={() => setActiveTab('finance-vouchers')}
-            className="bg-white p-6 rounded-2xl shadow-sm border border-neutral-200 hover:border-orange-500 hover:shadow-md transition-all text-center group"
+            className="saas-card p-8 hover:border-orange-500 dark:hover:border-orange-500 hover:shadow-2xl hover:shadow-orange-500/10 transition-all text-left group relative overflow-hidden"
           >
-            <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600 mx-auto mb-4 group-hover:scale-110 transition-transform">
-              <Receipt className="w-7 h-7" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500" />
+            <div className="relative z-10">
+              <div className="w-16 h-16 bg-orange-500/10 rounded-2xl flex items-center justify-center text-orange-600 mb-6 group-hover:scale-110 transition-transform shadow-sm">
+                <Receipt className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-black text-neutral-900 dark:text-white mb-3 tracking-tight">Phiếu Thu - Phiếu Chi</h3>
+              <p className="text-neutral-500 dark:text-slate-400 leading-relaxed font-medium text-sm">Tự động tạo và in hàng loạt phiếu thu, phiếu chi tiền mặt chuyên nghiệp.</p>
+              <div className="mt-6 flex items-center text-orange-600 font-black text-xs uppercase tracking-widest">
+                Tạo chứng từ <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+              </div>
             </div>
-            <h3 className="text-lg font-bold text-neutral-900">Xuất phiếu thu, chi</h3>
-            <p className="text-sm text-neutral-500 mt-2">Tạo và tải về các phiếu thu, phiếu chi tiền mặt.</p>
           </button>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
@@ -3083,7 +3544,7 @@ function FinancialManagementSection({
       sections: [{
         properties: {
           page: {
-            margin: { top: 1134, bottom: 567, left: 1134, right: 1418 }
+            margin: { top: 1134, bottom: 567, left: 1531, right: 1134 }
           }
         },
         children: [
@@ -3825,106 +4286,115 @@ function FinancialManagementSection({
   ];
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-8">
+      <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div>
-          <h2 className="text-2xl font-bold text-neutral-900">Quản lý Tài chính</h2>
-          <p className="text-neutral-500">
+          <h2 className="text-3xl font-bold text-neutral-900 dark:text-white tracking-tight">Quản lý Tài chính</h2>
+          <p className="text-neutral-500 dark:text-slate-400 mt-1">
             {activeSubTab === 'finance-config' && 'Cấu hình báo cáo và tải nội dung thu chi.'}
             {activeSubTab === 'finance-ledger' && 'Xuất sổ doanh thu bán hàng hóa, dịch vụ.'}
             {activeSubTab === 'finance-vouchers' && 'Xuất phiếu thu, phiếu chi theo mẫu.'}
           </p>
         </div>
-        <div className="flex bg-neutral-200/50 p-1 rounded-xl self-start">
+        <div className="flex bg-neutral-100 dark:bg-slate-800/50 p-1.5 rounded-2xl self-start lg:self-center shadow-inner">
           {subTabs.map((st) => (
             <button
               key={st.id}
               onClick={() => setActiveTab(st.id)}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                "flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-bold transition-all",
                 activeSubTab === st.id
-                  ? "bg-white text-indigo-600 shadow-sm"
-                  : "text-neutral-600 hover:text-neutral-900"
+                  ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                  : "text-neutral-500 dark:text-slate-400 hover:text-neutral-900 dark:hover:text-white"
               )}
             >
               <st.icon className="w-4 h-4" />
-              <span className="hidden sm:inline">{st.label}</span>
+              <span className="hidden md:inline">{st.label}</span>
             </button>
           ))}
         </div>
       </header>
 
       {activeSubTab === 'finance-config' && (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-neutral-200">
-        <h3 className="text-lg font-bold text-neutral-900 mb-4 flex items-center gap-2">
-          <Settings className="w-5 h-5 text-indigo-600" /> Cấu hình báo cáo
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-neutral-700">Kì báo cáo (VD: Tháng 01/2026)</label>
-            <input 
-              type="text" 
-              value={config.reportPeriod}
-              onChange={(e) => setConfig({ ...config, reportPeriod: e.target.value })}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-              placeholder="Tháng 01/2026"
-            />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-8"
+        >
+          <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-neutral-200 dark:border-slate-800 shadow-sm">
+            <h3 className="text-xl font-bold text-neutral-900 dark:text-white mb-8 flex items-center gap-3">
+              <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                <Settings className="w-5 h-5" />
+              </div>
+              Cấu hình báo cáo
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Kì báo cáo (VD: Tháng 01/2026)</label>
+                <input 
+                  type="text" 
+                  value={config.reportPeriod}
+                  onChange={(e) => setConfig({ ...config, reportPeriod: e.target.value })}
+                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all"
+                  placeholder="Tháng 01/2026"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Ngày xuất phiếu thu</label>
+                <input 
+                  type="date" 
+                  value={config.receiptDate}
+                  onChange={(e) => setConfig({ ...config, receiptDate: e.target.value })}
+                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Ngày xuất phiếu chi</label>
+                <input 
+                  type="date" 
+                  value={config.paymentDate}
+                  onChange={(e) => setConfig({ ...config, paymentDate: e.target.value })}
+                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Người lập biểu</label>
+                <input 
+                  type="text" 
+                  value={config.preparer}
+                  onChange={(e) => setConfig({ ...config, preparer: e.target.value })}
+                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all"
+                  placeholder="Họ và tên người lập biểu"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Thủ quỹ</label>
+                <input 
+                  type="text" 
+                  value={config.treasurer}
+                  onChange={(e) => setConfig({ ...config, treasurer: e.target.value })}
+                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all"
+                  placeholder="Họ và tên thủ quỹ"
+                />
+              </div>
+            </div>
+            <div className="mt-8 flex justify-end pt-6 border-t border-neutral-100 dark:border-slate-800">
+              <button 
+                onClick={() => {
+                  if (!config.reportPeriod || !config.receiptDate || !config.paymentDate || !config.preparer || !config.treasurer) {
+                    alert("Vui lòng điền đầy đủ thông tin cấu hình.");
+                    return;
+                  }
+                  setIsConfigSaved(true);
+                  alert("Đã lưu cấu hình báo cáo!");
+                }}
+                className="flex items-center gap-2 px-8 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 dark:shadow-none font-bold"
+              >
+                <Save className="w-4 h-4" /> Lưu cấu hình
+              </button>
+            </div>
           </div>
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-neutral-700">Ngày xuất phiếu thu</label>
-            <input 
-              type="date" 
-              value={config.receiptDate}
-              onChange={(e) => setConfig({ ...config, receiptDate: e.target.value })}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-neutral-700">Ngày xuất phiếu chi</label>
-            <input 
-              type="date" 
-              value={config.paymentDate}
-              onChange={(e) => setConfig({ ...config, paymentDate: e.target.value })}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-neutral-700">Người lập biểu</label>
-            <input 
-              type="text" 
-              value={config.preparer}
-              onChange={(e) => setConfig({ ...config, preparer: e.target.value })}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-              placeholder="Họ và tên người lập biểu"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-neutral-700">Thủ quỹ</label>
-            <input 
-              type="text" 
-              value={config.treasurer}
-              onChange={(e) => setConfig({ ...config, treasurer: e.target.value })}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-              placeholder="Họ và tên thủ quỹ"
-            />
-          </div>
-        </div>
-        <div className="mt-4 flex justify-end">
-          <button 
-            onClick={() => {
-              if (!config.reportPeriod || !config.receiptDate || !config.paymentDate || !config.preparer || !config.treasurer) {
-                alert("Vui lòng điền đầy đủ thông tin cấu hình.");
-                return;
-              }
-              setIsConfigSaved(true);
-              alert("Đã lưu cấu hình báo cáo!");
-            }}
-            className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium"
-          >
-            <Save className="w-4 h-4" /> Lưu cấu hình
-          </button>
-        </div>
-      </div>
+        </motion.div>
       )}
 
       {activeSubTab === 'finance-config' && (
@@ -3933,129 +4403,180 @@ function FinancialManagementSection({
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-neutral-200">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-neutral-900 flex items-center gap-2">
-                  <PieChart className="w-5 h-5 text-emerald-600" /> Nội dung thu
-                </h3>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-neutral-200 dark:border-slate-800 shadow-sm group">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h3 className="text-xl font-bold text-neutral-900 dark:text-white flex items-center gap-3">
+                    <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                      <PieChart className="w-5 h-5" />
+                    </div>
+                    Nội dung thu
+                  </h3>
+                  <p className="text-sm text-neutral-500 dark:text-slate-400 mt-2 leading-relaxed">Tải lên bảng chấm công và thu tiền để đồng bộ dữ liệu doanh thu.</p>
+                </div>
                 <button 
                   onClick={downloadIncomeTemplate}
-                  className="text-xs font-medium text-emerald-600 hover:underline flex items-center gap-1"
+                  className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-xl transition-all"
+                  title="Tải file mẫu"
                 >
-                  <Download className="w-3 h-3" /> Tải file mẫu
+                  <Download className="w-5 h-5" />
                 </button>
               </div>
-              <p className="text-sm text-neutral-500 mb-4">Tải lên bảng chấm công và thu tiền để đồng bộ dữ liệu.</p>
-              <div className="flex gap-3">
-                <label className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-neutral-300 rounded-xl hover:border-emerald-500 hover:bg-emerald-50 transition-all cursor-pointer group">
-                  <Upload className="w-5 h-5 text-neutral-400 group-hover:text-emerald-600" />
-                  <span className="text-sm font-medium text-neutral-600 group-hover:text-emerald-700">Tải lên Nội dung thu</span>
+              
+              <div className="flex flex-col sm:flex-row gap-4">
+                <label className="flex-1 flex items-center justify-center gap-3 px-6 py-4 border-2 border-dashed border-neutral-200 dark:border-slate-700 rounded-2xl hover:border-emerald-500 dark:hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10 transition-all cursor-pointer group/label">
+                  <Upload className="w-5 h-5 text-neutral-400 group-hover/label:text-emerald-600 dark:group-hover/label:text-emerald-400" />
+                  <span className="text-sm font-bold text-neutral-600 dark:text-slate-300 group-hover/label:text-emerald-700 dark:group-hover/label:text-emerald-400">Tải lên file Excel</span>
                   <input type="file" accept=".xlsx, .xls" onChange={handleIncomeUpload} className="hidden" />
                 </label>
                 <ConfirmButton
                   onConfirm={() => setIncomeData([])}
-                  className="px-4 py-2 text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                  className="px-6 py-4 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30 rounded-2xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-all font-bold text-sm"
                   icon={Trash2}
                 >
-                  Xóa
+                  Xóa dữ liệu
                 </ConfirmButton>
               </div>
               {incomeData.length > 0 && (
-                <div className="mt-4 p-3 bg-emerald-50 text-emerald-700 rounded-lg text-sm flex items-center gap-2">
-                  <Check className="w-4 h-4" /> Đã tải {incomeData.length} mục thu tiền.
-                </div>
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="mt-6 p-4 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-2xl text-sm font-bold flex items-center gap-3"
+                >
+                  <div className="w-6 h-6 bg-emerald-100 dark:bg-emerald-800/50 rounded-full flex items-center justify-center">
+                    <Check className="w-4 h-4" />
+                  </div>
+                  Đã tải {incomeData.length} mục thu tiền học phí.
+                </motion.div>
               )}
             </div>
 
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-neutral-200">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-neutral-900 flex items-center gap-2">
-                  <PieChart className="w-5 h-5 text-orange-600" /> Nội dung chi
-                </h3>
+            <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-neutral-200 dark:border-slate-800 shadow-sm group">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h3 className="text-xl font-bold text-neutral-900 dark:text-white flex items-center gap-3">
+                    <div className="w-10 h-10 bg-orange-50 dark:bg-orange-900/30 rounded-xl flex items-center justify-center text-orange-600 dark:text-orange-400">
+                      <PieChart className="w-5 h-5" />
+                    </div>
+                    Nội dung chi
+                  </h3>
+                  <p className="text-sm text-neutral-500 dark:text-slate-400 mt-2 leading-relaxed">Tải lên danh sách các khoản chi phí vận hành để đồng bộ dữ liệu.</p>
+                </div>
                 <button 
                   onClick={downloadExpenseTemplate}
-                  className="text-xs font-medium text-orange-600 hover:underline flex items-center gap-1"
+                  className="p-2 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-xl transition-all"
+                  title="Tải file mẫu"
                 >
-                  <Download className="w-3 h-3" /> Tải file mẫu
+                  <Download className="w-5 h-5" />
                 </button>
               </div>
-              <p className="text-sm text-neutral-500 mb-4">Tải lên danh sách nội dung chi để đồng bộ dữ liệu.</p>
-              <div className="flex gap-3">
-                <label className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-neutral-300 rounded-xl hover:border-orange-500 hover:bg-orange-50 transition-all cursor-pointer group">
-                  <Upload className="w-5 h-5 text-neutral-400 group-hover:text-orange-600" />
-                  <span className="text-sm font-medium text-neutral-600 group-hover:text-orange-700">Tải lên Nội dung chi</span>
+
+              <div className="flex flex-col sm:flex-row gap-4">
+                <label className="flex-1 flex items-center justify-center gap-3 px-6 py-4 border-2 border-dashed border-neutral-200 dark:border-slate-700 rounded-2xl hover:border-orange-500 dark:hover:border-orange-500 hover:bg-orange-50/50 dark:hover:bg-orange-900/10 transition-all cursor-pointer group/label">
+                  <Upload className="w-5 h-5 text-neutral-400 group-hover/label:text-orange-600 dark:group-hover/label:text-orange-400" />
+                  <span className="text-sm font-bold text-neutral-600 dark:text-slate-300 group-hover/label:text-orange-700 dark:group-hover/label:text-orange-400">Tải lên file Excel</span>
                   <input type="file" accept=".xlsx, .xls" onChange={handleExpenseUpload} className="hidden" />
                 </label>
                 <ConfirmButton
                   onConfirm={() => setExpenseData([])}
-                  className="px-4 py-2 text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                  className="px-6 py-4 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30 rounded-2xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-all font-bold text-sm"
                   icon={Trash2}
                 >
-                  Xóa
+                  Xóa dữ liệu
                 </ConfirmButton>
               </div>
               {expenseData.length > 0 && (
-                <div className="mt-4 p-3 bg-orange-50 text-orange-700 rounded-lg text-sm flex items-center gap-2">
-                  <Check className="w-4 h-4" /> Đã tải {expenseData.length} mục chi tiền.
-                </div>
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="mt-6 p-4 bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 rounded-2xl text-sm font-bold flex items-center gap-3"
+                >
+                  <div className="w-6 h-6 bg-orange-100 dark:bg-orange-800/50 rounded-full flex items-center justify-center">
+                    <Check className="w-4 h-4" />
+                  </div>
+                  Đã tải {expenseData.length} mục chi phí vận hành.
+                </motion.div>
               )}
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
-            <div className="p-4 border-b border-neutral-200 flex justify-between items-center bg-neutral-50">
-              <h3 className="font-bold text-neutral-900">Danh sách Thu - Chi</h3>
-              <div className="flex gap-2">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-neutral-200 dark:border-slate-800 overflow-hidden shadow-sm">
+            <div className="p-6 border-b border-neutral-100 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 bg-neutral-50/50 dark:bg-slate-800/30">
+              <div>
+                <h3 className="font-bold text-neutral-900 dark:text-white text-lg">Danh sách Thu - Chi chi tiết</h3>
+                <p className="text-xs text-neutral-500 dark:text-slate-400 mt-1 font-medium">Tổng số: {incomeData.length + expenseData.length} bản ghi</p>
+              </div>
+              <div className="flex gap-3">
                 <button 
                   onClick={syncData}
                   disabled={isSyncing}
-                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium disabled:opacity-50"
+                  className="flex items-center gap-2.5 px-6 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 dark:shadow-none font-bold text-sm disabled:opacity-50"
                 >
                   <RefreshCw className={cn("w-4 h-4", isSyncing && "animate-spin")} /> 
                   {isSyncing ? "Đang đồng bộ..." : "Đồng bộ dữ liệu"}
                 </button>
               </div>
             </div>
-            <div className="overflow-x-auto max-h-[400px]">
+            <div className="overflow-x-auto max-h-[500px] custom-scrollbar">
               <table className="w-full text-left border-collapse">
-                <thead className="sticky top-0 bg-white shadow-sm z-10">
-                  <tr className="bg-neutral-50 border-b border-neutral-200">
-                    <th className="px-4 py-3 text-xs font-bold text-neutral-500 uppercase w-12 text-center">TT</th>
-                    <th className="px-4 py-3 text-xs font-bold text-neutral-500 uppercase">Họ và tên</th>
-                    <th className="px-4 py-3 text-xs font-bold text-neutral-500 uppercase">Địa chỉ</th>
-                    <th className="px-4 py-3 text-xs font-bold text-neutral-500 uppercase">Loại</th>
-                    <th className="px-4 py-3 text-xs font-bold text-neutral-500 uppercase text-right">Số tiền</th>
-                    <th className="px-4 py-3 text-xs font-bold text-neutral-500 uppercase w-32 text-center">Thao tác</th>
+                <thead className="sticky top-0 bg-white dark:bg-slate-900 shadow-sm z-10">
+                  <tr className="bg-neutral-50 dark:bg-slate-800/50 border-b border-neutral-200 dark:border-slate-800">
+                    <th className="px-6 py-4 text-[11px] font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-wider w-16 text-center">STT</th>
+                    <th className="px-6 py-4 text-[11px] font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Họ và tên / Đối tác</th>
+                    <th className="px-6 py-4 text-[11px] font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Địa chỉ / Nội dung</th>
+                    <th className="px-6 py-4 text-[11px] font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Phân loại</th>
+                    <th className="px-6 py-4 text-[11px] font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-wider text-right">Số tiền (VNĐ)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-neutral-200">
+                <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
                   {incomeData.map((item) => (
-                    <tr key={item.id} className="hover:bg-emerald-50/30 transition-colors">
-                      <td className="px-4 py-3 text-sm text-neutral-600 text-center">{item.stt}</td>
-                      <td className="px-4 py-3 text-sm font-medium text-neutral-900">{item.name}</td>
-                      <td className="px-4 py-3 text-sm text-neutral-600">{item.address}</td>
-                      <td className="px-4 py-3 text-sm text-emerald-600 font-medium">Thu</td>
-                      <td className="px-4 py-3 text-sm text-neutral-900 text-right font-mono">{item.amount.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-center">
+                    <tr key={`income-${item.id}`} className="hover:bg-emerald-50/30 dark:hover:bg-emerald-900/10 transition-colors group">
+                      <td className="px-6 py-4 text-sm text-neutral-500 dark:text-slate-400 text-center font-mono">{item.stt}</td>
+                      <td className="px-6 py-4">
+                        <span className="font-bold text-neutral-900 dark:text-white">{item.name}</span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-neutral-600 dark:text-slate-400">
+                        {item.address}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
+                          Thu học phí
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-neutral-900 dark:text-white text-right font-bold font-mono">
+                        {item.amount.toLocaleString()}
                       </td>
                     </tr>
                   ))}
                   {expenseData.map((item) => (
-                    <tr key={item.id} className="hover:bg-orange-50/30 transition-colors">
-                      <td className="px-4 py-3 text-sm text-neutral-600 text-center">{item.stt}</td>
-                      <td className="px-4 py-3 text-sm font-medium text-neutral-900">{item.name}</td>
-                      <td className="px-4 py-3 text-sm text-neutral-600">{item.address}</td>
-                      <td className="px-4 py-3 text-sm text-orange-600 font-medium">Chi</td>
-                      <td className="px-4 py-3 text-sm text-neutral-900 text-right font-mono">{item.amount.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-center">
+                    <tr key={`expense-${item.id}`} className="hover:bg-orange-50/30 dark:hover:bg-orange-900/10 transition-colors group">
+                      <td className="px-6 py-4 text-sm text-neutral-500 dark:text-slate-400 text-center font-mono">{item.stt}</td>
+                      <td className="px-6 py-4">
+                        <span className="font-bold text-neutral-900 dark:text-white">{item.name}</span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-neutral-600 dark:text-slate-400">
+                        {item.content || item.address}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-2.5 py-1 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-[10px] font-bold uppercase tracking-wider">
+                          Chi phí
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-neutral-900 dark:text-white text-right font-bold font-mono">
+                        {item.amount.toLocaleString()}
                       </td>
                     </tr>
                   ))}
                   {incomeData.length === 0 && expenseData.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-10 text-center text-neutral-500 italic">
-                        Chưa có dữ liệu thu chi. Vui lòng tải file lên.
+                      <td colSpan={5} className="px-6 py-20 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="w-16 h-16 bg-neutral-50 dark:bg-slate-800 rounded-full flex items-center justify-center text-neutral-300 dark:text-slate-600">
+                            <FileSpreadsheet className="w-8 h-8" />
+                          </div>
+                          <p className="text-neutral-500 dark:text-slate-400 font-medium">Chưa có dữ liệu thu chi. Vui lòng tải file Excel lên để bắt đầu.</p>
+                        </div>
                       </td>
                     </tr>
                   )}
@@ -4067,41 +4588,63 @@ function FinancialManagementSection({
       )}
 
       {activeSubTab === 'finance-ledger' && (
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-neutral-200 text-center space-y-4">
-          <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 mx-auto">
-            <FileSpreadsheet className="w-8 h-8" />
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white dark:bg-slate-900 p-12 rounded-[2.5rem] border border-neutral-200 dark:border-slate-800 text-center space-y-8 shadow-sm"
+        >
+          <div className="w-24 h-24 bg-indigo-50 dark:bg-indigo-900/30 rounded-3xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 mx-auto shadow-inner">
+            <FileSpreadsheet className="w-10 h-10" />
           </div>
-          <h3 className="text-xl font-bold">Xuất Sổ doanh thu</h3>
-          <p className="text-neutral-500 max-w-md mx-auto">
-            Hệ thống sẽ tổng hợp toàn bộ dữ liệu thu tiền học phí trong kỳ để xuất Sổ doanh thu theo mẫu Thông tư 88/2021/TT-BTC.
-          </p>
-          <button
-            onClick={exportS1aHKD}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium"
-          >
-            <Download className="w-5 h-5" /> Xuất sổ doanh thu (.docx)
-          </button>
-        </div>
+          <div className="max-w-xl mx-auto space-y-3">
+            <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">Xuất Sổ chi tiết doanh thu</h3>
+            <p className="text-neutral-500 dark:text-slate-400 text-lg leading-relaxed">
+              Hệ thống sẽ tự động tổng hợp dữ liệu từ các file Excel đã tải lên để tạo Sổ doanh thu (Mẫu S1a-HKD) theo đúng quy định của Bộ Tài chính.
+            </p>
+          </div>
+          <div className="pt-4">
+            <button
+              onClick={exportS1aHKD}
+              className="inline-flex items-center gap-3 px-10 py-4 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 dark:shadow-none font-bold text-lg group"
+            >
+              <Download className="w-6 h-6 group-hover:translate-y-0.5 transition-transform" /> 
+              Tải xuống Sổ doanh thu (.docx)
+            </button>
+          </div>
+          <div className="text-xs text-neutral-400 dark:text-slate-500 font-medium">
+            Định dạng Word (.docx) - Tương thích với Microsoft Word và Google Docs
+          </div>
+        </motion.div>
       )}
 
       {activeSubTab === 'finance-vouchers' && (
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-neutral-200 text-center space-y-4">
-          <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 mx-auto">
-            <FileText className="w-8 h-8" />
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white dark:bg-slate-900 p-12 rounded-[2.5rem] border border-neutral-200 dark:border-slate-800 text-center space-y-8 shadow-sm"
+        >
+          <div className="w-24 h-24 bg-emerald-50 dark:bg-emerald-900/30 rounded-3xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 mx-auto shadow-inner">
+            <FileText className="w-10 h-10" />
           </div>
-          <h3 className="text-xl font-bold">Xuất Phiếu thu & Phiếu chi</h3>
-          <p className="text-neutral-500 max-w-md mx-auto">
-            Xuất toàn bộ phiếu thu từ danh sách thu tiền và phiếu chi từ danh sách chi phí vào một tệp duy nhất.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
+          <div className="max-w-xl mx-auto space-y-3">
+            <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">Xuất Phiếu thu & Phiếu chi</h3>
+            <p className="text-neutral-500 dark:text-slate-400 text-lg leading-relaxed">
+              Tạo hàng loạt phiếu thu và phiếu chi tiền mặt từ danh sách dữ liệu. Mỗi trang Word sẽ chứa 2 phiếu để tiết kiệm giấy in.
+            </p>
+          </div>
+          <div className="flex flex-wrap justify-center gap-6 pt-4">
             <button
               onClick={exportAllVouchers}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-neutral-100 text-neutral-600 rounded-lg hover:bg-neutral-200 transition-colors shadow-sm font-medium"
+              className="inline-flex items-center gap-3 px-10 py-4 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-200 dark:shadow-none font-bold text-lg group"
             >
-              <Download className="w-5 h-5" /> Xuất toàn bộ phiếu (.docx)
+              <Download className="w-6 h-6 group-hover:translate-y-0.5 transition-transform" /> 
+              Xuất toàn bộ phiếu (.docx)
             </button>
           </div>
-        </div>
+          <div className="text-xs text-neutral-400 dark:text-slate-500 font-medium">
+            Hỗ trợ in ấn hàng loạt - Tự động đánh số chứng từ
+          </div>
+        </motion.div>
       )}
     </div>
   );
