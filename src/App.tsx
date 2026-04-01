@@ -335,7 +335,8 @@ export default function App() {
     name: '',
     address: '',
     taxId: '',
-    owner: ''
+    owner: '',
+    businessLocation: ''
   });
   const [classes, setClasses] = useState<ClassSubject[]>([]);
   const [ppctData, setPpctData] = useState<PPCTItem[]>([]);
@@ -358,7 +359,7 @@ export default function App() {
     setIsDataLoaded(false);
     
     if (!currentUser) {
-      setBusinessInfo({ name: '', address: '', taxId: '', owner: '' });
+      setBusinessInfo({ name: '', address: '', taxId: '', owner: '', businessLocation: '' });
       setClasses(DEFAULT_CLASSES);
       setPpctData(DEFAULT_PPCT);
       setLessonPlans([]);
@@ -376,7 +377,16 @@ export default function App() {
     if (saved) {
       try {
         const data = JSON.parse(saved);
-        if (data.businessInfo) setBusinessInfo(data.businessInfo);
+        if (data.businessInfo) {
+          setBusinessInfo({
+            ...data.businessInfo,
+            name: data.businessInfo.name || currentUser.businessName || '',
+            address: data.businessInfo.address || currentUser.businessAddress || '',
+            owner: data.businessInfo.owner || currentUser.businessOwner || '',
+            businessLocation: data.businessInfo.businessLocation || currentUser.businessLocation || '',
+            taxId: data.businessInfo.taxId || ''
+          });
+        }
         
         // Restore defaults if requested or if data is missing
         setClasses(data.classes && data.classes.length > 0 ? data.classes : DEFAULT_CLASSES);
@@ -394,8 +404,14 @@ export default function App() {
         console.error("Failed to parse saved data", e);
       }
     } else {
-      // New user: start with defaults
-      setBusinessInfo({ name: '', address: '', taxId: '', owner: '' });
+      // New user: start with defaults from currentUser if available
+      setBusinessInfo({ 
+        name: currentUser.businessName || '', 
+        address: currentUser.businessAddress || '', 
+        taxId: '', 
+        owner: currentUser.businessOwner || '',
+        businessLocation: currentUser.businessLocation || ''
+      });
       setClasses(DEFAULT_CLASSES);
       setPpctData(DEFAULT_PPCT);
       setLessonPlans([]);
@@ -463,6 +479,16 @@ export default function App() {
       localStorage.removeItem(AUTH_KEY);
     }
   }, [currentUser]);
+
+  // Sync currentUser with users array to get latest updates (like business info)
+  useEffect(() => {
+    if (currentUser) {
+      const latestUser = users.find(u => u.id === currentUser.id);
+      if (latestUser && JSON.stringify(latestUser) !== JSON.stringify(currentUser)) {
+        setCurrentUser(latestUser);
+      }
+    }
+  }, [users, currentUser?.id]);
 
   const tabs = [
     { id: 'dashboard', label: 'Tổng quát', icon: LayoutDashboard },
@@ -553,37 +579,20 @@ export default function App() {
         return <BusinessConfigSection info={businessInfo} setInfo={setBusinessInfo} setActiveTab={setActiveTab} currentUser={currentUser} />;
       case 'program':
       case 'classes':
-        return <ClassConfigSection classes={classes} setClasses={setClasses} setActiveTab={setActiveTab} />;
       case 'ppct':
-        return (
-          <PPCTSection 
-            ppctData={ppctData} 
-            setPpctData={setPpctData} 
-            classes={classes}
-            setPlans={setLessonPlans}
-            plans={lessonPlans}
-            setActiveTab={setActiveTab}
-          />
-        );
       case 'lesson-plan':
-        return (
-          <LessonPlanSection 
-            plans={lessonPlans} 
-            setPlans={setLessonPlans}
-            deletePlan={deletePlan}
-            ppctData={ppctData}
-            classes={classes}
-            businessInfo={businessInfo}
-            setActiveTab={setActiveTab}
-          />
-        );
       case 'journal':
         return (
-          <ClassJournalSection 
-            plans={lessonPlans}
-            setPlans={setLessonPlans}
+          <ProgramManagementSection 
+            classes={classes}
+            setClasses={setClasses}
+            ppctData={ppctData}
+            setPpctData={setPpctData}
+            lessonPlans={lessonPlans}
+            setLessonPlans={setLessonPlans}
             deletePlan={deletePlan}
             businessInfo={businessInfo}
+            activeSubTab={activeTab}
             setActiveTab={setActiveTab}
           />
         );
@@ -1072,11 +1081,11 @@ function BusinessConfigSection({ info, setInfo, setActiveTab, currentUser }: { i
   };
 
   const fields = [
-    { name: 'name', label: 'Tên Hộ kinh doanh', placeholder: 'VD: Trung tâm Bồi dưỡng Văn hóa Hoàn Cầu', icon: Building2 },
+    { name: 'name', label: 'Hộ kinh doanh', placeholder: 'VD: Trung tâm Giáo dục Hoàng Gia', icon: Building2 },
+    { name: 'address', label: 'Địa chỉ', placeholder: 'VD: Số 123, Đường ABC, Quận XYZ, TP. HCM', icon: Home },
+    { name: 'businessLocation', label: 'Nơi kinh doanh', placeholder: 'VD: SN 269 - Lê Duẩn - Phường Tân Phong - Tỉnh Lai Châu', icon: MapPin },
     { name: 'owner', label: 'Chủ hộ kinh doanh', placeholder: 'VD: Nguyễn Văn A', icon: User },
     { name: 'taxId', label: 'Mã số thuế', placeholder: 'VD: 0123456789', icon: CreditCard },
-    { name: 'businessLocation', label: 'Địa điểm kinh doanh', placeholder: 'VD: SN 269 - Lê Duẩn - Phường Tân Phong - Tỉnh Lai Châu', icon: MapPin },
-    { name: 'address', label: 'Địa chỉ', placeholder: 'VD: Số 123, Đường ABC, Quận XYZ, TP. HCM', icon: Home },
   ];
 
   return (
@@ -1167,7 +1176,7 @@ function BusinessConfigSection({ info, setInfo, setActiveTab, currentUser }: { i
   );
 }
 
-function ClassConfigSection({ classes, setClasses, setActiveTab }: { classes: ClassSubject[], setClasses: (c: ClassSubject[]) => void, setActiveTab: (t: string) => void }) {
+function ClassConfigSection({ classes, setClasses, setActiveTab }: { key?: string, classes: ClassSubject[], setClasses: (c: ClassSubject[]) => void, setActiveTab: (t: string) => void }) {
   const addRow = () => {
     setClasses([...classes, { id: crypto.randomUUID(), grade: '', subject: '', subSubject: '' }]);
   };
@@ -1192,16 +1201,6 @@ function ClassConfigSection({ classes, setClasses, setActiveTab }: { classes: Cl
       animate={{ opacity: 1, y: 0 }}
       className="space-y-8 max-w-5xl mx-auto"
     >
-      <button 
-        onClick={() => setActiveTab('dashboard')}
-        className="flex items-center gap-2 text-neutral-500 hover:text-primary transition-all text-sm font-bold group mb-4"
-      >
-        <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
-          <ArrowLeft className="w-4 h-4" />
-        </div>
-        Quay lại trang chủ
-      </button>
-
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">Cấu hình Lớp học</h2>
@@ -1300,6 +1299,7 @@ function ClassConfigSection({ classes, setClasses, setActiveTab }: { classes: Cl
 }
 
 function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiveTab }: { 
+  key?: string,
   ppctData: PPCTItem[], 
   setPpctData: (d: PPCTItem[]) => void, 
   classes: ClassSubject[],
@@ -1464,16 +1464,6 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
       animate={{ opacity: 1, y: 0 }}
       className="space-y-8 max-w-6xl mx-auto"
     >
-      <button 
-        onClick={() => setActiveTab('dashboard')}
-        className="flex items-center gap-2 text-neutral-500 hover:text-primary transition-all text-sm font-bold group mb-4"
-      >
-        <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
-          <ArrowLeft className="w-4 h-4" />
-        </div>
-        Quay lại trang chủ
-      </button>
-
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">Phân phối chương trình</h2>
@@ -1630,6 +1620,7 @@ function LessonPlanSection({
   businessInfo,
   setActiveTab
 }: { 
+  key?: string,
   plans: LessonPlan[], 
   setPlans: (p: LessonPlan[]) => void, 
   deletePlan: (id: string) => void,
@@ -2149,16 +2140,6 @@ function LessonPlanSection({
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
-      <button 
-        onClick={() => setActiveTab('dashboard')}
-        className="flex items-center gap-2 text-neutral-500 hover:text-primary transition-all text-sm font-bold group mb-4"
-      >
-        <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
-          <ArrowLeft className="w-4 h-4" />
-        </div>
-        Quay lại trang chủ
-      </button>
-
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-normal text-neutral-900 dark:text-white">Lịch báo giảng</h2>
@@ -2243,6 +2224,7 @@ function ClassJournalSection({
   businessInfo,
   setActiveTab
 }: { 
+  key?: string,
   plans: LessonPlan[], 
   setPlans: (p: LessonPlan[]) => void,
   deletePlan: (id: string) => void,
@@ -2439,16 +2421,6 @@ function ClassJournalSection({
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
-      <button 
-        onClick={() => setActiveTab('dashboard')}
-        className="flex items-center gap-2 text-neutral-500 hover:text-primary transition-all text-sm font-bold group mb-4"
-      >
-        <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
-          <ArrowLeft className="w-4 h-4" />
-        </div>
-        Quay lại trang chủ
-      </button>
-
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">Sổ đầu bài</h2>
@@ -2575,6 +2547,125 @@ function ClassJournalSection({
   );
 }
 
+function ProgramManagementSection({ 
+  classes, 
+  setClasses, 
+  ppctData, 
+  setPpctData, 
+  lessonPlans, 
+  setLessonPlans, 
+  deletePlan, 
+  businessInfo, 
+  activeSubTab, 
+  setActiveTab 
+}: { 
+  classes: ClassSubject[], 
+  setClasses: (c: ClassSubject[]) => void, 
+  ppctData: PPCTItem[], 
+  setPpctData: (d: PPCTItem[]) => void, 
+  lessonPlans: LessonPlan[], 
+  setLessonPlans: (l: LessonPlan[]) => void, 
+  deletePlan: (id: string) => void, 
+  businessInfo: BusinessInfo, 
+  activeSubTab: string, 
+  setActiveTab: (t: string) => void 
+}) {
+  const subNavItems = [
+    { id: 'classes', label: 'Cấu hình lớp học', icon: GraduationCap, description: 'Thiết lập khối lớp, môn học và phân môn.' },
+    { id: 'ppct', label: 'Phân phối chương trình', icon: BookOpen, description: 'Quản lý nội dung giảng dạy theo từng tiết.' },
+    { id: 'lesson-plan', label: 'Lịch báo giảng', icon: CalendarDays, description: 'Lập kế hoạch giảng dạy chi tiết theo tuần.' },
+    { id: 'journal', label: 'Sổ đầu bài', icon: ClipboardList, description: 'Ghi chép nhật ký giảng dạy của các lớp.' },
+  ];
+
+  const renderSubNav = () => (
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 pb-6 border-b border-neutral-100 dark:border-slate-800">
+      <button 
+        onClick={() => setActiveTab('dashboard')}
+        className="flex items-center gap-2 text-neutral-500 hover:text-primary transition-all text-sm font-bold group"
+      >
+        <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+          <ArrowLeft className="w-4 h-4" />
+        </div>
+        Quay lại trang chủ
+      </button>
+      
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide w-full sm:w-auto">
+        {subNavItems.map(item => (
+          <button
+            key={item.id}
+            onClick={() => setActiveTab(item.id)}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap border",
+              activeSubTab === item.id 
+                ? "bg-primary text-white border-primary shadow-lg shadow-primary/20" 
+                : "bg-white dark:bg-slate-900 text-neutral-500 dark:text-slate-400 border-neutral-200 dark:border-slate-800 hover:border-primary/50 hover:text-primary"
+            )}
+          >
+            <item.icon className="w-3.5 h-3.5" />
+            {item.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  if (activeSubTab === 'program') {
+    return (
+      <div className="space-y-6">
+        {renderSubNav()}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          <header>
+            <h2 className="text-2xl font-bold text-[#1F2937] dark:text-white">Quản lý Chương trình</h2>
+            <p className="text-[#6B7280] dark:text-slate-400 mt-1">Chọn chức năng bạn muốn thực hiện.</p>
+          </header>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {subNavItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className="bg-white dark:bg-slate-900 p-6 rounded-[20px] shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-[#E5E7EB] dark:border-slate-800 hover:border-[#1677FF] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all text-center group relative overflow-hidden flex flex-col items-center"
+              >
+                <div className="absolute top-0 left-0 w-1 h-full bg-[#1677FF] opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="w-14 h-14 bg-[#EFF6FF] dark:bg-blue-900/20 rounded-2xl flex items-center justify-center text-[#1677FF] mb-4 group-hover:scale-110 transition-transform">
+                  <item.icon className="w-7 h-7" />
+                </div>
+                <h3 className="text-base font-bold text-[#1F2937] dark:text-white">{item.label}</h3>
+                <p className="text-xs text-[#6B7280] dark:text-slate-400 mt-2 leading-relaxed">
+                  {item.description}
+                </p>
+              </button>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {renderSubNav()}
+      <AnimatePresence mode="wait">
+        {activeSubTab === 'classes' && (
+          <ClassConfigSection key="classes" classes={classes} setClasses={setClasses} setActiveTab={setActiveTab} />
+        )}
+        {activeSubTab === 'ppct' && (
+          <PPCTSection key="ppct" ppctData={ppctData} setPpctData={setPpctData} classes={classes} plans={lessonPlans} setPlans={setLessonPlans} setActiveTab={setActiveTab} />
+        )}
+        {activeSubTab === 'lesson-plan' && (
+          <LessonPlanSection key="lesson-plan" plans={lessonPlans} setPlans={setLessonPlans} classes={classes} ppctData={ppctData} deletePlan={deletePlan} businessInfo={businessInfo} setActiveTab={setActiveTab} />
+        )}
+        {activeSubTab === 'journal' && (
+          <ClassJournalSection key="journal" plans={lessonPlans} setPlans={setLessonPlans} deletePlan={deletePlan} businessInfo={businessInfo} setActiveTab={setActiveTab} />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function StudentManagementSection({ 
   students, 
   setStudents, 
@@ -2588,54 +2679,81 @@ function StudentManagementSection({
   activeSubTab: string,
   setActiveTab: (t: string) => void
 }) {
+  const subNavItems = [
+    { id: 'students-list', label: 'Tải danh sách học sinh', icon: Upload },
+    { id: 'students-export', label: 'Xuất đơn đăng kí học thêm', icon: FileText },
+  ];
+
+  const renderSubNav = () => (
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 pb-6 border-b border-neutral-100 dark:border-slate-800">
+      <button 
+        onClick={() => setActiveTab('dashboard')}
+        className="flex items-center gap-2 text-neutral-500 hover:text-primary transition-all text-sm font-bold group"
+      >
+        <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+          <ArrowLeft className="w-4 h-4" />
+        </div>
+        Quay lại trang chủ
+      </button>
+      
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide w-full sm:w-auto">
+        {subNavItems.map(item => (
+          <button
+            key={item.id}
+            onClick={() => setActiveTab(item.id)}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap border",
+              activeSubTab === item.id 
+                ? "bg-primary text-white border-primary shadow-lg shadow-primary/20" 
+                : "bg-white dark:bg-slate-900 text-neutral-500 dark:text-slate-400 border-neutral-200 dark:border-slate-800 hover:border-primary/50 hover:text-primary"
+            )}
+          >
+            <item.icon className="w-3.5 h-3.5" />
+            {item.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   if (activeSubTab === 'students_group') {
     return (
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="space-y-6"
-      >
-        <button 
-          onClick={() => setActiveTab('dashboard')}
-          className="flex items-center gap-2 text-neutral-500 hover:text-primary transition-all text-sm font-bold group mb-4"
+      <div className="space-y-6">
+        {renderSubNav()}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
         >
-          <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
-            <ArrowLeft className="w-4 h-4" />
+          <header>
+            <h2 className="text-2xl font-bold text-[#1F2937] dark:text-white">Quản lý Học sinh</h2>
+            <p className="text-[#6B7280] dark:text-slate-400 mt-1">Chọn chức năng bạn muốn thực hiện.</p>
+          </header>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {subNavItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className="bg-white dark:bg-slate-900 p-8 rounded-[20px] shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-[#E5E7EB] dark:border-slate-800 hover:border-[#1677FF] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all text-center group relative overflow-hidden"
+              >
+                <div className="absolute top-0 left-0 w-1 h-full bg-[#1677FF] opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="w-16 h-16 bg-[#EFF6FF] dark:bg-blue-900/20 rounded-2xl flex items-center justify-center text-[#1677FF] mx-auto mb-5 group-hover:scale-110 transition-transform">
+                  <item.icon className="w-8 h-8" />
+                </div>
+                <h3 className="text-lg font-bold text-[#1F2937] dark:text-white">{item.label}</h3>
+                <p className="text-sm text-[#6B7280] dark:text-slate-400 mt-2 leading-relaxed">
+                  {item.id === 'students-list' 
+                    ? 'Nhập danh sách học sinh từ file Excel vào hệ thống để quản lý tập trung.'
+                    : 'Tạo và tải về đơn đăng ký học thêm chuyên nghiệp cho từng học sinh.'}
+                </p>
+              </button>
+            ))}
           </div>
-          Quay lại trang chủ
-        </button>
-
-        <header>
-          <h2 className="text-2xl font-bold text-[#1F2937]">Quản lý Học sinh</h2>
-          <p className="text-[#6B7280] mt-1">Chọn chức năng bạn muốn thực hiện.</p>
-        </header>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <button
-            onClick={() => setActiveTab('students-list')}
-            className="bg-white p-8 rounded-[20px] shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-[#E5E7EB] hover:border-[#1677FF] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all text-center group relative overflow-hidden"
-          >
-            <div className="absolute top-0 left-0 w-1 h-full bg-[#1677FF] opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-16 h-16 bg-[#EFF6FF] rounded-2xl flex items-center justify-center text-[#1677FF] mx-auto mb-5 group-hover:scale-110 transition-transform">
-              <Upload className="w-8 h-8" />
-            </div>
-            <h3 className="text-lg font-bold text-[#1F2937]">Tải danh sách học sinh</h3>
-            <p className="text-sm text-[#6B7280] mt-2 leading-relaxed">Nhập danh sách học sinh từ file Excel vào hệ thống để quản lý tập trung.</p>
-          </button>
-          <button
-            onClick={() => setActiveTab('students-export')}
-            className="bg-white p-8 rounded-[20px] shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-[#E5E7EB] hover:border-[#10B981] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all text-center group relative overflow-hidden"
-          >
-            <div className="absolute top-0 left-0 w-1 h-full bg-[#10B981] opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-16 h-16 bg-[#ECFDF5] rounded-2xl flex items-center justify-center text-[#10B981] mx-auto mb-5 group-hover:scale-110 transition-transform">
-              <FileText className="w-8 h-8" />
-            </div>
-            <h3 className="text-lg font-bold text-[#1F2937]">Xuất đơn đăng kí học thêm</h3>
-            <p className="text-sm text-[#6B7280] mt-2 leading-relaxed">Tạo và tải về đơn đăng ký học thêm chuyên nghiệp cho từng học sinh.</p>
-          </button>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     );
   }
+
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -2876,7 +2994,7 @@ function StudentManagementSection({
                   }),
                   new Paragraph({
                     alignment: AlignmentType.CENTER,
-                    spacing: { before: 800, line: 312 },
+                    spacing: { line: 312 },
                     children: [
                       new TextRun({ text: student.parentName || "", bold: true, size: 28 }),
                     ],
@@ -2933,123 +3051,116 @@ function StudentManagementSection({
   };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
-    >
-      <button 
-        onClick={() => setActiveTab('students_group')}
-        className="flex items-center gap-2 text-neutral-500 hover:text-primary transition-all text-sm font-bold group mb-4"
+    <div className="space-y-6">
+      {renderSubNav()}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-6"
       >
-        <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
-          <ArrowLeft className="w-4 h-4" />
-        </div>
-        Quay lại
-      </button>
-
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">Quản lý Học sinh</h2>
-          <p className="text-neutral-500 dark:text-slate-400 mt-1">
-            {activeSubTab === 'students-list' ? 'Tải danh sách học sinh từ file Excel.' : 'Xuất đơn đăng ký học thêm cho học sinh.'}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {activeSubTab === 'students-export' && (
-            <button
-              onClick={exportAllRegistrationForms}
-              className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all shadow-sm font-bold text-sm w-full md:w-auto justify-center"
-            >
-              <Download className="w-4 h-4" /> Xuất toàn bộ đơn
-            </button>
-          )}
-          {activeSubTab === 'students-list' && (
-            <>
-              <ConfirmButton
-                onConfirm={() => setStudents([])}
-                className="flex items-center gap-2 px-4 py-2.5 text-red-600 border border-red-200 dark:border-red-900/30 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-all font-bold text-sm w-full md:w-auto justify-center"
-                icon={Trash2}
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">Quản lý Học sinh</h2>
+            <p className="text-neutral-500 dark:text-slate-400 mt-1">
+              {activeSubTab === 'students-list' ? 'Tải danh sách học sinh từ file Excel.' : 'Xuất đơn đăng ký học thêm cho học sinh.'}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            {activeSubTab === 'students-export' && (
+              <button
+                onClick={exportAllRegistrationForms}
+                className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all shadow-sm font-bold text-sm w-full md:w-auto justify-center"
               >
-                Xóa toàn bộ
-              </ConfirmButton>
-              <label className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all shadow-sm font-bold cursor-pointer w-full md:w-auto justify-center text-sm">
-                <Upload className="w-4 h-4" /> Đưa danh sách lên (Excel)
-                <input type="file" accept=".xlsx, .xls" onChange={handleFileUpload} className="hidden" />
-              </label>
-            </>
-          )}
-        </div>
-      </header>
+                <Download className="w-4 h-4" /> Xuất toàn bộ đơn
+              </button>
+            )}
+            {activeSubTab === 'students-list' && (
+              <>
+                <ConfirmButton
+                  onConfirm={() => setStudents([])}
+                  className="flex items-center gap-2 px-4 py-2.5 text-red-600 border border-red-200 dark:border-red-900/30 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-all font-bold text-sm w-full md:w-auto justify-center"
+                  icon={Trash2}
+                >
+                  Xóa toàn bộ
+                </ConfirmButton>
+                <label className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all shadow-sm font-bold cursor-pointer w-full md:w-auto justify-center text-sm">
+                  <Upload className="w-4 h-4" /> Đưa danh sách lên (Excel)
+                  <input type="file" accept=".xlsx, .xls" onChange={handleFileUpload} className="hidden" />
+                </label>
+              </>
+            )}
+          </div>
+        </header>
 
-      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-neutral-200 dark:border-slate-800 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[1000px]">
-            <thead>
-              <tr className="bg-neutral-50 dark:bg-slate-800/50 border-b border-neutral-200 dark:border-slate-800">
-                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider w-16 text-center">STT</th>
-                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Họ và tên</th>
-                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider w-24 text-center">Lớp</th>
-                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Trường</th>
-                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Phụ huynh</th>
-                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider">SĐT</th>
-                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Môn đăng ký</th>
-                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider w-32 text-center">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
-              {students.map((student, idx) => (
-                <tr key={student.id} className="hover:bg-neutral-50 dark:hover:bg-slate-800/50 transition-colors group">
-                  <td className="px-6 py-4 text-sm text-neutral-500 dark:text-slate-400 text-center font-mono">{student.stt || idx + 1}</td>
-                  <td className="px-6 py-4 text-sm font-normal text-neutral-900 dark:text-white">{student.name}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-normal border border-primary/20">
-                      {student.grade}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-neutral-600 dark:text-slate-400">{student.school}</td>
-                  <td className="px-6 py-4 text-sm text-neutral-600 dark:text-slate-400 font-normal">{student.parentName}</td>
-                  <td className="px-6 py-4 text-sm text-neutral-600 dark:text-slate-400 font-mono">{student.phone}</td>
-                  <td className="px-6 py-4 text-sm text-neutral-600 dark:text-slate-400">{student.subject}</td>
-                  <td className="px-6 py-4 text-sm text-center">
-                    <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {activeSubTab === 'students-export' && (
-                        <button
-                          onClick={() => exportRegistrationForm(student)}
-                          title="Xuất đơn đăng ký"
-                          className="w-8 h-8 flex items-center justify-center text-primary hover:bg-primary/10 rounded-lg transition-all"
-                        >
-                          <FileText className="w-4 h-4" />
-                        </button>
-                      )}
-                      {activeSubTab === 'students-list' && (
-                        <ConfirmButton
-                          onConfirm={() => setStudents(students.filter(s => s.id !== student.id))}
-                          className="w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                          icon={Trash2}
-                          confirmText=""
-                        />
-                      )}
-                    </div>
-                  </td>
+        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-neutral-200 dark:border-slate-800 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[1000px]">
+              <thead>
+                <tr className="bg-neutral-50 dark:bg-slate-800/50 border-b border-neutral-200 dark:border-slate-800">
+                  <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider w-16 text-center">STT</th>
+                  <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Họ và tên</th>
+                  <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider w-24 text-center">Lớp</th>
+                  <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Trường</th>
+                  <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Phụ huynh</th>
+                  <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider">SĐT</th>
+                  <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Môn đăng ký</th>
+                  <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider w-32 text-center">Thao tác</th>
                 </tr>
-              ))}
-              {students.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-6 py-24 text-center">
-                    <div className="w-20 h-20 bg-neutral-50 dark:bg-slate-900 rounded-3xl flex items-center justify-center mx-auto mb-6 text-neutral-300 dark:text-slate-700">
-                      <Users className="w-10 h-10" />
-                    </div>
-                    <h3 className="text-xl font-bold text-neutral-900 dark:text-white">Chưa có danh sách học sinh</h3>
-                    <p className="text-sm text-neutral-500 dark:text-slate-400 mt-2 max-w-xs mx-auto italic">Vui lòng đưa file Excel lên để bắt đầu quản lý học sinh.</p>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
+                {students.map((student, idx) => (
+                  <tr key={student.id} className="hover:bg-neutral-50 dark:hover:bg-slate-800/50 transition-colors group">
+                    <td className="px-6 py-4 text-sm text-neutral-500 dark:text-slate-400 text-center font-mono">{student.stt || idx + 1}</td>
+                    <td className="px-6 py-4 text-sm font-normal text-neutral-900 dark:text-white">{student.name}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-normal border border-primary/20">
+                        {student.grade}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-neutral-600 dark:text-slate-400">{student.school}</td>
+                    <td className="px-6 py-4 text-sm text-neutral-600 dark:text-slate-400 font-normal">{student.parentName}</td>
+                    <td className="px-6 py-4 text-sm text-neutral-600 dark:text-slate-400 font-mono">{student.phone}</td>
+                    <td className="px-6 py-4 text-sm text-neutral-600 dark:text-slate-400">{student.subject}</td>
+                    <td className="px-6 py-4 text-sm text-center">
+                      <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {activeSubTab === 'students-export' && (
+                          <button
+                            onClick={() => exportRegistrationForm(student)}
+                            title="Xuất đơn đăng ký"
+                            className="w-8 h-8 flex items-center justify-center text-primary hover:bg-primary/10 rounded-lg transition-all"
+                          >
+                            <FileText className="w-4 h-4" />
+                          </button>
+                        )}
+                        {activeSubTab === 'students-list' && (
+                          <ConfirmButton
+                            onConfirm={() => setStudents(students.filter(s => s.id !== student.id))}
+                            className="w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                            icon={Trash2}
+                            confirmText=""
+                          />
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {students.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-24 text-center">
+                      <div className="w-20 h-20 bg-neutral-50 dark:bg-slate-900 rounded-3xl flex items-center justify-center mx-auto mb-6 text-neutral-300 dark:text-slate-700">
+                        <Users className="w-10 h-10" />
+                      </div>
+                      <h3 className="text-xl font-bold text-neutral-900 dark:text-white">Chưa có danh sách học sinh</h3>
+                      <p className="text-sm text-neutral-500 dark:text-slate-400 mt-2 max-w-xs mx-auto italic">Vui lòng đưa file Excel lên để bắt đầu quản lý học sinh.</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 }
 
