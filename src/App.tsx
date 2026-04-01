@@ -25,6 +25,7 @@ import {
   Settings,
   PieChart,
   ArrowRight,
+  ArrowLeft,
   Check,
   Menu,
   X,
@@ -68,6 +69,8 @@ import { GoogleGenAI } from "@google/genai";
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
+import { cn } from './lib/utils';
+
 import { 
   BusinessInfo, 
   ClassSubject, 
@@ -80,10 +83,10 @@ import {
   ExpenseItem
 } from './types';
 
+import Footer from './components/Footer';
+import Header from './components/Header';
+
 // --- Utilities ---
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
 
 function numberToVietnameseWords(number: number): string {
   if (number === 0) return "Không đồng";
@@ -262,6 +265,10 @@ interface UserAccount {
   role: 'admin' | 'user';
   expiryDate?: string;
   createdAt: string;
+  businessName?: string;
+  businessAddress?: string;
+  businessLocation?: string;
+  businessOwner?: string;
 }
 
 // --- Components ---
@@ -311,6 +318,7 @@ export default function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [tabOrder, setTabOrder] = useState<string[]>(['dashboard', 'business', 'program', 'students_group', 'finance_group', 'users']);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
   const moveTab = (id: string, direction: 'up' | 'down') => {
     const index = tabOrder.indexOf(id);
@@ -338,7 +346,8 @@ export default function App() {
     receiptDate: '',
     paymentDate: '',
     preparer: '',
-    treasurer: ''
+    treasurer: '',
+    taxCode: ''
   });
   const [incomeData, setIncomeData] = useState<IncomeItem[]>([]);
   const [expenseData, setExpenseData] = useState<ExpenseItem[]>([]);
@@ -354,7 +363,7 @@ export default function App() {
       setPpctData(DEFAULT_PPCT);
       setLessonPlans([]);
       setStudents([]);
-      setFinancialConfig({ reportPeriod: '', receiptDate: '', paymentDate: '', preparer: '', treasurer: '' });
+      setFinancialConfig({ reportPeriod: '', receiptDate: '', paymentDate: '', preparer: '', treasurer: '', taxCode: '' });
       setIncomeData([]);
       setExpenseData([]);
       setTabOrder(['dashboard', 'business', 'program', 'students_group', 'finance_group', 'users']);
@@ -391,7 +400,7 @@ export default function App() {
       setPpctData(DEFAULT_PPCT);
       setLessonPlans([]);
       setStudents([]);
-      setFinancialConfig({ reportPeriod: '', receiptDate: '', paymentDate: '', preparer: '', treasurer: '' });
+      setFinancialConfig({ reportPeriod: '', receiptDate: '', paymentDate: '', preparer: '', treasurer: '', taxCode: '' });
       setIncomeData([]);
       setExpenseData([]);
       setTabOrder(['dashboard', 'business', 'program', 'students_group', 'finance_group', 'users']);
@@ -457,7 +466,7 @@ export default function App() {
 
   const tabs = [
     { id: 'dashboard', label: 'Tổng quát', icon: LayoutDashboard },
-    { id: 'business', label: 'Cấu hình Hộ kinh doanh', icon: Building2, adminOnly: true },
+    { id: 'business', label: 'Cấu hình Hộ kinh doanh', icon: Building2 },
     { 
       id: 'program', 
       label: 'Quản lý Chương trình dạy', 
@@ -501,8 +510,8 @@ export default function App() {
     .filter(tab => {
       if (currentUser?.role === 'admin') return true;
       if (tab.adminOnly) return false;
-      // User can only access 4 items: Dashboard, Program, Students, Finance
-      return ['dashboard', 'program', 'students_group', 'finance_group'].includes(tab.id);
+      // User can access: Dashboard, Business, Program, Students, Finance
+      return ['dashboard', 'business', 'program', 'students_group', 'finance_group'].includes(tab.id);
     })
     .sort((a, b) => {
       const indexA = tabOrder.indexOf(a.id);
@@ -521,6 +530,12 @@ export default function App() {
   const handleLogout = () => {
     setCurrentUser(null);
     setActiveTab('dashboard');
+    setShowWelcomeModal(false);
+  };
+
+  const handleLogin = (user: UserAccount) => {
+    setCurrentUser(user);
+    setShowWelcomeModal(true);
   };
 
   const renderContent = () => {
@@ -535,9 +550,10 @@ export default function App() {
           />
         );
       case 'business':
-        return <BusinessConfigSection info={businessInfo} setInfo={setBusinessInfo} />;
+        return <BusinessConfigSection info={businessInfo} setInfo={setBusinessInfo} setActiveTab={setActiveTab} currentUser={currentUser} />;
+      case 'program':
       case 'classes':
-        return <ClassConfigSection classes={classes} setClasses={setClasses} />;
+        return <ClassConfigSection classes={classes} setClasses={setClasses} setActiveTab={setActiveTab} />;
       case 'ppct':
         return (
           <PPCTSection 
@@ -558,6 +574,7 @@ export default function App() {
             ppctData={ppctData}
             classes={classes}
             businessInfo={businessInfo}
+            setActiveTab={setActiveTab}
           />
         );
       case 'journal':
@@ -567,6 +584,7 @@ export default function App() {
             setPlans={setLessonPlans}
             deletePlan={deletePlan}
             businessInfo={businessInfo}
+            setActiveTab={setActiveTab}
           />
         );
       case 'students_group':
@@ -604,6 +622,7 @@ export default function App() {
           <UserManagementSection 
             users={users} 
             setUsers={setUsers} 
+            setActiveTab={setActiveTab}
           />
         ) : null;
       default:
@@ -612,11 +631,60 @@ export default function App() {
   };
 
   if (!currentUser) {
-    return <LoginPage onLogin={setCurrentUser} users={users} darkMode={darkMode} setDarkMode={setDarkMode} />;
+    return <LoginPage onLogin={handleLogin} users={users} darkMode={darkMode} setDarkMode={setDarkMode} />;
   }
 
   return (
-    <div className="flex h-screen bg-bg-light dark:bg-bg-dark font-sans text-neutral-900 dark:text-slate-100 overflow-hidden transition-colors duration-300">
+    <div className="flex flex-col h-screen bg-bg-light dark:bg-bg-dark font-sans text-neutral-900 dark:text-slate-100 overflow-hidden transition-colors duration-300">
+      <Header 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        currentUser={currentUser} 
+        onLogout={handleLogout}
+      />
+      
+      <div className="flex flex-1 pt-20 overflow-hidden">
+        {/* Welcome Modal */}
+        <AnimatePresence>
+        {showWelcomeModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl max-w-2xl w-full p-8 lg:p-12 border border-neutral-200 dark:border-slate-800 relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-green-500 to-orange-500" />
+              
+              <div className="text-center space-y-6">
+                <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                  <Sparkles className="w-10 h-10 text-primary animate-pulse" />
+                </div>
+                
+                <h2 className="text-2xl lg:text-3xl font-normal text-neutral-900 dark:text-white leading-tight">
+                  Chào mừng Quý Thầy Cô đến với <span className="text-primary">HOÀNG GIA</span>
+                </h2>
+                <p className="text-primary font-normal text-xl">admin</p>
+                
+                <div className="text-neutral-600 dark:text-slate-300 leading-relaxed text-lg font-normal">
+                  Hệ thống được thiết kế tối ưu dành riêng cho các thầy cô và trung tâm dạy thêm. Bao gồm các chương trình: 
+                  <span className="text-blue-600 dark:text-blue-400 mx-1">Quản lý học sinh</span>, 
+                  <span className="text-green-600 dark:text-green-400 mx-1">Quản lý chương trình dạy</span>, 
+                  <span className="text-orange-600 dark:text-orange-400 mx-1">Quản lý tài chính</span>. 
+                  Chúng tôi cung cấp các công cụ mạnh mẽ để quản lý học sinh, chương trình giảng dạy và tài chính, giúp Quý Thầy Cô tập trung hoàn toàn vào sứ mệnh truyền đạt tri thức.
+                </div>
+
+                <button
+                  onClick={() => setShowWelcomeModal(false)}
+                  className="mt-8 px-10 py-4 bg-primary text-white rounded-2xl font-bold hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 active:scale-95"
+                >
+                  Bắt đầu làm việc
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
       {/* Mobile Menu Toggle */}
       <div className="lg:hidden fixed top-0 left-0 right-0 bg-white dark:bg-slate-900 border-b border-neutral-200 dark:border-slate-800 z-50 px-4 py-3 flex items-center justify-between">
         <h1 className="text-sm font-bold text-primary flex items-center gap-2">
@@ -649,14 +717,14 @@ export default function App() {
         "fixed lg:static inset-y-0 left-0 w-72 bg-white dark:bg-slate-900 border-r border-neutral-200 dark:border-slate-800 flex flex-col z-50 transition-all duration-300 transform lg:translate-x-0 shadow-xl lg:shadow-none",
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="p-8 pb-6">
+        <div className="p-8 pb-6 hidden lg:block">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 bg-gradient-to-br from-primary to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary/25">
               <GraduationCap className="w-6 h-6 text-white" />
             </div>
             <div className="leading-tight">
-              <h1 className="text-lg font-black tracking-tight text-neutral-900 dark:text-white">HOÀNG GIA</h1>
-              <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">Dashboard Pro</p>
+              <h1 className="text-lg font-normal tracking-tight text-neutral-900 dark:text-white">HOÀNG GIA</h1>
+              <p className="text-[10px] font-normal text-primary uppercase tracking-[0.2em]">Dashboard Pro</p>
             </div>
           </div>
         </div>
@@ -721,7 +789,7 @@ export default function App() {
                               if (window.innerWidth < 1024) setIsMobileMenuOpen(false);
                             }}
                             className={cn(
-                              "w-full flex items-center gap-3 py-2.5 text-[13px] font-bold transition-all duration-200 relative",
+                              "w-full flex items-center gap-3 py-2.5 text-[13px] font-normal transition-all duration-200 relative",
                               activeTab === subTab.id
                                 ? "text-primary"
                                 : "text-neutral-500 dark:text-slate-500 hover:text-neutral-900 dark:hover:text-slate-200"
@@ -769,67 +837,14 @@ export default function App() {
         
         <div className="p-6 border-t border-neutral-100 dark:border-slate-800">
           <div className="bg-neutral-50 dark:bg-slate-800/50 rounded-2xl p-4 text-center">
-            <p className="text-[10px] text-neutral-400 dark:text-slate-500 font-bold uppercase tracking-widest mb-1">Bản quyền hệ thống</p>
-            <p className="text-[11px] font-black text-neutral-600 dark:text-slate-300">ĐÀO MINH TÂM</p>
+            <p className="text-[10px] text-neutral-400 dark:text-slate-500 font-normal uppercase tracking-widest mb-1">Bản quyền hệ thống</p>
+            <p className="text-[11px] font-normal text-neutral-600 dark:text-slate-300">ĐÀO MINH TÂM</p>
           </div>
         </div>
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 bg-bg-light dark:bg-bg-dark transition-colors duration-300">
-        {/* Header */}
-        <header className="glass-header sticky top-0 z-30 px-4 lg:px-8 py-4 flex items-center justify-between border-b border-neutral-200/50 dark:border-slate-800/50 backdrop-blur-md bg-white/70 dark:bg-slate-900/70">
-          <div className="flex items-center gap-4">
-            <div className="hidden lg:block">
-              <h2 className="text-xl font-black text-neutral-900 dark:text-white tracking-tight">
-                {filteredTabs.find(t => t.id === activeTab || t.subTabs?.some(st => st.id === activeTab))?.label || 'Dashboard'}
-              </h2>
-              <div className="flex items-center gap-2 mt-0.5">
-                <Calendar className="w-3.5 h-3.5 text-primary" />
-                <p className="text-[11px] text-neutral-500 dark:text-slate-400 font-bold uppercase tracking-wider">
-                  {new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 lg:gap-6">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-neutral-100 dark:bg-slate-800 rounded-full">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-[10px] font-black text-neutral-600 dark:text-slate-300 uppercase tracking-widest">Hệ thống ổn định</span>
-            </div>
-
-            <button 
-              onClick={() => setDarkMode(!darkMode)}
-              className="p-2.5 text-neutral-500 dark:text-slate-400 hover:bg-neutral-100 dark:hover:bg-slate-800 rounded-xl transition-all active:scale-95 border border-transparent hover:border-neutral-200 dark:hover:border-slate-700"
-            >
-              {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
-
-            <div className="h-8 w-px bg-neutral-200 dark:bg-slate-800" />
-
-            <div className="flex items-center gap-3 pl-2 group">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-black text-neutral-900 dark:text-white leading-none">{currentUser.email?.split('@')[0] || 'User'}</p>
-                <p className="text-[10px] font-bold text-primary uppercase tracking-[0.15em] mt-1">{currentUser.role === 'admin' ? 'Quản trị viên' : 'Nhân viên'}</p>
-              </div>
-              <div className="relative group/avatar cursor-pointer">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-indigo-600 flex items-center justify-center text-white font-black shadow-lg shadow-primary/20 group-hover/avatar:scale-105 transition-transform">
-                  {currentUser.email?.charAt(0).toUpperCase() || '?'}
-                </div>
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full" />
-              </div>
-              <button 
-                onClick={handleLogout}
-                className="p-2.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all active:scale-95"
-                title="Đăng xuất"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </header>
-
         {/* Page Content */}
         <div className="flex-1 overflow-y-auto p-4 lg:p-8 custom-scrollbar">
           <AnimatePresence mode="wait">
@@ -844,10 +859,13 @@ export default function App() {
               {renderContent()}
             </motion.div>
           </AnimatePresence>
+          
+          <Footer />
         </div>
       </main>
     </div>
-  );
+  </div>
+);
 }
 
 // --- Section Components ---
@@ -892,6 +910,31 @@ function DashboardSection({
 
   return (
     <div className="space-y-8">
+      {/* Welcome Information Card */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="saas-card bg-gradient-to-br from-white to-neutral-50 dark:from-slate-900 dark:to-slate-800 border-l-4 border-l-primary"
+      >
+        <div className="flex items-start gap-6">
+          <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center shrink-0">
+            <Sparkles className="w-8 h-8 text-primary" />
+          </div>
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">
+              Chào mừng Quý Thầy Cô đến với <span className="text-primary">HOÀNG GIA</span>
+            </h2>
+            <p className="text-neutral-600 dark:text-slate-300 text-lg leading-relaxed">
+              Hệ thống được thiết kế tối ưu dành riêng cho các thầy cô và trung tâm dạy thêm. Bao gồm các chương trình: 
+              <span className="text-blue-600 dark:text-blue-400 font-bold mx-1">Quản lý học sinh</span>, 
+              <span className="text-emerald-600 dark:text-emerald-400 font-bold mx-1">Quản lý chương trình dạy</span>, 
+              <span className="text-orange-600 dark:text-orange-400 font-bold mx-1">Quản lý tài chính</span>. 
+              Chúng tôi cung cấp các công cụ mạnh mẽ để quản lý học sinh, chương trình giảng dạy và tài chính, giúp Quý Thầy Cô tập trung hoàn toàn vào sứ mệnh truyền đạt tri thức.
+            </p>
+          </div>
+        </div>
+      </motion.div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {stats.map((stat, idx) => (
           <motion.div
@@ -913,9 +956,9 @@ function DashboardSection({
               </span>
             </div>
             <div>
-              <p className="text-sm font-semibold text-neutral-500 dark:text-slate-400 mb-1">{stat.label}</p>
-              <h3 className="text-3xl font-bold text-neutral-900 dark:text-white tracking-tight">{stat.value}</h3>
-              <p className="text-[10px] font-medium text-neutral-400 dark:text-slate-500 mt-2 uppercase tracking-wider">{stat.description}</p>
+              <p className="text-sm font-normal text-neutral-500 dark:text-slate-400 mb-1">{stat.label}</p>
+              <h3 className="text-3xl font-normal text-neutral-900 dark:text-white tracking-tight">{stat.value}</h3>
+              <p className="text-[10px] font-normal text-neutral-400 dark:text-slate-500 mt-2 uppercase tracking-wider">{stat.description}</p>
             </div>
           </motion.div>
         ))}
@@ -929,11 +972,11 @@ function DashboardSection({
           className="saas-card"
         >
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+            <h3 className="text-lg font-normal text-neutral-900 dark:text-white flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-primary" />
               Tỷ lệ chuyên cần
             </h3>
-            <select className="bg-neutral-50 dark:bg-slate-900 border-none text-xs font-bold text-neutral-500 rounded-lg px-3 py-1.5 outline-none cursor-pointer">
+            <select className="bg-neutral-50 dark:bg-slate-900 border-none text-xs font-normal text-neutral-500 rounded-lg px-3 py-1.5 outline-none cursor-pointer">
               <option>7 ngày qua</option>
               <option>30 ngày qua</option>
             </select>
@@ -1001,17 +1044,17 @@ function DashboardSection({
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-4xl font-black text-neutral-900 dark:text-white tracking-tighter">78%</span>
-              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mt-1">Hoàn thành HP</span>
+              <span className="text-[10px] font-normal text-neutral-400 uppercase tracking-widest mt-1">Hoàn thành HP</span>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-8 w-full max-w-xs">
             <div className="text-center">
-              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Đã nộp</p>
-              <p className="text-xl font-bold text-neutral-900 dark:text-white">142</p>
+              <p className="text-[10px] font-normal text-neutral-400 uppercase tracking-widest mb-1">Đã nộp</p>
+              <p className="text-xl font-normal text-neutral-900 dark:text-white">142</p>
             </div>
             <div className="text-center">
-              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Chưa nộp</p>
-              <p className="text-xl font-bold text-neutral-900 dark:text-white">38</p>
+              <p className="text-[10px] font-normal text-neutral-400 uppercase tracking-widest mb-1">Chưa nộp</p>
+              <p className="text-xl font-normal text-neutral-900 dark:text-white">38</p>
             </div>
           </div>
         </motion.div>
@@ -1020,8 +1063,11 @@ function DashboardSection({
   );
 }
 
-function BusinessConfigSection({ info, setInfo }: { info: BusinessInfo, setInfo: (i: BusinessInfo) => void }) {
+function BusinessConfigSection({ info, setInfo, setActiveTab, currentUser }: { info: BusinessInfo, setInfo: (i: BusinessInfo) => void, setActiveTab: (t: string) => void, currentUser: UserAccount | null }) {
+  const isReadOnly = currentUser?.role === 'user';
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isReadOnly) return;
     setInfo({ ...info, [e.target.name]: e.target.value });
   };
 
@@ -1035,21 +1081,33 @@ function BusinessConfigSection({ info, setInfo }: { info: BusinessInfo, setInfo:
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
+      <button 
+        onClick={() => setActiveTab('dashboard')}
+        className="flex items-center gap-2 text-neutral-500 hover:text-primary transition-all text-sm font-bold group mb-4"
+      >
+        <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+          <ArrowLeft className="w-4 h-4" />
+        </div>
+        Quay lại trang chủ
+      </button>
+
       <div className="saas-card">
         <div className="flex items-center gap-4 mb-8 pb-6 border-b border-neutral-100 dark:border-slate-800">
           <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
             <Settings2 className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-xl font-bold text-neutral-900 dark:text-white">Thông tin cơ bản</h3>
-            <p className="text-sm text-neutral-500 dark:text-slate-400">Cập nhật thông tin định danh cho cơ sở của bạn</p>
+            <h3 className="text-xl font-normal text-neutral-900 dark:text-white">Thông tin cơ bản</h3>
+            <p className="text-sm text-neutral-500 dark:text-slate-400">
+              {isReadOnly ? 'Xem thông tin định danh cho cơ sở của bạn' : 'Cập nhật thông tin định danh cho cơ sở của bạn'}
+            </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {fields.map((field) => (
             <div key={field.name} className={cn("space-y-2", field.name === 'address' && "md:col-span-2")}>
-              <label className="text-xs font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <label className="text-xs font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-2">
                 <field.icon className="w-3.5 h-3.5" />
                 {field.label}
               </label>
@@ -1059,21 +1117,27 @@ function BusinessConfigSection({ info, setInfo }: { info: BusinessInfo, setInfo:
                   name={field.name}
                   value={(info as any)[field.name] || ""}
                   onChange={handleChange}
+                  disabled={isReadOnly}
                   placeholder={field.placeholder}
-                  className="w-full bg-neutral-50 dark:bg-slate-900/50 border border-neutral-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all dark:text-white"
+                  className={cn(
+                    "w-full bg-neutral-50 dark:bg-slate-900/50 border border-neutral-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all dark:text-white",
+                    isReadOnly && "cursor-not-allowed opacity-70"
+                  )}
                 />
-                <div className="absolute inset-0 rounded-xl bg-primary/5 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity" />
+                {!isReadOnly && <div className="absolute inset-0 rounded-xl bg-primary/5 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity" />}
               </div>
             </div>
           ))}
         </div>
 
-        <div className="mt-10 flex justify-end">
-          <button className="btn-primary flex items-center gap-2">
-            <Save className="w-4 h-4" />
-            Lưu thay đổi
-          </button>
-        </div>
+        {!isReadOnly && (
+          <div className="mt-10 flex justify-end">
+            <button className="btn-primary flex items-center gap-2">
+              <Save className="w-4 h-4" />
+              Lưu thay đổi
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1103,7 +1167,7 @@ function BusinessConfigSection({ info, setInfo }: { info: BusinessInfo, setInfo:
   );
 }
 
-function ClassConfigSection({ classes, setClasses }: { classes: ClassSubject[], setClasses: (c: ClassSubject[]) => void }) {
+function ClassConfigSection({ classes, setClasses, setActiveTab }: { classes: ClassSubject[], setClasses: (c: ClassSubject[]) => void, setActiveTab: (t: string) => void }) {
   const addRow = () => {
     setClasses([...classes, { id: crypto.randomUUID(), grade: '', subject: '', subSubject: '' }]);
   };
@@ -1128,6 +1192,16 @@ function ClassConfigSection({ classes, setClasses }: { classes: ClassSubject[], 
       animate={{ opacity: 1, y: 0 }}
       className="space-y-8 max-w-5xl mx-auto"
     >
+      <button 
+        onClick={() => setActiveTab('dashboard')}
+        className="flex items-center gap-2 text-neutral-500 hover:text-primary transition-all text-sm font-bold group mb-4"
+      >
+        <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+          <ArrowLeft className="w-4 h-4" />
+        </div>
+        Quay lại trang chủ
+      </button>
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">Cấu hình Lớp học</h2>
@@ -1390,6 +1464,16 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
       animate={{ opacity: 1, y: 0 }}
       className="space-y-8 max-w-6xl mx-auto"
     >
+      <button 
+        onClick={() => setActiveTab('dashboard')}
+        className="flex items-center gap-2 text-neutral-500 hover:text-primary transition-all text-sm font-bold group mb-4"
+      >
+        <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+          <ArrowLeft className="w-4 h-4" />
+        </div>
+        Quay lại trang chủ
+      </button>
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">Phân phối chương trình</h2>
@@ -1466,11 +1550,11 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
           <table className="w-full text-left border-collapse min-w-[1000px]">
             <thead>
               <tr className="bg-neutral-50/50 dark:bg-slate-900/50 border-b border-neutral-100 dark:border-slate-800">
-                <th className="px-6 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-16 text-center">Tiết</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-40">Môn học</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-40">Phân môn</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Nội dung bài dạy</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-20"></th>
+                <th className="px-6 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-16 text-center">Tiết</th>
+                <th className="px-6 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-40">Môn học</th>
+                <th className="px-6 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-40">Phân môn</th>
+                <th className="px-6 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Nội dung bài dạy</th>
+                <th className="px-6 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-20"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
@@ -1481,14 +1565,14 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
                       type="number"
                       value={item.period}
                       onChange={(e) => handleChange(item.id, 'period', Number(e.target.value))}
-                      className="w-full bg-transparent border-none focus:ring-0 text-sm font-bold text-neutral-900 dark:text-white text-center font-mono"
+                      className="w-full bg-transparent border-none focus:ring-0 text-sm font-normal text-neutral-900 dark:text-white text-center font-mono"
                     />
                   </td>
                   <td className="px-6 py-4">
                     <input
                       value={item.subject}
                       onChange={(e) => handleChange(item.id, 'subject', e.target.value)}
-                      className="w-full bg-transparent border-none focus:ring-0 text-sm font-bold text-primary"
+                      className="w-full bg-transparent border-none focus:ring-0 text-sm font-normal text-primary"
                       placeholder="Môn học"
                     />
                   </td>
@@ -1537,13 +1621,22 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
   );
 }
 
-function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, businessInfo }: { 
+function LessonPlanSection({ 
+  plans, 
+  setPlans, 
+  deletePlan, 
+  ppctData, 
+  classes, 
+  businessInfo,
+  setActiveTab
+}: { 
   plans: LessonPlan[], 
   setPlans: (p: LessonPlan[]) => void, 
   deletePlan: (id: string) => void,
   ppctData: PPCTItem[], 
   classes: ClassSubject[],
-  businessInfo: BusinessInfo
+  businessInfo: BusinessInfo,
+  setActiveTab: (t: string) => void
 }) {
   const [isCreating, setIsCreating] = useState(false);
   const [editingPlan, setEditingPlan] = useState<LessonPlan | null>(null);
@@ -1862,7 +1955,7 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
       <div className="space-y-8 max-w-6xl mx-auto">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">Tạo Lịch báo giảng</h2>
+            <h2 className="text-2xl font-normal text-neutral-900 dark:text-white">Tạo Lịch báo giảng</h2>
             <p className="text-sm text-neutral-500 dark:text-slate-400">Thiết lập kế hoạch giảng dạy chi tiết cho tuần mới.</p>
           </div>
           <div className="flex items-center gap-3">
@@ -1884,7 +1977,7 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
 
         <div className="saas-card grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Họ tên giáo viên</label>
+            <label className="text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Họ tên giáo viên</label>
             <input
               value={editingPlan.teacherName}
               onChange={(e) => setEditingPlan({ ...editingPlan, teacherName: e.target.value })}
@@ -1893,7 +1986,7 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Tuần</label>
+            <label className="text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Tuần</label>
             <input
               value={editingPlan.week}
               onChange={(e) => setEditingPlan({ ...editingPlan, week: e.target.value })}
@@ -1901,7 +1994,7 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Ngày bắt đầu</label>
+            <label className="text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Ngày bắt đầu</label>
             <input
               type="date"
               value={editingPlan.startDate}
@@ -1923,7 +2016,7 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Ngày kết thúc</label>
+            <label className="text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Ngày kết thúc</label>
             <input
               type="date"
               readOnly
@@ -1938,21 +2031,21 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
             <table className="w-full text-left border-collapse min-w-[1000px]">
               <thead>
                 <tr className="bg-neutral-50/50 dark:bg-slate-900/50 border-b border-neutral-100 dark:border-slate-800">
-                  <th className="px-4 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-24">Thứ, ngày</th>
-                  <th className="px-4 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-24">Ca dạy</th>
-                  <th className="px-4 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-20">Lớp</th>
-                  <th className="px-4 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-32">Môn</th>
-                  <th className="px-4 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-32">Phân môn</th>
-                  <th className="px-4 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-20">Tiết</th>
-                  <th className="px-4 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Nội dung bài dạy</th>
-                  <th className="px-4 py-4 text-[10px] font-bold text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-24">Ghi chú</th>
+                  <th className="px-4 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-24">Thứ, ngày</th>
+                  <th className="px-4 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-24">Ca dạy</th>
+                  <th className="px-4 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-20">Lớp</th>
+                  <th className="px-4 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-32">Môn</th>
+                  <th className="px-4 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-32">Phân môn</th>
+                  <th className="px-4 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-20">Tiết</th>
+                  <th className="px-4 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Nội dung bài dạy</th>
+                  <th className="px-4 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-24">Ghi chú</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
                 {editingPlan.rows.map((row) => (
                   <tr key={row.id} className="hover:bg-neutral-50/50 dark:hover:bg-slate-900/30 transition-colors">
                     <td className="px-4 py-3">
-                      <div className="text-xs font-bold text-neutral-900 dark:text-white">{row.day}</div>
+                      <div className="text-xs font-normal text-neutral-900 dark:text-white">{row.day}</div>
                       <div className="text-[10px] text-neutral-400 dark:text-slate-500">{row.date}</div>
                     </td>
                     <td className="px-4 py-3">
@@ -1964,7 +2057,7 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
                       <select
                         value={row.grade}
                         onChange={(e) => handleRowChange(row.id, 'grade', e.target.value)}
-                        className="w-full bg-transparent border-none focus:ring-0 text-xs font-bold text-primary"
+                        className="w-full bg-transparent border-none focus:ring-0 text-xs font-normal text-primary"
                       >
                         <option value="">-</option>
                         {Array.from(new Set(classes.map(c => c.grade))).map(g => (
@@ -2000,7 +2093,7 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
                       <select
                         value={row.period}
                         onChange={(e) => handleRowChange(row.id, 'period', e.target.value)}
-                        className="w-full bg-transparent border-none focus:ring-0 text-xs font-bold text-neutral-900 dark:text-white"
+                        className="w-full bg-transparent border-none focus:ring-0 text-xs font-normal text-neutral-900 dark:text-white"
                       >
                         <option value="">-</option>
                         {ppctData
@@ -2056,9 +2149,19 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
+      <button 
+        onClick={() => setActiveTab('dashboard')}
+        className="flex items-center gap-2 text-neutral-500 hover:text-primary transition-all text-sm font-bold group mb-4"
+      >
+        <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+          <ArrowLeft className="w-4 h-4" />
+        </div>
+        Quay lại trang chủ
+      </button>
+
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">Lịch báo giảng</h2>
+          <h2 className="text-2xl font-normal text-neutral-900 dark:text-white">Lịch báo giảng</h2>
           <p className="text-sm text-neutral-500 dark:text-slate-400">Quản lý và theo dõi kế hoạch giảng dạy hàng tuần.</p>
         </div>
         <button
@@ -2100,11 +2203,11 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
                 </div>
               </div>
               
-              <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-1">
+              <h3 className="text-lg font-normal text-neutral-900 dark:text-white mb-1">
                 {plan.teacherName || 'Giáo viên chưa định danh'}
               </h3>
               <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-slate-400 mb-6">
-                <span className="bg-neutral-100 dark:bg-slate-800 px-2 py-1 rounded-lg font-bold">Tuần {plan.week}</span>
+                <span className="bg-neutral-100 dark:bg-slate-800 px-2 py-1 rounded-lg font-normal">Tuần {plan.week}</span>
                 <span>{safeFormat(plan.startDate, 'dd/MM/yyyy')} - {safeFormat(plan.endDate, 'dd/MM/yyyy')}</span>
               </div>
 
@@ -2124,7 +2227,7 @@ function LessonPlanSection({ plans, setPlans, deletePlan, ppctData, classes, bus
             <div className="w-20 h-20 bg-neutral-50 dark:bg-slate-900 rounded-3xl flex items-center justify-center mx-auto mb-6 text-neutral-300 dark:text-slate-700">
               <Plus className="w-10 h-10" />
             </div>
-            <h4 className="text-xl font-bold text-neutral-900 dark:text-white">Chưa có lịch dạy</h4>
+            <h4 className="text-xl font-normal text-neutral-900 dark:text-white">Chưa có lịch dạy</h4>
             <p className="text-sm text-neutral-500 dark:text-slate-400 mt-2">Bắt đầu bằng cách tạo một lịch báo giảng mới cho tuần này.</p>
           </div>
         )}
@@ -2137,12 +2240,14 @@ function ClassJournalSection({
   plans, 
   setPlans, 
   deletePlan,
-  businessInfo 
+  businessInfo,
+  setActiveTab
 }: { 
   plans: LessonPlan[], 
   setPlans: (p: LessonPlan[]) => void,
   deletePlan: (id: string) => void,
-  businessInfo: BusinessInfo
+  businessInfo: BusinessInfo,
+  setActiveTab: (t: string) => void
 }) {
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
   const selectedPlan = useMemo(() => plans.find(p => p.id === selectedPlanId), [plans, selectedPlanId]);
@@ -2334,6 +2439,16 @@ function ClassJournalSection({
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
+      <button 
+        onClick={() => setActiveTab('dashboard')}
+        className="flex items-center gap-2 text-neutral-500 hover:text-primary transition-all text-sm font-bold group mb-4"
+      >
+        <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+          <ArrowLeft className="w-4 h-4" />
+        </div>
+        Quay lại trang chủ
+      </button>
+
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">Sổ đầu bài</h2>
@@ -2480,6 +2595,16 @@ function StudentManagementSection({
         animate={{ opacity: 1, y: 0 }}
         className="space-y-6"
       >
+        <button 
+          onClick={() => setActiveTab('dashboard')}
+          className="flex items-center gap-2 text-neutral-500 hover:text-primary transition-all text-sm font-bold group mb-4"
+        >
+          <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+            <ArrowLeft className="w-4 h-4" />
+          </div>
+          Quay lại trang chủ
+        </button>
+
         <header>
           <h2 className="text-2xl font-bold text-[#1F2937]">Quản lý Học sinh</h2>
           <p className="text-[#6B7280] mt-1">Chọn chức năng bạn muốn thực hiện.</p>
@@ -2813,6 +2938,16 @@ function StudentManagementSection({
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
+      <button 
+        onClick={() => setActiveTab('students_group')}
+        className="flex items-center gap-2 text-neutral-500 hover:text-primary transition-all text-sm font-bold group mb-4"
+      >
+        <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+          <ArrowLeft className="w-4 h-4" />
+        </div>
+        Quay lại
+      </button>
+
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">Quản lý Học sinh</h2>
@@ -2852,28 +2987,28 @@ function StudentManagementSection({
           <table className="w-full text-left border-collapse min-w-[1000px]">
             <thead>
               <tr className="bg-neutral-50 dark:bg-slate-800/50 border-b border-neutral-200 dark:border-slate-800">
-                <th className="px-6 py-4 text-[11px] font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-wider w-16 text-center">STT</th>
-                <th className="px-6 py-4 text-[11px] font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Họ và tên</th>
-                <th className="px-6 py-4 text-[11px] font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-wider w-24 text-center">Lớp</th>
-                <th className="px-6 py-4 text-[11px] font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Trường</th>
-                <th className="px-6 py-4 text-[11px] font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Phụ huynh</th>
-                <th className="px-6 py-4 text-[11px] font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-wider">SĐT</th>
-                <th className="px-6 py-4 text-[11px] font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Môn đăng ký</th>
-                <th className="px-6 py-4 text-[11px] font-bold text-neutral-500 dark:text-slate-400 uppercase tracking-wider w-32 text-center">Thao tác</th>
+                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider w-16 text-center">STT</th>
+                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Họ và tên</th>
+                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider w-24 text-center">Lớp</th>
+                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Trường</th>
+                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Phụ huynh</th>
+                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider">SĐT</th>
+                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider">Môn đăng ký</th>
+                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-wider w-32 text-center">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
               {students.map((student, idx) => (
                 <tr key={student.id} className="hover:bg-neutral-50 dark:hover:bg-slate-800/50 transition-colors group">
                   <td className="px-6 py-4 text-sm text-neutral-500 dark:text-slate-400 text-center font-mono">{student.stt || idx + 1}</td>
-                  <td className="px-6 py-4 text-sm font-bold text-neutral-900 dark:text-white">{student.name}</td>
+                  <td className="px-6 py-4 text-sm font-normal text-neutral-900 dark:text-white">{student.name}</td>
                   <td className="px-6 py-4 text-center">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-bold border border-primary/20">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-normal border border-primary/20">
                       {student.grade}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-neutral-600 dark:text-slate-400">{student.school}</td>
-                  <td className="px-6 py-4 text-sm text-neutral-600 dark:text-slate-400 font-medium">{student.parentName}</td>
+                  <td className="px-6 py-4 text-sm text-neutral-600 dark:text-slate-400 font-normal">{student.parentName}</td>
                   <td className="px-6 py-4 text-sm text-neutral-600 dark:text-slate-400 font-mono">{student.phone}</td>
                   <td className="px-6 py-4 text-sm text-neutral-600 dark:text-slate-400">{student.subject}</td>
                   <td className="px-6 py-4 text-sm text-center">
@@ -3038,10 +3173,19 @@ function LoginPage({ onLogin, users, darkMode, setDarkMode }: { onLogin: (user: 
   );
 }
 
-function UserManagementSection({ users, setUsers }: { users: UserAccount[], setUsers: React.Dispatch<React.SetStateAction<UserAccount[]>> }) {
+function UserManagementSection({ users, setUsers, setActiveTab }: { users: UserAccount[], setUsers: React.Dispatch<React.SetStateAction<UserAccount[]>>, setActiveTab: (t: string) => void }) {
   const [isAdding, setIsAdding] = useState(false);
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
-  const [formData, setFormData] = useState({ email: '', password: '', role: 'user' as const, expiryDate: '' });
+  const [formData, setFormData] = useState({ 
+    email: '', 
+    password: '', 
+    role: 'user' as const, 
+    expiryDate: '',
+    businessName: '',
+    businessAddress: '',
+    businessLocation: '',
+    businessOwner: ''
+  });
 
   const handleSaveUser = (e: React.FormEvent) => {
     e.preventDefault();
@@ -3057,7 +3201,16 @@ function UserManagementSection({ users, setUsers }: { users: UserAccount[], setU
       setUsers([...users, user]);
       setIsAdding(false);
     }
-    setFormData({ email: '', password: '', role: 'user', expiryDate: '' });
+    setFormData({ 
+      email: '', 
+      password: '', 
+      role: 'user', 
+      expiryDate: '',
+      businessName: '',
+      businessAddress: '',
+      businessLocation: '',
+      businessOwner: ''
+    });
   };
 
   const startEdit = (user: UserAccount) => {
@@ -3066,7 +3219,11 @@ function UserManagementSection({ users, setUsers }: { users: UserAccount[], setU
       email: user.email,
       password: user.password,
       role: user.role,
-      expiryDate: user.expiryDate || ''
+      expiryDate: user.expiryDate || '',
+      businessName: user.businessName || '',
+      businessAddress: user.businessAddress || '',
+      businessLocation: user.businessLocation || '',
+      businessOwner: user.businessOwner || ''
     });
     setIsAdding(false);
   };
@@ -3074,7 +3231,16 @@ function UserManagementSection({ users, setUsers }: { users: UserAccount[], setU
   const cancelForm = () => {
     setIsAdding(false);
     setEditingUser(null);
-    setFormData({ email: '', password: '', role: 'user', expiryDate: '' });
+    setFormData({ 
+      email: '', 
+      password: '', 
+      role: 'user', 
+      expiryDate: '',
+      businessName: '',
+      businessAddress: '',
+      businessLocation: '',
+      businessOwner: ''
+    });
   };
 
   const deleteUser = (id: string) => {
@@ -3087,6 +3253,16 @@ function UserManagementSection({ users, setUsers }: { users: UserAccount[], setU
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
+      <button 
+        onClick={() => setActiveTab('dashboard')}
+        className="flex items-center gap-2 text-neutral-500 hover:text-primary transition-all text-sm font-bold group mb-4"
+      >
+        <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+          <ArrowLeft className="w-4 h-4" />
+        </div>
+        Quay lại trang chủ
+      </button>
+
       <header className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">Quản lý Tài khoản</h2>
@@ -3107,39 +3283,39 @@ function UserManagementSection({ users, setUsers }: { users: UserAccount[], setU
           animate={{ opacity: 1, y: 0 }}
           className="saas-card p-8"
         >
-          <h3 className="text-lg font-black text-neutral-900 dark:text-white mb-6 flex items-center gap-2">
+          <h3 className="text-lg font-normal text-neutral-900 dark:text-white mb-6 flex items-center gap-2">
             <div className="w-2 h-6 bg-primary rounded-full" />
             {editingUser ? 'Chỉnh sửa tài khoản' : 'Thêm tài khoản mới'}
           </h3>
           <form onSubmit={handleSaveUser} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="space-y-2">
-              <label className="block text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest ml-1">Tài khoản</label>
+              <label className="block text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest ml-1">Tài khoản</label>
               <input
                 type="text"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none dark:text-white transition-all font-bold"
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none dark:text-white transition-all font-normal"
                 placeholder="Email hoặc tên đăng nhập"
                 required
               />
             </div>
             <div className="space-y-2">
-              <label className="block text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest ml-1">Mật khẩu</label>
+              <label className="block text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest ml-1">Mật khẩu</label>
               <input
                 type="password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none dark:text-white transition-all font-bold"
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none dark:text-white transition-all font-normal"
                 placeholder="••••••••"
                 required
               />
             </div>
             <div className="space-y-2">
-              <label className="block text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest ml-1">Quyền hạn</label>
+              <label className="block text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest ml-1">Quyền hạn</label>
               <select
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'user' })}
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none dark:text-white transition-all font-bold appearance-none"
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none dark:text-white transition-all font-normal appearance-none"
               >
                 <option value="user">Người dùng</option>
                 <option value="admin">Quản trị viên</option>
@@ -3152,6 +3328,46 @@ function UserManagementSection({ users, setUsers }: { users: UserAccount[], setU
                 value={formData.expiryDate}
                 onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
                 className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none dark:text-white transition-all font-bold"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest ml-1">Tên cơ sở kinh doanh</label>
+              <input
+                type="text"
+                value={formData.businessName}
+                onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none dark:text-white transition-all font-normal"
+                placeholder="Tên cơ sở"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest ml-1">Địa chỉ</label>
+              <input
+                type="text"
+                value={formData.businessAddress}
+                onChange={(e) => setFormData({ ...formData, businessAddress: e.target.value })}
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none dark:text-white transition-all font-normal"
+                placeholder="Địa chỉ chi tiết"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest ml-1">Nơi kinh doanh</label>
+              <input
+                type="text"
+                value={formData.businessLocation}
+                onChange={(e) => setFormData({ ...formData, businessLocation: e.target.value })}
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none dark:text-white transition-all font-normal"
+                placeholder="Thành phố, Tỉnh"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest ml-1">Chủ hộ kinh doanh</label>
+              <input
+                type="text"
+                value={formData.businessOwner}
+                onChange={(e) => setFormData({ ...formData, businessOwner: e.target.value })}
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none dark:text-white transition-all font-normal"
+                placeholder="Tên chủ hộ"
               />
             </div>
             <div className="md:col-span-2 lg:col-span-4 flex justify-end gap-3 mt-4 pt-6 border-t border-neutral-100 dark:border-slate-800">
@@ -3178,11 +3394,12 @@ function UserManagementSection({ users, setUsers }: { users: UserAccount[], setU
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-neutral-50 dark:bg-slate-800/50 border-b border-neutral-200 dark:border-slate-800">
-                <th className="px-6 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest">Tài khoản</th>
-                <th className="px-6 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest">Quyền hạn</th>
-                <th className="px-6 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest">Ngày tạo</th>
-                <th className="px-6 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest">Hạn sử dụng</th>
-                <th className="px-6 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest text-right">Thao tác</th>
+                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest">Tài khoản</th>
+                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest">Quyền hạn</th>
+                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest">Ngày tạo</th>
+                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest">Thông tin kinh doanh</th>
+                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest">Hạn sử dụng</th>
+                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
@@ -3194,8 +3411,8 @@ function UserManagementSection({ users, setUsers }: { users: UserAccount[], setU
                         {user.email?.charAt(0).toUpperCase() || '?'}
                       </div>
                       <div className="flex flex-col">
-                        <span className="font-bold text-neutral-900 dark:text-white">{user.email || 'No Email'}</span>
-                        <span className="text-[10px] text-neutral-400 dark:text-slate-500 font-bold uppercase tracking-wider">ID: {user.id.slice(0, 8)}</span>
+                        <span className="font-normal text-neutral-900 dark:text-white">{user.email || 'No Email'}</span>
+                        <span className="text-[10px] text-neutral-400 dark:text-slate-500 font-normal uppercase tracking-wider">ID: {user.id.slice(0, 8)}</span>
                       </div>
                     </div>
                   </td>
@@ -3211,6 +3428,18 @@ function UserManagementSection({ users, setUsers }: { users: UserAccount[], setU
                   </td>
                   <td className="px-6 py-4 text-xs font-bold text-neutral-500 dark:text-slate-400 font-mono">
                     {formatDate(user.createdAt)}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col gap-1">
+                      {user.businessName && <span className="text-xs font-bold text-neutral-900 dark:text-white">{user.businessName}</span>}
+                      {user.businessOwner && <span className="text-[10px] text-neutral-500 dark:text-slate-400">Chủ: {user.businessOwner}</span>}
+                      {(user.businessAddress || user.businessLocation) && (
+                        <div className="flex items-center gap-1 text-[10px] text-neutral-400 dark:text-slate-500">
+                          <MapPin className="w-3 h-3" />
+                          <span>{[user.businessAddress, user.businessLocation].filter(Boolean).join(', ')}</span>
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-xs">
                     {user.expiryDate ? (
@@ -3292,6 +3521,44 @@ function FinancialManagementSection({
     }
   }, [currentUser]);
 
+  const subNavItems = [
+    { id: 'classes', label: 'Cấu hình lớp học', icon: GraduationCap },
+    { id: 'ppct', label: 'Phân phối chương trình', icon: BookOpen },
+    { id: 'lesson-plan', label: 'Lịch báo giảng', icon: CalendarDays },
+    { id: 'journal', label: 'Sổ đầu bài', icon: ClipboardList },
+  ];
+
+  if (currentUser?.role === 'admin') {
+    subNavItems.push({ id: 'users', label: 'Tạo tài khoản', icon: UserPlus });
+  }
+
+  const renderSubNav = () => (
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 pb-6 border-b border-neutral-100 dark:border-slate-800">
+      <button 
+        onClick={() => setActiveTab('dashboard')}
+        className="flex items-center gap-2 text-neutral-500 hover:text-primary transition-all text-sm font-bold group"
+      >
+        <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+          <ArrowLeft className="w-4 h-4" />
+        </div>
+        Quay lại trang chủ
+      </button>
+      
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide w-full sm:w-auto">
+        {subNavItems.map(item => (
+          <button
+            key={item.id}
+            onClick={() => setActiveTab(item.id)}
+            className="flex items-center gap-2 px-4 py-2 bg-neutral-50 dark:bg-slate-800/50 hover:bg-primary/10 hover:text-primary rounded-xl transition-all text-[11px] font-black uppercase tracking-wider whitespace-nowrap border border-transparent hover:border-primary/20"
+          >
+            <item.icon className="w-3.5 h-3.5" />
+            {item.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   if (activeSubTab === 'finance_group') {
     return (
       <motion.div 
@@ -3299,9 +3566,10 @@ function FinancialManagementSection({
         animate={{ opacity: 1, y: 0 }}
         className="space-y-8"
       >
+        {renderSubNav()}
         <header>
-          <h2 className="text-3xl font-black text-neutral-900 dark:text-white tracking-tight">Quản lý Tài chính</h2>
-          <p className="text-neutral-500 dark:text-slate-400 mt-2 text-lg font-medium">Hệ thống quản lý thu chi và báo cáo thuế hộ kinh doanh.</p>
+          <h2 className="text-3xl font-normal text-neutral-900 dark:text-white tracking-tight">Quản lý Tài chính</h2>
+          <p className="text-neutral-500 dark:text-slate-400 mt-2 text-lg font-normal">Hệ thống quản lý thu chi và báo cáo thuế hộ kinh doanh.</p>
         </header>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -3314,9 +3582,9 @@ function FinancialManagementSection({
               <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform shadow-sm">
                 <Settings className="w-8 h-8" />
               </div>
-              <h3 className="text-xl font-black text-neutral-900 dark:text-white mb-3 tracking-tight">Cấu hình & Tải dữ liệu</h3>
-              <p className="text-neutral-500 dark:text-slate-400 leading-relaxed font-medium text-sm">Thiết lập thông tin báo cáo, người ký và nhập dữ liệu thu chi từ file Excel.</p>
-              <div className="mt-6 flex items-center text-primary font-black text-xs uppercase tracking-widest">
+              <h3 className="text-xl font-normal text-neutral-900 dark:text-white mb-3 tracking-tight">Cấu hình & Tải dữ liệu</h3>
+              <p className="text-neutral-500 dark:text-slate-400 leading-relaxed font-normal text-sm">Thiết lập thông tin báo cáo, người ký và nhập dữ liệu thu chi từ file Excel.</p>
+              <div className="mt-6 flex items-center text-primary font-normal text-xs uppercase tracking-widest">
                 Bắt đầu ngay <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
               </div>
             </div>
@@ -3331,9 +3599,9 @@ function FinancialManagementSection({
               <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 mb-6 group-hover:scale-110 transition-transform shadow-sm">
                 <BarChart3 className="w-8 h-8" />
               </div>
-              <h3 className="text-xl font-black text-neutral-900 dark:text-white mb-3 tracking-tight">Sổ chi tiết doanh thu</h3>
-              <p className="text-neutral-500 dark:text-slate-400 leading-relaxed font-medium text-sm">Xuất sổ S1a-HKD theo Thông tư 152/2025/TT-BTC phục vụ quyết toán thuế.</p>
-              <div className="mt-6 flex items-center text-emerald-600 font-black text-xs uppercase tracking-widest">
+              <h3 className="text-xl font-normal text-neutral-900 dark:text-white mb-3 tracking-tight">Sổ chi tiết doanh thu</h3>
+              <p className="text-neutral-500 dark:text-slate-400 leading-relaxed font-normal text-sm">Xuất sổ S1a-HKD theo Thông tư 152/2025/TT-BTC phục vụ quyết toán thuế.</p>
+              <div className="mt-6 flex items-center text-emerald-600 font-normal text-xs uppercase tracking-widest">
                 Xuất báo cáo <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
               </div>
             </div>
@@ -3348,9 +3616,9 @@ function FinancialManagementSection({
               <div className="w-16 h-16 bg-orange-500/10 rounded-2xl flex items-center justify-center text-orange-600 mb-6 group-hover:scale-110 transition-transform shadow-sm">
                 <Receipt className="w-8 h-8" />
               </div>
-              <h3 className="text-xl font-black text-neutral-900 dark:text-white mb-3 tracking-tight">Phiếu Thu - Phiếu Chi</h3>
-              <p className="text-neutral-500 dark:text-slate-400 leading-relaxed font-medium text-sm">Tự động tạo và in hàng loạt phiếu thu, phiếu chi tiền mặt chuyên nghiệp.</p>
-              <div className="mt-6 flex items-center text-orange-600 font-black text-xs uppercase tracking-widest">
+              <h3 className="text-xl font-normal text-neutral-900 dark:text-white mb-3 tracking-tight">Phiếu Thu - Phiếu Chi</h3>
+              <p className="text-neutral-500 dark:text-slate-400 leading-relaxed font-normal text-sm">Tự động tạo và in hàng loạt phiếu thu, phiếu chi tiền mặt chuyên nghiệp.</p>
+              <div className="mt-6 flex items-center text-orange-600 font-normal text-xs uppercase tracking-widest">
                 Tạo chứng từ <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
               </div>
             </div>
@@ -3579,7 +3847,7 @@ function FinancialManagementSection({
                       new Paragraph({
                         children: [
                           new TextRun({ text: "Mã số thuế: ", bold: true, size: 24 }),
-                          new TextRun({ text: businessInfo.taxId, size: 24 }),
+                          new TextRun({ text: config.taxCode || businessInfo.taxId || "................", size: 24 }),
                         ],
                       }),
                     ],
@@ -3770,6 +4038,12 @@ function FinancialManagementSection({
                     children: [
                       new TextRun({ text: "Địa chỉ: ", bold: true, size: 20 }),
                       new TextRun({ text: businessInfo.address || "................", size: 20 }),
+                    ],
+                  }),
+                  new Paragraph({
+                    children: [
+                      new TextRun({ text: "Mã số thuế: ", bold: true, size: 20 }),
+                      new TextRun({ text: config.taxCode || businessInfo.taxId || "................", size: 20 }),
                     ],
                   }),
                 ],
@@ -4003,6 +4277,12 @@ function FinancialManagementSection({
                     children: [
                       new TextRun({ text: "Địa chỉ: ", bold: true, size: 20 }),
                       new TextRun({ text: businessInfo.address || "................", size: 20 }),
+                    ],
+                  }),
+                  new Paragraph({
+                    children: [
+                      new TextRun({ text: "Mã số thuế: ", bold: true, size: 20 }),
+                      new TextRun({ text: config.taxCode || businessInfo.taxId || "................", size: 20 }),
                     ],
                   }),
                 ],
@@ -4287,6 +4567,7 @@ function FinancialManagementSection({
 
   return (
     <div className="space-y-8">
+      {renderSubNav()}
       <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div>
           <h2 className="text-3xl font-bold text-neutral-900 dark:text-white tracking-tight">Quản lý Tài chính</h2>
@@ -4377,11 +4658,21 @@ function FinancialManagementSection({
                   placeholder="Họ và tên thủ quỹ"
                 />
               </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Mã số thuế</label>
+                <input 
+                  type="text" 
+                  value={config.taxCode}
+                  onChange={(e) => setConfig({ ...config, taxCode: e.target.value })}
+                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all"
+                  placeholder="Nhập mã số thuế"
+                />
+              </div>
             </div>
             <div className="mt-8 flex justify-end pt-6 border-t border-neutral-100 dark:border-slate-800">
               <button 
                 onClick={() => {
-                  if (!config.reportPeriod || !config.receiptDate || !config.paymentDate || !config.preparer || !config.treasurer) {
+                  if (!config.reportPeriod || !config.receiptDate || !config.paymentDate || !config.preparer || !config.treasurer || !config.taxCode) {
                     alert("Vui lòng điền đầy đủ thông tin cấu hình.");
                     return;
                   }
@@ -4591,28 +4882,31 @@ function FinancialManagementSection({
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white dark:bg-slate-900 p-12 rounded-[2.5rem] border border-neutral-200 dark:border-slate-800 text-center space-y-8 shadow-sm"
+          className="space-y-8"
         >
-          <div className="w-24 h-24 bg-indigo-50 dark:bg-indigo-900/30 rounded-3xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 mx-auto shadow-inner">
-            <FileSpreadsheet className="w-10 h-10" />
-          </div>
-          <div className="max-w-xl mx-auto space-y-3">
-            <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">Xuất Sổ chi tiết doanh thu</h3>
-            <p className="text-neutral-500 dark:text-slate-400 text-lg leading-relaxed">
-              Hệ thống sẽ tự động tổng hợp dữ liệu từ các file Excel đã tải lên để tạo Sổ doanh thu (Mẫu S1a-HKD) theo đúng quy định của Bộ Tài chính.
-            </p>
-          </div>
-          <div className="pt-4">
-            <button
-              onClick={exportS1aHKD}
-              className="inline-flex items-center gap-3 px-10 py-4 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 dark:shadow-none font-bold text-lg group"
-            >
-              <Download className="w-6 h-6 group-hover:translate-y-0.5 transition-transform" /> 
-              Tải xuống Sổ doanh thu (.docx)
-            </button>
-          </div>
-          <div className="text-xs text-neutral-400 dark:text-slate-500 font-medium">
-            Định dạng Word (.docx) - Tương thích với Microsoft Word và Google Docs
+          {renderSubNav()}
+          <div className="bg-white dark:bg-slate-900 p-12 rounded-[2.5rem] border border-neutral-200 dark:border-slate-800 text-center space-y-8 shadow-sm">
+            <div className="w-24 h-24 bg-indigo-50 dark:bg-indigo-900/30 rounded-3xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 mx-auto shadow-inner">
+              <FileSpreadsheet className="w-10 h-10" />
+            </div>
+            <div className="max-w-xl mx-auto space-y-3">
+              <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">Xuất Sổ chi tiết doanh thu</h3>
+              <p className="text-neutral-500 dark:text-slate-400 text-lg leading-relaxed">
+                Hệ thống sẽ tự động tổng hợp dữ liệu từ các file Excel đã tải lên để tạo Sổ doanh thu (Mẫu S1a-HKD) theo đúng quy định của Bộ Tài chính.
+              </p>
+            </div>
+            <div className="pt-4">
+              <button
+                onClick={exportS1aHKD}
+                className="inline-flex items-center gap-3 px-10 py-4 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 dark:shadow-none font-bold text-lg group"
+              >
+                <Download className="w-6 h-6 group-hover:translate-y-0.5 transition-transform" /> 
+                Tải xuống Sổ doanh thu (.docx)
+              </button>
+            </div>
+            <div className="text-xs text-neutral-400 dark:text-slate-500 font-medium">
+              Định dạng Word (.docx) - Tương thích với Microsoft Word và Google Docs
+            </div>
           </div>
         </motion.div>
       )}
@@ -4621,28 +4915,31 @@ function FinancialManagementSection({
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white dark:bg-slate-900 p-12 rounded-[2.5rem] border border-neutral-200 dark:border-slate-800 text-center space-y-8 shadow-sm"
+          className="space-y-8"
         >
-          <div className="w-24 h-24 bg-emerald-50 dark:bg-emerald-900/30 rounded-3xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 mx-auto shadow-inner">
-            <FileText className="w-10 h-10" />
-          </div>
-          <div className="max-w-xl mx-auto space-y-3">
-            <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">Xuất Phiếu thu & Phiếu chi</h3>
-            <p className="text-neutral-500 dark:text-slate-400 text-lg leading-relaxed">
-              Tạo hàng loạt phiếu thu và phiếu chi tiền mặt từ danh sách dữ liệu. Mỗi trang Word sẽ chứa 2 phiếu để tiết kiệm giấy in.
-            </p>
-          </div>
-          <div className="flex flex-wrap justify-center gap-6 pt-4">
-            <button
-              onClick={exportAllVouchers}
-              className="inline-flex items-center gap-3 px-10 py-4 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-200 dark:shadow-none font-bold text-lg group"
-            >
-              <Download className="w-6 h-6 group-hover:translate-y-0.5 transition-transform" /> 
-              Xuất toàn bộ phiếu (.docx)
-            </button>
-          </div>
-          <div className="text-xs text-neutral-400 dark:text-slate-500 font-medium">
-            Hỗ trợ in ấn hàng loạt - Tự động đánh số chứng từ
+          {renderSubNav()}
+          <div className="bg-white dark:bg-slate-900 p-12 rounded-[2.5rem] border border-neutral-200 dark:border-slate-800 text-center space-y-8 shadow-sm">
+            <div className="w-24 h-24 bg-emerald-50 dark:bg-emerald-900/30 rounded-3xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 mx-auto shadow-inner">
+              <FileText className="w-10 h-10" />
+            </div>
+            <div className="max-w-xl mx-auto space-y-3">
+              <h3 className="text-2xl font-bold text-neutral-900 dark:text-white">Xuất Phiếu thu & Phiếu chi</h3>
+              <p className="text-neutral-500 dark:text-slate-400 text-lg leading-relaxed">
+                Tạo hàng loạt phiếu thu và phiếu chi tiền mặt từ danh sách dữ liệu. Mỗi trang Word sẽ chứa 2 phiếu để tiết kiệm giấy in.
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-6 pt-4">
+              <button
+                onClick={exportAllVouchers}
+                className="inline-flex items-center gap-3 px-10 py-4 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-200 dark:shadow-none font-bold text-lg group"
+              >
+                <Download className="w-6 h-6 group-hover:translate-y-0.5 transition-transform" /> 
+                Xuất toàn bộ phiếu (.docx)
+              </button>
+            </div>
+            <div className="text-xs text-neutral-400 dark:text-slate-500 font-medium">
+              Hỗ trợ in ấn hàng loạt - Tự động đánh số chứng từ
+            </div>
           </div>
         </motion.div>
       )}

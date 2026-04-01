@@ -72,6 +72,7 @@ export interface FinancialConfig {
   paymentDate: string;
   preparer: string;
   treasurer: string;
+  taxCode: string;
 }
 
 export interface IncomeItem {
