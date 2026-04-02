@@ -27,11 +27,8 @@ import {
   ArrowRight,
   ArrowLeft,
   Check,
-  Menu,
   X,
-  LayoutDashboard,
   ChevronDown,
-  ChevronUp,
   BarChart3,
   Receipt,
   LogOut,
@@ -312,25 +309,8 @@ export default function App() {
   });
 
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [isProgramOpen, setIsProgramOpen] = useState(true);
-  const [isStudentsOpen, setIsStudentsOpen] = useState(true);
-  const [isFinanceOpen, setIsFinanceOpen] = useState(true);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [tabOrder, setTabOrder] = useState<string[]>(['dashboard', 'business', 'program', 'students_group', 'finance_group', 'users']);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
-
-  const moveTab = (id: string, direction: 'up' | 'down') => {
-    const index = tabOrder.indexOf(id);
-    if (index === -1) return;
-    const newOrder = [...tabOrder];
-    if (direction === 'up' && index > 0) {
-      [newOrder[index], newOrder[index - 1]] = [newOrder[index - 1], newOrder[index]];
-    } else if (direction === 'down' && index < newOrder.length - 1) {
-      [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
-    }
-    setTabOrder(newOrder);
-  };
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo>({
     name: '',
     address: '',
@@ -367,7 +347,7 @@ export default function App() {
       setFinancialConfig({ reportPeriod: '', receiptDate: '', paymentDate: '', preparer: '', treasurer: '', taxCode: '' });
       setIncomeData([]);
       setExpenseData([]);
-      setTabOrder(['dashboard', 'business', 'program', 'students_group', 'finance_group', 'users']);
+      // Reset other states
       setIsDataLoaded(true);
       return;
     }
@@ -399,7 +379,6 @@ export default function App() {
         
         if (data.lessonPlans) setLessonPlans(data.lessonPlans);
         if (data.financialConfig) setFinancialConfig(data.financialConfig);
-        if (data.tabOrder) setTabOrder(data.tabOrder);
       } catch (e) {
         console.error("Failed to parse saved data", e);
       }
@@ -419,7 +398,6 @@ export default function App() {
       setFinancialConfig({ reportPeriod: '', receiptDate: '', paymentDate: '', preparer: '', treasurer: '', taxCode: '' });
       setIncomeData([]);
       setExpenseData([]);
-      setTabOrder(['dashboard', 'business', 'program', 'students_group', 'finance_group', 'users']);
     }
     setIsDataLoaded(true);
   }, [currentUser?.id]);
@@ -437,11 +415,10 @@ export default function App() {
       students, 
       financialConfig, 
       incomeData, 
-      expenseData,
-      tabOrder 
+      expenseData
     };
     localStorage.setItem(userStorageKey, JSON.stringify(data));
-  }, [currentUser?.id, businessInfo, classes, ppctData, lessonPlans, students, financialConfig, incomeData, expenseData, tabOrder, isDataLoaded]);
+  }, [currentUser?.id, businessInfo, classes, ppctData, lessonPlans, students, financialConfig, incomeData, expenseData, isDataLoaded]);
 
   // Save users to localStorage (global)
   useEffect(() => {
@@ -489,61 +466,6 @@ export default function App() {
       }
     }
   }, [users, currentUser?.id]);
-
-  const tabs = [
-    { id: 'dashboard', label: 'Tổng quát', icon: LayoutDashboard },
-    { id: 'business', label: 'Cấu hình Hộ kinh doanh', icon: Building2 },
-    { 
-      id: 'program', 
-      label: 'Quản lý Chương trình dạy', 
-      icon: BookOpen,
-      isOpen: isProgramOpen,
-      setIsOpen: setIsProgramOpen,
-      subTabs: [
-        { id: 'classes', label: 'Cấu hình Lớp học', icon: GraduationCap },
-        { id: 'ppct', label: 'Phân phối Chương trình', icon: BookOpen },
-        { id: 'lesson-plan', label: 'Lịch báo giảng', icon: CalendarDays },
-        { id: 'journal', label: 'Sổ đầu bài', icon: ClipboardList },
-      ]
-    },
-    { 
-      id: 'students_group', 
-      label: 'Quản lý Học sinh', 
-      icon: Users,
-      isOpen: isStudentsOpen,
-      setIsOpen: setIsStudentsOpen,
-      subTabs: [
-        { id: 'students-list', label: 'Tải danh sách học sinh', icon: Upload },
-        { id: 'students-export', label: 'Xuất đơn đăng kí học thêm', icon: FileText },
-      ]
-    },
-    { 
-      id: 'finance_group', 
-      label: 'Quản lý Tài chính', 
-      icon: DollarSign,
-      isOpen: isFinanceOpen,
-      setIsOpen: setIsFinanceOpen,
-      subTabs: [
-        { id: 'finance-config', label: 'Cấu hình và tải nội dung thu, chi', icon: Settings },
-        { id: 'finance-ledger', label: 'Xuất sổ doanh thu', icon: FileSpreadsheet },
-        { id: 'finance-vouchers', label: 'Xuất phiếu thu, chi', icon: FileText },
-      ]
-    },
-    { id: 'users', label: 'Quản lý Tài khoản', icon: Users, adminOnly: true },
-  ];
-
-  const filteredTabs = tabs
-    .filter(tab => {
-      if (currentUser?.role === 'admin') return true;
-      if (tab.adminOnly) return false;
-      // User can access: Dashboard, Business, Program, Students, Finance
-      return ['dashboard', 'business', 'program', 'students_group', 'finance_group'].includes(tab.id);
-    })
-    .sort((a, b) => {
-      const indexA = tabOrder.indexOf(a.id);
-      const indexB = tabOrder.indexOf(b.id);
-      return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
-    });
 
   const monthlyRevenue = useMemo(() => {
     return incomeData.reduce((sum, item) => sum + item.amount, 0);
@@ -655,202 +577,45 @@ export default function App() {
       <div className="flex flex-1 pt-20 overflow-hidden">
         {/* Welcome Modal */}
         <AnimatePresence>
-        {showWelcomeModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl max-w-2xl w-full p-8 lg:p-12 border border-neutral-200 dark:border-slate-800 relative overflow-hidden"
-            >
-              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-green-500 to-orange-500" />
-              
-              <div className="text-center space-y-6">
-                <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-4">
-                  <Sparkles className="w-10 h-10 text-primary animate-pulse" />
-                </div>
+          {showWelcomeModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl max-w-2xl w-full p-8 lg:p-12 border border-neutral-200 dark:border-slate-800 relative overflow-hidden"
+              >
+                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-green-500 to-orange-500" />
                 
-                <h2 className="text-2xl lg:text-3xl font-normal text-neutral-900 dark:text-white leading-tight">
-                  Chào mừng Quý Thầy Cô đến với <span className="text-primary">HOÀNG GIA</span>
-                </h2>
-                <p className="text-primary font-normal text-xl">admin</p>
-                
-                <div className="text-neutral-600 dark:text-slate-300 leading-relaxed text-lg font-normal">
-                  Hệ thống được thiết kế tối ưu dành riêng cho các thầy cô và trung tâm dạy thêm. Bao gồm các chương trình: 
-                  <span className="text-blue-600 dark:text-blue-400 mx-1">Quản lý học sinh</span>, 
-                  <span className="text-green-600 dark:text-green-400 mx-1">Quản lý chương trình dạy</span>, 
-                  <span className="text-orange-600 dark:text-orange-400 mx-1">Quản lý tài chính</span>. 
-                  Chúng tôi cung cấp các công cụ mạnh mẽ để quản lý học sinh, chương trình giảng dạy và tài chính, giúp Quý Thầy Cô tập trung hoàn toàn vào sứ mệnh truyền đạt tri thức.
-                </div>
+                <div className="text-center space-y-6">
+                  <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                    <Sparkles className="w-10 h-10 text-primary animate-pulse" />
+                  </div>
+                  
+                  <h2 className="text-2xl lg:text-3xl font-normal text-neutral-900 dark:text-white leading-tight">
+                    Chào mừng Quý Thầy Cô đến với <span className="text-primary">HOÀNG GIA</span>
+                  </h2>
+                  <p className="text-primary font-normal text-xl">admin</p>
+                  
+                  <div className="text-neutral-600 dark:text-slate-300 leading-relaxed text-lg font-normal">
+                    Hệ thống được thiết kế tối ưu dành riêng cho các thầy cô và trung tâm dạy thêm. Bao gồm các chương trình: 
+                    <span className="text-blue-600 dark:text-blue-400 mx-1">Quản lý học sinh</span>, 
+                    <span className="text-green-600 dark:text-green-400 mx-1">Quản lý chương trình dạy</span>, 
+                    <span className="text-orange-600 dark:text-orange-400 mx-1">Quản lý tài chính</span>. 
+                    Chúng tôi cung cấp các công cụ mạnh mẽ để quản lý học sinh, chương trình giảng dạy và tài chính, giúp Quý Thầy Cô tập trung hoàn toàn vào sứ mệnh truyền đạt tri thức.
+                  </div>
 
-                <button
-                  onClick={() => setShowWelcomeModal(false)}
-                  className="mt-8 px-10 py-4 bg-primary text-white rounded-2xl font-bold hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 active:scale-95"
-                >
-                  Bắt đầu làm việc
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-      {/* Mobile Menu Toggle */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 bg-white dark:bg-slate-900 border-b border-neutral-200 dark:border-slate-800 z-50 px-4 py-3 flex items-center justify-between">
-        <h1 className="text-sm font-bold text-primary flex items-center gap-2">
-          <GraduationCap className="w-5 h-5" />
-          HỆ THỐNG QUẢN LÝ HOÀNG GIA
-        </h1>
-        <button 
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 text-neutral-600 dark:text-slate-400 hover:bg-neutral-100 dark:hover:bg-slate-800 rounded-lg"
-        >
-          {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
-      </div>
-
-      {/* Sidebar Overlay */}
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="lg:hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Sidebar */}
-      <aside className={cn(
-        "fixed lg:static inset-y-0 left-0 w-72 bg-white dark:bg-slate-900 border-r border-neutral-200 dark:border-slate-800 flex flex-col z-50 transition-all duration-300 transform lg:translate-x-0 shadow-xl lg:shadow-none",
-        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
-        <div className="p-8 pb-6 hidden lg:block">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary/25">
-              <GraduationCap className="w-6 h-6 text-white" />
-            </div>
-            <div className="leading-tight">
-              <h1 className="text-lg font-normal tracking-tight text-neutral-900 dark:text-white">HOÀNG GIA</h1>
-              <p className="text-[10px] font-normal text-primary uppercase tracking-[0.2em]">Dashboard Pro</p>
-            </div>
-          </div>
-        </div>
-        
-        <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar py-4">
-          {filteredTabs.map((tab, index) => (
-            <div key={tab.id} className="group relative space-y-1">
-              {currentUser?.role === 'admin' && (
-                <div className="absolute -left-2 top-1/2 -translate-y-1/2 flex flex-col opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); moveTab(tab.id, 'up'); }}
-                    disabled={index === 0}
-                    className="p-0.5 text-neutral-400 hover:text-primary disabled:opacity-0"
-                  >
-                    <ChevronUp className="w-3 h-3" />
-                  </button>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); moveTab(tab.id, 'down'); }}
-                    disabled={index === filteredTabs.length - 1}
-                    className="p-0.5 text-neutral-400 hover:text-primary disabled:opacity-0"
-                  >
-                    <ChevronDown className="w-3 h-3" />
-                  </button>
-                </div>
-              )}
-              {tab.subTabs ? (
-                <>
                   <button
-                    onClick={() => {
-                      tab.setIsOpen && tab.setIsOpen(!tab.isOpen);
-                      setActiveTab(tab.id);
-                    }}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group/item",
-                      (tab.id === activeTab || (tab.subTabs && tab.subTabs.some(st => st.id === activeTab)))
-                        ? "bg-primary/5 dark:bg-primary/10 text-primary"
-                        : "text-neutral-600 dark:text-slate-400 hover:bg-neutral-50 dark:hover:bg-slate-800/50 hover:text-neutral-900 dark:hover:text-slate-200"
-                    )}
+                    onClick={() => setShowWelcomeModal(false)}
+                    className="mt-8 px-10 py-4 bg-primary text-white rounded-2xl font-bold hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 active:scale-95"
                   >
-                    <tab.icon className={cn("w-5 h-5 shrink-0 transition-colors", (tab.id === activeTab || (tab.subTabs && tab.subTabs.some(st => st.id === activeTab))) ? "text-primary" : "text-neutral-400 group-hover/item:text-neutral-600 dark:group-hover/item:text-slate-200")} />
-                    <span className="flex-1 text-sm font-bold">{tab.label}</span>
-                    <motion.div
-                      animate={{ rotate: tab.isOpen ? 90 : 0 }}
-                      className="ml-auto"
-                    >
-                      <ChevronRight className="w-4 h-4 opacity-50" />
-                    </motion.div>
+                    Bắt đầu làm việc
                   </button>
-                  <AnimatePresence>
-                    {tab.isOpen && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden pl-12 space-y-1 mt-1"
-                      >
-                        {tab.subTabs.map((subTab) => (
-                          <button
-                            key={subTab.id}
-                            onClick={() => {
-                              setActiveTab(subTab.id);
-                              if (window.innerWidth < 1024) setIsMobileMenuOpen(false);
-                            }}
-                            className={cn(
-                              "w-full flex items-center gap-3 py-2.5 text-[13px] font-normal transition-all duration-200 relative",
-                              activeTab === subTab.id
-                                ? "text-primary"
-                                : "text-neutral-500 dark:text-slate-500 hover:text-neutral-900 dark:hover:text-slate-200"
-                            )}
-                          >
-                            {activeTab === subTab.id && (
-                              <motion.div 
-                                layoutId="subtab-active"
-                                className="absolute -left-4 w-1 h-4 bg-primary rounded-full shadow-[0_0_8px_rgba(22,119,255,0.5)]"
-                              />
-                            )}
-                            {subTab.label}
-                          </button>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </>
-              ) : (
-                <button
-                  onClick={() => {
-                    setActiveTab(tab.id);
-                    if (window.innerWidth < 1024) setIsMobileMenuOpen(false);
-                  }}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group/item",
-                    activeTab === tab.id
-                      ? "bg-primary/5 dark:bg-primary/10 text-primary shadow-sm"
-                      : "text-neutral-600 dark:text-slate-400 hover:bg-neutral-50 dark:hover:bg-slate-800/50 hover:text-neutral-900 dark:hover:text-slate-200"
-                  )}
-                >
-                  <tab.icon className={cn("w-5 h-5 shrink-0 transition-colors", activeTab === tab.id ? "text-primary" : "text-neutral-400 group-hover/item:text-neutral-600 dark:group-hover/item:text-slate-200")} />
-                  <span className="flex-1 text-sm font-bold">{tab.label}</span>
-                  {activeTab === tab.id && (
-                    <motion.div 
-                      layoutId="tab-active-indicator"
-                      className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(22,119,255,0.5)]"
-                    />
-                  )}
-                </button>
-              )}
+                </div>
+              </motion.div>
             </div>
-          ))}
-        </nav>
-        
-        <div className="p-6 border-t border-neutral-100 dark:border-slate-800">
-          <div className="bg-neutral-50 dark:bg-slate-800/50 rounded-2xl p-4 text-center">
-            <p className="text-[10px] text-neutral-400 dark:text-slate-500 font-normal uppercase tracking-widest mb-1">Bản quyền hệ thống</p>
-            <p className="text-[11px] font-normal text-neutral-600 dark:text-slate-300">ĐÀO MINH TÂM</p>
-          </div>
-        </div>
-      </aside>
+          )}
+        </AnimatePresence>
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 bg-bg-light dark:bg-bg-dark transition-colors duration-300">
@@ -1072,6 +837,62 @@ function DashboardSection({
   );
 }
 
+function VerticalImageGallery({ title }: { title: string }) {
+  const images = [
+    `https://picsum.photos/seed/${title}-1/1200/600`,
+    `https://picsum.photos/seed/${title}-2/1200/600`,
+    `https://picsum.photos/seed/${title}-3/1200/600`,
+    `https://picsum.photos/seed/${title}-4/1200/600`,
+  ];
+
+  return (
+    <div className="mt-16 space-y-12">
+      <div className="flex items-center gap-6 mb-8">
+        <div className="h-px flex-1 bg-neutral-200 dark:bg-slate-800" />
+        <h3 className="text-xs font-black text-neutral-400 dark:text-slate-500 uppercase tracking-[0.3em] text-center">
+          Hình ảnh minh họa hệ thống: {title}
+        </h3>
+        <div className="h-px flex-1 bg-neutral-200 dark:bg-slate-800" />
+      </div>
+      <div className="grid grid-cols-1 gap-12">
+        {images.map((src, idx) => (
+          <motion.div
+            key={idx}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.6, delay: idx * 0.1 }}
+            className="saas-card p-0 overflow-hidden group border-none shadow-2xl shadow-black/5 dark:shadow-primary/5"
+          >
+            <div className="aspect-[21/9] relative overflow-hidden">
+              <img 
+                src={src} 
+                alt={`${title} ${idx + 1}`}
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-500" />
+              <div className="absolute inset-0 flex flex-col justify-end p-8 lg:p-12 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
+                <div className="space-y-2">
+                  <span className="inline-block px-3 py-1 bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-full mb-2">
+                    Tính năng {idx + 1}
+                  </span>
+                  <h4 className="text-2xl lg:text-3xl font-black text-white tracking-tight">
+                    {title} - Giao diện chuyên nghiệp {idx + 1}
+                  </h4>
+                  <p className="text-white/70 text-sm lg:text-base max-w-2xl font-medium leading-relaxed">
+                    Hệ thống quản lý HOÀNG GIA cung cấp trải nghiệm người dùng tối ưu, giúp Quý Thầy Cô dễ dàng thao tác và quản lý dữ liệu một cách khoa học, minh bạch và hiệu quả nhất.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function BusinessConfigSection({ info, setInfo, setActiveTab, currentUser }: { info: BusinessInfo, setInfo: (i: BusinessInfo) => void, setActiveTab: (t: string) => void, currentUser: UserAccount | null }) {
   const isReadOnly = currentUser?.role === 'user';
 
@@ -1172,6 +993,7 @@ function BusinessConfigSection({ info, setInfo, setActiveTab, currentUser }: { i
           <p className="text-xs text-neutral-500 dark:text-slate-400">Liên hệ với chúng tôi nếu bạn gặp khó khăn khi cấu hình.</p>
         </div>
       </div>
+      <VerticalImageGallery title="Hộ kinh doanh" />
     </div>
   );
 }
@@ -2662,6 +2484,7 @@ function ProgramManagementSection({
           <ClassJournalSection key="journal" plans={lessonPlans} setPlans={setLessonPlans} deletePlan={deletePlan} businessInfo={businessInfo} setActiveTab={setActiveTab} />
         )}
       </AnimatePresence>
+      <VerticalImageGallery title="Quản lý Chương trình" />
     </div>
   );
 }
@@ -3160,10 +2983,10 @@ function StudentManagementSection({
           </div>
         </div>
       </motion.div>
+      <VerticalImageGallery title="Quản lý Học sinh" />
     </div>
   );
 }
-
 function LoginPage({ onLogin, users, darkMode, setDarkMode }: { onLogin: (user: UserAccount) => void, users: UserAccount[], darkMode: boolean, setDarkMode: (v: boolean) => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -3589,6 +3412,7 @@ function UserManagementSection({ users, setUsers, setActiveTab }: { users: UserA
           </table>
         </div>
       </div>
+      <VerticalImageGallery title="Quản lý Tài khoản" />
     </motion.div>
   );
 }
@@ -3633,15 +3457,10 @@ function FinancialManagementSection({
   }, [currentUser]);
 
   const subNavItems = [
-    { id: 'classes', label: 'Cấu hình lớp học', icon: GraduationCap },
-    { id: 'ppct', label: 'Phân phối chương trình', icon: BookOpen },
-    { id: 'lesson-plan', label: 'Lịch báo giảng', icon: CalendarDays },
-    { id: 'journal', label: 'Sổ đầu bài', icon: ClipboardList },
+    { id: 'finance-config', label: 'Cấu hình & Tải dữ liệu', icon: Settings },
+    { id: 'finance-ledger', label: 'Sổ chi tiết doanh thu', icon: BarChart3 },
+    { id: 'finance-vouchers', label: 'Phiếu Thu - Phiếu Chi', icon: Receipt },
   ];
-
-  if (currentUser?.role === 'admin') {
-    subNavItems.push({ id: 'users', label: 'Tạo tài khoản', icon: UserPlus });
-  }
 
   const renderSubNav = () => (
     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 pb-6 border-b border-neutral-100 dark:border-slate-800">
@@ -5054,6 +4873,7 @@ function FinancialManagementSection({
           </div>
         </motion.div>
       )}
+      <VerticalImageGallery title="Quản lý Tài chính" />
     </div>
   );
 }
