@@ -3461,7 +3461,7 @@ function StudentManagementSection({
                   }),
                   new Paragraph({
                     alignment: AlignmentType.CENTER,
-                    spacing: { line: 312 },
+                    spacing: { before: 1400, line: 312 },
                     children: [
                       new TextRun({ text: student.parentName || "", bold: true, size: 28 }),
                     ],
@@ -3627,7 +3627,6 @@ function StudentManagementSection({
           </div>
         </div>
       </motion.div>
-      <VerticalImageGallery title="Quản lý Học sinh" />
     </div>
   );
 }
