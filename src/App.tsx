@@ -56,13 +56,15 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
+import mammoth from 'mammoth';
+import { GoogleGenAI, Type } from "@google/genai";
+import { AI_OBJECTIVES, SUBJECT_AI_INTEGRATION, NLS_MAPPING } from './constants/aiObjectives';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2pdf from 'html2pdf.js';
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel, TextRun, VerticalAlign, BorderStyle, PageBreak } from 'docx';
 import { saveAs } from 'file-saver';
 import { format, startOfWeek, endOfWeek, addDays, parseISO } from 'date-fns';
-import { GoogleGenAI } from "@google/genai";
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -231,21 +233,85 @@ const USERS_KEY = 'tutoring_center_users';
 const THEME_KEY = 'tutoring_center_theme';
 
 const DEFAULT_CLASSES: ClassSubject[] = [
-  { id: 'c6-1', grade: '6', subject: 'Toán', subSubject: 'Số học' },
-  { id: 'c6-2', grade: '6', subject: 'Toán', subSubject: 'Hình học' },
-  { id: 'c6-3', grade: '6', subject: 'KHTN', subSubject: 'Vật lý' },
-  { id: 'c7-1', grade: '7', subject: 'Toán', subSubject: 'Đại số' },
-  { id: 'c7-2', grade: '7', subject: 'Toán', subSubject: 'Hình học' },
-  { id: 'c7-3', grade: '7', subject: 'KHTN', subSubject: 'Vật lý' },
+  // Lớp 6
+  { id: 'c6-1', grade: '6', subject: 'Toán', subSubject: 'Số học và Đại số' },
+  { id: 'c6-2', grade: '6', subject: 'Toán', subSubject: 'Hình học và Đo lường' },
+  { id: 'c6-3', grade: '6', subject: 'Toán', subSubject: 'Thống kê và Xác suất' },
+  { id: 'c6-4', grade: '6', subject: 'Ngữ văn', subSubject: '' },
+  { id: 'c6-5', grade: '6', subject: 'Tiếng Anh', subSubject: '' },
+  { id: 'c6-6', grade: '6', subject: 'Khoa học tự nhiên', subSubject: 'Vật lí' },
+  { id: 'c6-7', grade: '6', subject: 'Khoa học tự nhiên', subSubject: 'Hóa học' },
+  { id: 'c6-8', grade: '6', subject: 'Khoa học tự nhiên', subSubject: 'Sinh học' },
+  { id: 'c6-9', grade: '6', subject: 'Lịch sử và Địa lí', subSubject: 'Lịch sử' },
+  { id: 'c6-10', grade: '6', subject: 'Lịch sử và Địa lí', subSubject: 'Địa lí' },
+  { id: 'c6-11', grade: '6', subject: 'Giáo dục công dân', subSubject: '' },
+  { id: 'c6-12', grade: '6', subject: 'Công nghệ', subSubject: '' },
+  { id: 'c6-13', grade: '6', subject: 'Tin học', subSubject: '' },
+  { id: 'c6-14', grade: '6', subject: 'Âm nhạc', subSubject: '' },
+  { id: 'c6-15', grade: '6', subject: 'Mỹ thuật', subSubject: '' },
+  { id: 'c6-16', grade: '6', subject: 'Hoạt động trải nghiệm, hướng nghiệp', subSubject: '' },
+  { id: 'c6-17', grade: '6', subject: 'Giáo dục thể chất', subSubject: '' },
+  { id: 'c6-18', grade: '6', subject: 'Nội dung giáo dục địa phương', subSubject: '' },
+
+  // Lớp 7
+  { id: 'c7-1', grade: '7', subject: 'Toán', subSubject: 'Số học và Đại số' },
+  { id: 'c7-2', grade: '7', subject: 'Toán', subSubject: 'Hình học và Đo lường' },
+  { id: 'c7-3', grade: '7', subject: 'Toán', subSubject: 'Thống kê và Xác suất' },
   { id: 'c7-4', grade: '7', subject: 'Ngữ văn', subSubject: '' },
-  { id: 'c8-1', grade: '8', subject: 'Toán', subSubject: 'Đại số' },
-  { id: 'c8-2', grade: '8', subject: 'Toán', subSubject: 'Hình học' },
-  { id: 'c8-3', grade: '8', subject: 'KHTN', subSubject: 'Vật lý' },
+  { id: 'c7-5', grade: '7', subject: 'Tiếng Anh', subSubject: '' },
+  { id: 'c7-6', grade: '7', subject: 'Khoa học tự nhiên', subSubject: 'Vật lí' },
+  { id: 'c7-7', grade: '7', subject: 'Khoa học tự nhiên', subSubject: 'Hóa học' },
+  { id: 'c7-8', grade: '7', subject: 'Khoa học tự nhiên', subSubject: 'Sinh học' },
+  { id: 'c7-9', grade: '7', subject: 'Lịch sử và Địa lí', subSubject: 'Lịch sử' },
+  { id: 'c7-10', grade: '7', subject: 'Lịch sử và Địa lí', subSubject: 'Địa lí' },
+  { id: 'c7-11', grade: '7', subject: 'Giáo dục công dân', subSubject: '' },
+  { id: 'c7-12', grade: '7', subject: 'Công nghệ', subSubject: '' },
+  { id: 'c7-13', grade: '7', subject: 'Tin học', subSubject: '' },
+  { id: 'c7-14', grade: '7', subject: 'Âm nhạc', subSubject: '' },
+  { id: 'c7-15', grade: '7', subject: 'Mỹ thuật', subSubject: '' },
+  { id: 'c7-16', grade: '7', subject: 'Hoạt động trải nghiệm, hướng nghiệp', subSubject: '' },
+  { id: 'c7-17', grade: '7', subject: 'Giáo dục thể chất', subSubject: '' },
+  { id: 'c7-18', grade: '7', subject: 'Nội dung giáo dục địa phương', subSubject: '' },
+
+  // Lớp 8
+  { id: 'c8-1', grade: '8', subject: 'Toán', subSubject: 'Số học và Đại số' },
+  { id: 'c8-2', grade: '8', subject: 'Toán', subSubject: 'Hình học và Đo lường' },
+  { id: 'c8-3', grade: '8', subject: 'Toán', subSubject: 'Thống kê và Xác suất' },
   { id: 'c8-4', grade: '8', subject: 'Ngữ văn', subSubject: '' },
-  { id: 'c9-1', grade: '9', subject: 'Toán', subSubject: 'Đại số' },
-  { id: 'c9-2', grade: '9', subject: 'Toán', subSubject: 'Hình học' },
-  { id: 'c9-3', grade: '9', subject: 'KHTN', subSubject: 'Vật lý' },
+  { id: 'c8-5', grade: '8', subject: 'Tiếng Anh', subSubject: '' },
+  { id: 'c8-6', grade: '8', subject: 'Khoa học tự nhiên', subSubject: 'Vật lí' },
+  { id: 'c8-7', grade: '8', subject: 'Khoa học tự nhiên', subSubject: 'Hóa học' },
+  { id: 'c8-8', grade: '8', subject: 'Khoa học tự nhiên', subSubject: 'Sinh học' },
+  { id: 'c8-9', grade: '8', subject: 'Lịch sử và Địa lí', subSubject: 'Lịch sử' },
+  { id: 'c8-10', grade: '8', subject: 'Lịch sử và Địa lí', subSubject: 'Địa lí' },
+  { id: 'c8-11', grade: '8', subject: 'Giáo dục công dân', subSubject: '' },
+  { id: 'c8-12', grade: '8', subject: 'Công nghệ', subSubject: '' },
+  { id: 'c8-13', grade: '8', subject: 'Tin học', subSubject: '' },
+  { id: 'c8-14', grade: '8', subject: 'Âm nhạc', subSubject: '' },
+  { id: 'c8-15', grade: '8', subject: 'Mỹ thuật', subSubject: '' },
+  { id: 'c8-16', grade: '8', subject: 'Hoạt động trải nghiệm, hướng nghiệp', subSubject: '' },
+  { id: 'c8-17', grade: '8', subject: 'Giáo dục thể chất', subSubject: '' },
+  { id: 'c8-18', grade: '8', subject: 'Nội dung giáo dục địa phương', subSubject: '' },
+
+  // Lớp 9
+  { id: 'c9-1', grade: '9', subject: 'Toán', subSubject: 'Số học và Đại số' },
+  { id: 'c9-2', grade: '9', subject: 'Toán', subSubject: 'Hình học và Đo lường' },
+  { id: 'c9-3', grade: '9', subject: 'Toán', subSubject: 'Thống kê và Xác suất' },
   { id: 'c9-4', grade: '9', subject: 'Ngữ văn', subSubject: '' },
+  { id: 'c9-5', grade: '9', subject: 'Tiếng Anh', subSubject: '' },
+  { id: 'c9-6', grade: '9', subject: 'Khoa học tự nhiên', subSubject: 'Vật lí' },
+  { id: 'c9-7', grade: '9', subject: 'Khoa học tự nhiên', subSubject: 'Hóa học' },
+  { id: 'c9-8', grade: '9', subject: 'Khoa học tự nhiên', subSubject: 'Sinh học' },
+  { id: 'c9-9', grade: '9', subject: 'Lịch sử và Địa lí', subSubject: 'Lịch sử' },
+  { id: 'c9-10', grade: '9', subject: 'Lịch sử và Địa lí', subSubject: 'Địa lí' },
+  { id: 'c9-11', grade: '9', subject: 'Giáo dục công dân', subSubject: '' },
+  { id: 'c9-12', grade: '9', subject: 'Công nghệ', subSubject: '' },
+  { id: 'c9-13', grade: '9', subject: 'Tin học', subSubject: '' },
+  { id: 'c9-14', grade: '9', subject: 'Âm nhạc', subSubject: '' },
+  { id: 'c9-15', grade: '9', subject: 'Mỹ thuật', subSubject: '' },
+  { id: 'c9-16', grade: '9', subject: 'Hoạt động trải nghiệm, hướng nghiệp', subSubject: '' },
+  { id: 'c9-17', grade: '9', subject: 'Giáo dục thể chất', subSubject: '' },
+  { id: 'c9-18', grade: '9', subject: 'Nội dung giáo dục địa phương', subSubject: '' },
 ];
 
 const DEFAULT_PPCT: PPCTItem[] = [
@@ -332,6 +398,7 @@ export default function App() {
   });
   const [incomeData, setIncomeData] = useState<IncomeItem[]>([]);
   const [expenseData, setExpenseData] = useState<ExpenseItem[]>([]);
+  const [aiLessonPlans, setAiLessonPlans] = useState<{ nls: string, ai: string } | null>(null);
   const [currentPlan, setCurrentPlan] = useState<LessonPlan | null>(null);
 
   // Load/Reset data when user changes
@@ -495,8 +562,11 @@ export default function App() {
             classCount={classes.length}
             monthlyRevenue={monthlyRevenue}
             reportPeriod={financialConfig.reportPeriod}
+            currentUser={currentUser}
           />
         );
+      case 'ai_lesson_plan':
+        return <AILessonPlanSection classes={classes} currentUser={currentUser} />;
       case 'business':
         return <BusinessConfigSection info={businessInfo} setInfo={setBusinessInfo} setActiveTab={setActiveTab} currentUser={currentUser} />;
       case 'program':
@@ -648,12 +718,14 @@ function DashboardSection({
   studentCount, 
   classCount, 
   monthlyRevenue,
-  reportPeriod 
+  reportPeriod,
+  currentUser
 }: { 
   studentCount: number, 
   classCount: number, 
   monthlyRevenue: number,
-  reportPeriod: string
+  reportPeriod: string,
+  currentUser: UserAccount | null
 }) {
   const stats = [
     { 
@@ -833,6 +905,9 @@ function DashboardSection({
           </div>
         </motion.div>
       </div>
+
+      <div className="mt-20 space-y-32">
+      </div>
     </div>
   );
 }
@@ -893,107 +968,677 @@ function VerticalImageGallery({ title }: { title: string }) {
   );
 }
 
-function BusinessConfigSection({ info, setInfo, setActiveTab, currentUser }: { info: BusinessInfo, setInfo: (i: BusinessInfo) => void, setActiveTab: (t: string) => void, currentUser: UserAccount | null }) {
-  const isReadOnly = currentUser?.role === 'user';
+const CURRICULUM_2018_DATA: Record<string, { subject: string; subSubjects: string[] }[]> = {
+  '6': [
+    { subject: 'Toán', subSubjects: ['Số học và Đại số', 'Hình học và Đo lường', 'Thống kê và Xác suất'] },
+    { subject: 'Ngữ văn', subSubjects: [] },
+    { subject: 'Tiếng Anh', subSubjects: [] },
+    { subject: 'Khoa học tự nhiên', subSubjects: ['Vật lí', 'Hóa học', 'Sinh học'] },
+    { subject: 'Lịch sử và Địa lí', subSubjects: ['Lịch sử', 'Địa lí'] },
+    { subject: 'Giáo dục công dân', subSubjects: [] },
+    { subject: 'Công nghệ', subSubjects: [] },
+    { subject: 'Tin học', subSubjects: [] },
+    { subject: 'Âm nhạc', subSubjects: [] },
+    { subject: 'Mỹ thuật', subSubjects: [] },
+    { subject: 'Hoạt động trải nghiệm, hướng nghiệp', subSubjects: [] },
+    { subject: 'Giáo dục thể chất', subSubjects: [] },
+    { subject: 'Nội dung giáo dục địa phương', subSubjects: [] },
+  ],
+  '7': [
+    { subject: 'Toán', subSubjects: ['Số học và Đại số', 'Hình học và Đo lường', 'Thống kê và Xác suất'] },
+    { subject: 'Ngữ văn', subSubjects: [] },
+    { subject: 'Tiếng Anh', subSubjects: [] },
+    { subject: 'Khoa học tự nhiên', subSubjects: ['Vật lí', 'Hóa học', 'Sinh học'] },
+    { subject: 'Lịch sử và Địa lí', subSubjects: ['Lịch sử', 'Địa lí'] },
+    { subject: 'Giáo dục công dân', subSubjects: [] },
+    { subject: 'Công nghệ', subSubjects: [] },
+    { subject: 'Tin học', subSubjects: [] },
+    { subject: 'Âm nhạc', subSubjects: [] },
+    { subject: 'Mỹ thuật', subSubjects: [] },
+    { subject: 'Hoạt động trải nghiệm, hướng nghiệp', subSubjects: [] },
+    { subject: 'Giáo dục thể chất', subSubjects: [] },
+    { subject: 'Nội dung giáo dục địa phương', subSubjects: [] },
+  ],
+  '8': [
+    { subject: 'Toán', subSubjects: ['Số học và Đại số', 'Hình học và Đo lường', 'Thống kê và Xác suất'] },
+    { subject: 'Ngữ văn', subSubjects: [] },
+    { subject: 'Tiếng Anh', subSubjects: [] },
+    { subject: 'Khoa học tự nhiên', subSubjects: ['Vật lí', 'Hóa học', 'Sinh học'] },
+    { subject: 'Lịch sử và Địa lí', subSubjects: ['Lịch sử', 'Địa lí'] },
+    { subject: 'Giáo dục công dân', subSubjects: [] },
+    { subject: 'Công nghệ', subSubjects: [] },
+    { subject: 'Tin học', subSubjects: [] },
+    { subject: 'Âm nhạc', subSubjects: [] },
+    { subject: 'Mỹ thuật', subSubjects: [] },
+    { subject: 'Hoạt động trải nghiệm, hướng nghiệp', subSubjects: [] },
+    { subject: 'Giáo dục thể chất', subSubjects: [] },
+    { subject: 'Nội dung giáo dục địa phương', subSubjects: [] },
+  ],
+  '9': [
+    { subject: 'Toán', subSubjects: ['Số học và Đại số', 'Hình học và Đo lường', 'Thống kê và Xác suất'] },
+    { subject: 'Ngữ văn', subSubjects: [] },
+    { subject: 'Tiếng Anh', subSubjects: [] },
+    { subject: 'Khoa học tự nhiên', subSubjects: ['Vật lí', 'Hóa học', 'Sinh học'] },
+    { subject: 'Lịch sử và Địa lí', subSubjects: ['Lịch sử', 'Địa lí'] },
+    { subject: 'Giáo dục công dân', subSubjects: [] },
+    { subject: 'Công nghệ', subSubjects: [] },
+    { subject: 'Tin học', subSubjects: [] },
+    { subject: 'Âm nhạc', subSubjects: [] },
+    { subject: 'Mỹ thuật', subSubjects: [] },
+    { subject: 'Hoạt động trải nghiệm, hướng nghiệp', subSubjects: [] },
+    { subject: 'Giáo dục thể chất', subSubjects: [] },
+    { subject: 'Nội dung giáo dục địa phương', subSubjects: [] },
+  ],
+  '10': [
+    { subject: 'Toán', subSubjects: [] },
+    { subject: 'Ngữ văn', subSubjects: [] },
+    { subject: 'Tiếng Anh', subSubjects: [] },
+    { subject: 'Giáo dục thể chất', subSubjects: [] },
+    { subject: 'Giáo dục quốc phòng và an ninh', subSubjects: [] },
+    { subject: 'Hoạt động trải nghiệm, hướng nghiệp', subSubjects: [] },
+    { subject: 'Nội dung giáo dục địa phương', subSubjects: [] },
+    { subject: 'Lịch sử', subSubjects: [] },
+    { subject: 'Địa lí', subSubjects: [] },
+    { subject: 'Giáo dục kinh tế và pháp luật', subSubjects: [] },
+    { subject: 'Vật lí', subSubjects: [] },
+    { subject: 'Hóa học', subSubjects: [] },
+    { subject: 'Sinh học', subSubjects: [] },
+    { subject: 'Công nghệ', subSubjects: [] },
+    { subject: 'Tin học', subSubjects: [] },
+    { subject: 'Âm nhạc', subSubjects: [] },
+    { subject: 'Mỹ thuật', subSubjects: [] },
+  ],
+  '11': [
+    { subject: 'Toán', subSubjects: [] },
+    { subject: 'Ngữ văn', subSubjects: [] },
+    { subject: 'Tiếng Anh', subSubjects: [] },
+    { subject: 'Giáo dục thể chất', subSubjects: [] },
+    { subject: 'Giáo dục quốc phòng và an ninh', subSubjects: [] },
+    { subject: 'Hoạt động trải nghiệm, hướng nghiệp', subSubjects: [] },
+    { subject: 'Nội dung giáo dục địa phương', subSubjects: [] },
+    { subject: 'Lịch sử', subSubjects: [] },
+    { subject: 'Địa lí', subSubjects: [] },
+    { subject: 'Giáo dục kinh tế và pháp luật', subSubjects: [] },
+    { subject: 'Vật lí', subSubjects: [] },
+    { subject: 'Hóa học', subSubjects: [] },
+    { subject: 'Sinh học', subSubjects: [] },
+    { subject: 'Công nghệ', subSubjects: [] },
+    { subject: 'Tin học', subSubjects: [] },
+    { subject: 'Âm nhạc', subSubjects: [] },
+    { subject: 'Mỹ thuật', subSubjects: [] },
+  ],
+  '12': [
+    { subject: 'Toán', subSubjects: [] },
+    { subject: 'Ngữ văn', subSubjects: [] },
+    { subject: 'Tiếng Anh', subSubjects: [] },
+    { subject: 'Giáo dục thể chất', subSubjects: [] },
+    { subject: 'Giáo dục quốc phòng và an ninh', subSubjects: [] },
+    { subject: 'Hoạt động trải nghiệm, hướng nghiệp', subSubjects: [] },
+    { subject: 'Nội dung giáo dục địa phương', subSubjects: [] },
+    { subject: 'Lịch sử', subSubjects: [] },
+    { subject: 'Địa lí', subSubjects: [] },
+    { subject: 'Giáo dục kinh tế và pháp luật', subSubjects: [] },
+    { subject: 'Vật lí', subSubjects: [] },
+    { subject: 'Hóa học', subSubjects: [] },
+    { subject: 'Sinh học', subSubjects: [] },
+    { subject: 'Công nghệ', subSubjects: [] },
+    { subject: 'Tin học', subSubjects: [] },
+    { subject: 'Âm nhạc', subSubjects: [] },
+    { subject: 'Mỹ thuật', subSubjects: [] },
+  ],
+};
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (isReadOnly) return;
-    setInfo({ ...info, [e.target.name]: e.target.value });
+function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[], currentUser: UserAccount | null }) {
+  const [selectedClass, setSelectedClass] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState('');
+  const [selectedSubSubject, setSelectedSubSubject] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [result, setResult] = useState<{ nls: string, ai: string } | null>(null);
+  const [error, setError] = useState('');
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const subjects = useMemo(() => {
+    if (!selectedClass) return [];
+    const data = CURRICULUM_2018_DATA[selectedClass] || [];
+    return data.map(d => d.subject).sort();
+  }, [selectedClass]);
+
+  const subSubjects = useMemo(() => {
+    if (!selectedClass || !selectedSubject) return [];
+    const data = CURRICULUM_2018_DATA[selectedClass] || [];
+    const subjectData = data.find(d => d.subject === selectedSubject);
+    return subjectData ? subjectData.subSubjects.sort() : [];
+  }, [selectedClass, selectedSubject]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    console.log('File selected:', selectedFile);
+    if (selectedFile) {
+      if (selectedFile.name.toLowerCase().endsWith('.docx')) {
+        setFile(selectedFile);
+        setError('');
+      } else {
+        setError('Vui lòng chọn file định dạng .docx (Word 2007+)');
+        setFile(null);
+      }
+    }
   };
 
-  const fields = [
-    { name: 'name', label: 'Hộ kinh doanh', placeholder: 'VD: Trung tâm Giáo dục Hoàng Gia', icon: Building2 },
-    { name: 'address', label: 'Địa chỉ', placeholder: 'VD: Số 123, Đường ABC, Quận XYZ, TP. HCM', icon: Home },
-    { name: 'businessLocation', label: 'Nơi kinh doanh', placeholder: 'VD: SN 269 - Lê Duẩn - Phường Tân Phong - Tỉnh Lai Châu', icon: MapPin },
-    { name: 'owner', label: 'Chủ hộ kinh doanh', placeholder: 'VD: Nguyễn Văn A', icon: User },
-    { name: 'taxId', label: 'Mã số thuế', placeholder: 'VD: 0123456789', icon: CreditCard },
-  ];
+  const clearFile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const generateLessonPlan = async (type: 'ai' | 'nls') => {
+    if (!selectedClass || !selectedSubject || !file) {
+      setError('Vui lòng điền đầy đủ thông tin và tải file giáo án.');
+      return;
+    }
+
+    setIsGenerating(true);
+    setError('');
+    // We don't necessarily want to clear the whole result if we are just adding to it
+    // but for simplicity let's just clear it or manage it per type
+    
+    try {
+      console.log(`Starting ${type.toUpperCase()} lesson plan generation...`);
+      const arrayBuffer = await file.arrayBuffer();
+      const { value: text } = await mammoth.extractRawText({ arrayBuffer });
+
+      if (!text || text.trim().length === 0) {
+        throw new Error('Không thể trích xuất văn bản từ file Word.');
+      }
+
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) throw new Error('Thiếu API Key cho Gemini AI.');
+
+      const ai = new GoogleGenAI({ apiKey });
+      
+      const typeLabel = type === 'ai' ? 'Trí tuệ nhân tạo (AI)' : 'Năng lực số (NLS)';
+      const integrationData = type === 'ai' 
+        ? `Mục tiêu AI: ${JSON.stringify(AI_OBJECTIVES[selectedClass as keyof typeof AI_OBJECTIVES] || [])}\nHướng dẫn AI: ${JSON.stringify(SUBJECT_AI_INTEGRATION[selectedSubject as keyof typeof SUBJECT_AI_INTEGRATION] || {})}`
+        : `Danh mục Năng lực số (NLS): ${JSON.stringify(NLS_MAPPING[selectedClass === '6' || selectedClass === '7' ? '6-7' : '8-9'] || [])}`;
+
+      const prompt = `
+        Bạn là một chuyên gia giáo dục tại Việt Nam, am hiểu về Công văn 3439 và việc tích hợp ${typeLabel} vào giảng dạy.
+        
+        Dữ liệu hướng dẫn:
+        ${integrationData}
+
+        Nhiệm vụ của bạn là phân tích giáo án gốc sau đây và tạo ra phiên bản giáo án tích hợp ${typeLabel}.
+
+        Dữ liệu đầu vào:
+        - Lớp: ${selectedClass}
+        - Môn: ${selectedSubject}
+        - Phân môn: ${selectedSubSubject}
+        - Nội dung giáo án gốc:
+        ${text}
+
+        YÊU CẦU CẤU TRÚC TÍCH HỢP BẮT BUỘC:
+        
+        Phần 1. Mục tiêu:
+        - Tích hợp thêm các phẩm chất và năng lực (${type.toUpperCase()}) vào mục "3. Mục tiêu chính".
+        - Sử dụng các mã mục tiêu từ tài liệu hướng dẫn (nếu có).
+
+        Phần Các hoạt động:
+        Tại các hoạt động học tập tương thích, bổ sung thêm:
+        - Mục tiêu tích hợp (${type.toUpperCase()}).
+        - Hoạt động của Giáo viên: Các bước hướng dẫn, gợi mở cụ thể để học sinh tiếp cận hoặc ứng dụng ${type.toUpperCase()}.
+        - Hoạt động của Học sinh: Các thao tác, sản phẩm cụ thể của học sinh khi thực hiện nhiệm vụ tích hợp.
+        - Sản phẩm học tập: Kết quả cụ thể.
+
+        NGUYÊN TẮC THỰC HIỆN:
+        1. TUYỆT ĐỐI KHÔNG thay đổi nội dung gốc. Chỉ bổ sung thêm phần tích hợp.
+        2. GIỮ NGUYÊN định dạng, cấu trúc gốc.
+        3. Các nội dung bổ sung MỚI phải được đánh dấu bằng thẻ <span style="color:red;">nội dung bổ sung</span>.
+        4. Phù hợp với trình độ lớp ${selectedClass} và môn ${selectedSubject}.
+
+        Hãy trả về kết quả dưới dạng JSON với một trường duy nhất: "content", chứa nội dung HTML của giáo án đã tích hợp.
+      `;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.1-pro-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              content: { type: Type.STRING }
+            },
+            required: ["content"]
+          }
+        }
+      });
+
+      const data = JSON.parse(response.text || '{}');
+      setResult(prev => ({
+        ...prev,
+        [type]: data.content
+      }) as any);
+    } catch (err: any) {
+      console.error(err);
+      setError(`Có lỗi xảy ra: ${err.message}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const exportToDocx = async (html: string, filename: string) => {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const paragraphs: Paragraph[] = [];
+
+      const processNode = (node: Node): TextRun[] => {
+        let runs: TextRun[] = [];
+        node.childNodes.forEach(child => {
+          if (child.nodeType === Node.TEXT_NODE) {
+            runs.push(new TextRun({ text: child.textContent || "" }));
+          } else if (child.nodeType === Node.ELEMENT_NODE) {
+            const element = child as HTMLElement;
+            const style = element.getAttribute('style') || '';
+            const isRed = style.includes('color:red') || style.includes('color: red');
+            const isBold = element.tagName === 'B' || element.tagName === 'STRONG' || element.tagName.startsWith('H');
+            
+            runs.push(new TextRun({
+              text: element.innerText,
+              color: isRed ? "FF0000" : undefined,
+              bold: isBold,
+              size: element.tagName.startsWith('H') ? 28 : 24,
+            }));
+          }
+        });
+        return runs;
+      };
+
+      doc.body.childNodes.forEach(node => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          const element = node as HTMLElement;
+          const tagName = element.tagName.toLowerCase();
+          
+          if (['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tagName)) {
+            paragraphs.push(new Paragraph({
+              children: processNode(element),
+              heading: tagName.startsWith('h') ? HeadingLevel[`HEADING_${tagName.substring(1)}` as keyof typeof HeadingLevel] : undefined,
+              spacing: { after: 200, before: tagName.startsWith('h') ? 400 : 0 }
+            }));
+          } else if (tagName === 'ul' || tagName === 'ol') {
+            element.childNodes.forEach(li => {
+              if (li.nodeType === Node.ELEMENT_NODE && (li as HTMLElement).tagName.toLowerCase() === 'li') {
+                paragraphs.push(new Paragraph({
+                  children: processNode(li),
+                  bullet: tagName === 'ul' ? { level: 0 } : undefined,
+                  numbering: tagName === 'ol' ? { reference: 'my-numbering', level: 0 } : undefined,
+                  spacing: { after: 120 }
+                }));
+              }
+            });
+          } else if (tagName === 'div') {
+             paragraphs.push(new Paragraph({
+              children: processNode(element),
+              spacing: { after: 200 }
+            }));
+          }
+        } else if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
+          paragraphs.push(new Paragraph({
+            children: [new TextRun({ text: node.textContent })],
+            spacing: { after: 200 }
+          }));
+        }
+      });
+
+      const documentDoc = new Document({
+        sections: [{
+          children: paragraphs,
+        }],
+      });
+
+      const blob = await Packer.toBlob(documentDoc);
+      saveAs(blob, filename);
+    } catch (err) {
+      console.error("Lỗi khi xuất file docx:", err);
+      alert("Có lỗi xảy ra khi xuất file Word. Vui lòng thử lại.");
+    }
+  };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      <button 
-        onClick={() => setActiveTab('dashboard')}
-        className="flex items-center gap-2 text-neutral-500 hover:text-primary transition-all text-sm font-bold group mb-4"
+    <div className="space-y-8 max-w-5xl mx-auto">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white dark:bg-slate-900 p-8 rounded-[32px] border border-neutral-200 dark:border-slate-800 shadow-sm"
       >
-        <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
-          <ArrowLeft className="w-4 h-4" />
-        </div>
-        Quay lại trang chủ
-      </button>
-
-      <div className="saas-card">
-        <div className="flex items-center gap-4 mb-8 pb-6 border-b border-neutral-100 dark:border-slate-800">
-          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-            <Settings2 className="w-6 h-6" />
+        <div className="flex items-center gap-4 mb-8">
+          <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+            <Sparkles className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-xl font-normal text-neutral-900 dark:text-white">Thông tin cơ bản</h3>
-            <p className="text-sm text-neutral-500 dark:text-slate-400">
-              {isReadOnly ? 'Xem thông tin định danh cho cơ sở của bạn' : 'Cập nhật thông tin định danh cho cơ sở của bạn'}
-            </p>
+            <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">Tạo giáo án tích hợp NLS, AI</h2>
+            <p className="text-sm text-neutral-500 dark:text-slate-400 mt-1 font-medium">Tự động bổ sung mục tiêu và hoạt động tích hợp vào giáo án của bạn.</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {fields.map((field) => (
-            <div key={field.name} className={cn("space-y-2", field.name === 'address' && "md:col-span-2")}>
-              <label className="text-xs font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <field.icon className="w-3.5 h-3.5" />
-                {field.label}
-              </label>
-              <div className="relative group">
-                <input
-                  type="text"
-                  name={field.name}
-                  value={(info as any)[field.name] || ""}
-                  onChange={handleChange}
-                  disabled={isReadOnly}
-                  placeholder={field.placeholder}
-                  className={cn(
-                    "w-full bg-neutral-50 dark:bg-slate-900/50 border border-neutral-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all dark:text-white",
-                    isReadOnly && "cursor-not-allowed opacity-70"
-                  )}
-                />
-                {!isReadOnly && <div className="absolute inset-0 rounded-xl bg-primary/5 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity" />}
-              </div>
-            </div>
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Lớp</label>
+            <select 
+              value={selectedClass}
+              onChange={(e) => {
+                setSelectedClass(e.target.value);
+                setSelectedSubject('');
+                setSelectedSubSubject('');
+              }}
+              className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all"
+            >
+              <option value="">Chọn lớp</option>
+              {Object.keys(CURRICULUM_2018_DATA).sort((a, b) => Number(a) - Number(b)).map(grade => (
+                <option key={grade} value={grade}>Lớp {grade}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Môn</label>
+            <select 
+              value={selectedSubject}
+              onChange={(e) => {
+                setSelectedSubject(e.target.value);
+                setSelectedSubSubject('');
+              }}
+              className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all"
+              disabled={!selectedClass}
+            >
+              <option value="">Chọn môn</option>
+              {subjects.map(subject => (
+                <option key={subject} value={subject}>{subject}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Phân môn (nếu có)</label>
+            <select 
+              value={selectedSubSubject}
+              onChange={(e) => setSelectedSubSubject(e.target.value)}
+              className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all"
+              disabled={!selectedSubject || subSubjects.length === 0}
+            >
+              <option value="">Chọn phân môn</option>
+              {subSubjects.map(sub => (
+                <option key={sub} value={sub}>{sub}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        {!isReadOnly && (
-          <div className="mt-10 flex justify-end">
-            <button className="btn-primary flex items-center gap-2">
-              <Save className="w-4 h-4" />
-              Lưu thay đổi
+        <div className="space-y-6">
+          <div 
+            onClick={() => {
+              console.log('Upload area clicked');
+              fileInputRef.current?.click();
+            }}
+            className={cn(
+              "flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-[24px] transition-all cursor-pointer relative group min-h-[240px]",
+              file 
+                ? "border-green-500 bg-green-50/30 dark:bg-green-900/10" 
+                : "border-neutral-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10"
+            )}
+          >
+            <input 
+              ref={fileInputRef}
+              type="file" 
+              accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            <div className={cn(
+              "w-20 h-20 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-lg",
+              file ? "bg-green-500 text-white" : "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400"
+            )}>
+              {file ? <Check className="w-10 h-10" /> : <Upload className="w-10 h-10" />}
+            </div>
+            <div className="text-center space-y-2">
+              <p className="text-xl font-black text-neutral-900 dark:text-white">
+                {file ? file.name : 'Tải giáo án lên'}
+              </p>
+              <p className="text-sm text-neutral-500 dark:text-slate-400 font-medium">
+                {file ? 'File đã sẵn sàng. Click để thay đổi.' : 'Hỗ trợ định dạng .docx (Microsoft Word)'}
+              </p>
+            </div>
+            
+            {file && (
+              <button 
+                onClick={clearFile}
+                className="absolute top-6 right-6 p-2 bg-white dark:bg-slate-800 rounded-full shadow-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-neutral-400 hover:text-red-500 transition-all border border-neutral-100 dark:border-slate-700"
+                title="Xóa file"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+
+          {error && (
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-2xl text-sm font-bold flex items-center gap-3">
+              <Info className="w-5 h-5" />
+              {error}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button
+              onClick={() => generateLessonPlan('ai')}
+              disabled={isGenerating || !file}
+              className={cn(
+                "py-4 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-3 shadow-xl",
+                isGenerating || !file
+                  ? "bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed"
+                  : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200 dark:shadow-none active:scale-[0.98]"
+              )}
+            >
+              {isGenerating ? (
+                <RefreshCw className="w-6 h-6 animate-spin" />
+              ) : (
+                <Zap className="w-6 h-6" />
+              )}
+              Tạo giáo án tích hợp AI
+            </button>
+
+            <button
+              onClick={() => generateLessonPlan('nls')}
+              disabled={isGenerating || !file}
+              className={cn(
+                "py-4 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-3 shadow-xl",
+                isGenerating || !file
+                  ? "bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed"
+                  : "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200 dark:shadow-none active:scale-[0.98]"
+              )}
+            >
+              {isGenerating ? (
+                <RefreshCw className="w-6 h-6 animate-spin" />
+              ) : (
+                <GraduationCap className="w-6 h-6" />
+              )}
+              Tạo giáo án tích hợp Năng lực số
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="saas-card p-6 bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/20">
-          <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center mb-4">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
-          <h4 className="font-bold text-neutral-900 dark:text-white mb-1">Bảo mật dữ liệu</h4>
-          <p className="text-xs text-neutral-500 dark:text-slate-400">Thông tin của bạn được mã hóa và bảo vệ theo tiêu chuẩn SaaS.</p>
+      {result && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="bg-white dark:bg-slate-900 p-8 rounded-[32px] border border-neutral-200 dark:border-slate-800 shadow-sm"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-black text-neutral-900 dark:text-white flex items-center gap-2">
+                <div className="w-8 h-8 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400">
+                  <GraduationCap className="w-4 h-4" />
+                </div>
+                Giáo án tích hợp NLS
+              </h3>
+              {result.nls && (
+                <button 
+                  onClick={() => exportToDocx(result.nls, `GiaoAn_NLS_${selectedSubject}_Lop${selectedClass}.docx`)}
+                  className="p-2 text-neutral-400 hover:text-primary transition-all"
+                  title="Tải xuống (.docx)"
+                >
+                  <Download className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+            {result.nls ? (
+              <div 
+                className="prose dark:prose-invert max-w-none h-[600px] overflow-y-auto p-6 bg-neutral-50 dark:bg-slate-800/50 rounded-2xl border border-neutral-100 dark:border-slate-700 text-sm"
+                dangerouslySetInnerHTML={{ __html: result.nls }}
+              />
+            ) : (
+              <div className="h-[600px] flex items-center justify-center text-neutral-400 font-medium italic border-2 border-dashed border-neutral-100 dark:border-slate-800 rounded-2xl">
+                Chưa có nội dung NLS. Nhấn nút để tạo.
+              </div>
+            )}
+          </motion.div>
+
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="bg-white dark:bg-slate-900 p-8 rounded-[32px] border border-neutral-200 dark:border-slate-800 shadow-sm"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-black text-neutral-900 dark:text-white flex items-center gap-2">
+                <div className="w-8 h-8 bg-purple-50 dark:bg-purple-900/30 rounded-lg flex items-center justify-center text-purple-600 dark:text-purple-400">
+                  <Zap className="w-4 h-4" />
+                </div>
+                Giáo án tích hợp AI
+              </h3>
+              {result.ai && (
+                <button 
+                  onClick={() => exportToDocx(result.ai, `GiaoAn_AI_${selectedSubject}_Lop${selectedClass}.docx`)}
+                  className="p-2 text-neutral-400 hover:text-primary transition-all"
+                  title="Tải xuống (.docx)"
+                >
+                  <Download className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+            {result.ai ? (
+              <div 
+                className="prose dark:prose-invert max-w-none h-[600px] overflow-y-auto p-6 bg-neutral-50 dark:bg-slate-800/50 rounded-2xl border border-neutral-100 dark:border-slate-700 text-sm"
+                dangerouslySetInnerHTML={{ __html: result.ai }}
+              />
+            ) : (
+              <div className="h-[600px] flex items-center justify-center text-neutral-400 font-medium italic border-2 border-dashed border-neutral-100 dark:border-slate-800 rounded-2xl">
+                Chưa có nội dung AI. Nhấn nút để tạo.
+              </div>
+            )}
+          </motion.div>
         </div>
-        <div className="saas-card p-6 bg-purple-50/50 dark:bg-purple-900/10 border-purple-100 dark:border-purple-900/20">
-          <div className="w-10 h-10 rounded-xl bg-purple-500 text-white flex items-center justify-center mb-4">
-            <Zap className="w-5 h-5" />
+      )}
+    </div>
+  );
+}
+
+function BusinessConfigSection({ info, setInfo, setActiveTab, currentUser }: { info: BusinessInfo, setInfo: (i: BusinessInfo) => void, setActiveTab: (t: string) => void, currentUser: UserAccount | null }) {
+  const [formData, setFormData] = useState<BusinessInfo>(info);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setInfo(formData);
+    alert('Đã lưu cấu hình hộ kinh doanh thành công!');
+  };
+
+  return (
+    <div className="space-y-8 max-w-5xl mx-auto">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white dark:bg-slate-900 p-8 rounded-[32px] border border-neutral-200 dark:border-slate-800 shadow-sm"
+      >
+        <div className="flex items-center gap-4 mb-8">
+          <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+            <Settings className="w-6 h-6" />
           </div>
-          <h4 className="font-bold text-neutral-900 dark:text-white mb-1">Tự động đồng bộ</h4>
-          <p className="text-xs text-neutral-500 dark:text-slate-400">Mọi thay đổi sẽ được cập nhật tức thì trên toàn hệ thống.</p>
-        </div>
-        <div className="saas-card p-6 bg-amber-50/50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/20">
-          <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center mb-4">
-            <HelpCircle className="w-5 h-5" />
+          <div>
+            <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">Cấu hình Hộ kinh doanh</h2>
+            <p className="text-sm text-neutral-500 dark:text-slate-400 mt-1 font-medium">Thiết lập thông tin cơ bản của hộ kinh doanh để in chứng từ.</p>
           </div>
-          <h4 className="font-bold text-neutral-900 dark:text-white mb-1">Hỗ trợ 24/7</h4>
-          <p className="text-xs text-neutral-500 dark:text-slate-400">Liên hệ với chúng tôi nếu bạn gặp khó khăn khi cấu hình.</p>
         </div>
-      </div>
-      <VerticalImageGallery title="Hộ kinh doanh" />
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Tên hộ kinh doanh</label>
+              <input 
+                type="text" 
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all"
+                placeholder="Ví dụ: Hộ kinh doanh Nguyễn Văn A"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Chủ hộ kinh doanh</label>
+              <input 
+                type="text" 
+                value={formData.owner}
+                onChange={(e) => setFormData({...formData, owner: e.target.value})}
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all"
+                placeholder="Họ và tên chủ hộ"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Mã số thuế</label>
+              <input 
+                type="text" 
+                value={formData.taxId}
+                onChange={(e) => setFormData({...formData, taxId: e.target.value})}
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all"
+                placeholder="Mã số thuế (nếu có)"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Địa chỉ</label>
+              <input 
+                type="text" 
+                value={formData.address}
+                onChange={(e) => setFormData({...formData, address: e.target.value})}
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all"
+                placeholder="Địa chỉ đăng ký"
+              />
+            </div>
+            <div className="md:col-span-2 space-y-2">
+              <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Nơi kinh doanh</label>
+              <input 
+                type="text" 
+                value={formData.businessLocation}
+                onChange={(e) => setFormData({...formData, businessLocation: e.target.value})}
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all"
+                placeholder="Địa điểm kinh doanh thực tế"
+              />
+            </div>
+          </div>
+
+          <div className="pt-4 flex gap-4">
+            <button 
+              type="submit"
+              className="px-8 py-3 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all font-bold shadow-lg shadow-primary/20"
+            >
+              Lưu cấu hình
+            </button>
+            <button 
+              type="button"
+              onClick={() => setActiveTab('dashboard')}
+              className="px-8 py-3 bg-neutral-100 dark:bg-slate-800 text-neutral-700 dark:text-slate-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-slate-700 transition-all font-bold"
+            >
+              Hủy
+            </button>
+          </div>
+        </form>
+      </motion.div>
     </div>
   );
 }
@@ -2484,7 +3129,6 @@ function ProgramManagementSection({
           <ClassJournalSection key="journal" plans={lessonPlans} setPlans={setLessonPlans} deletePlan={deletePlan} businessInfo={businessInfo} setActiveTab={setActiveTab} />
         )}
       </AnimatePresence>
-      <VerticalImageGallery title="Quản lý Chương trình" />
     </div>
   );
 }
@@ -3108,303 +3752,193 @@ function LoginPage({ onLogin, users, darkMode, setDarkMode }: { onLogin: (user: 
 }
 
 function UserManagementSection({ users, setUsers, setActiveTab }: { users: UserAccount[], setUsers: React.Dispatch<React.SetStateAction<UserAccount[]>>, setActiveTab: (t: string) => void }) {
-  const [isAdding, setIsAdding] = useState(false);
-  const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
-  const [formData, setFormData] = useState({ 
-    email: '', 
-    password: '', 
-    role: 'user' as const, 
-    expiryDate: '',
-    businessName: '',
-    businessAddress: '',
-    businessLocation: '',
-    businessOwner: ''
-  });
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newRole, setNewRole] = useState<'admin' | 'user'>('user');
+  const [newExpiryDate, setNewExpiryDate] = useState('');
+  const [newBusinessName, setNewBusinessName] = useState('');
+  const [newBusinessAddress, setNewBusinessAddress] = useState('');
+  const [newBusinessLocation, setNewBusinessLocation] = useState('');
+  const [newBusinessOwner, setNewBusinessOwner] = useState('');
 
-  const handleSaveUser = (e: React.FormEvent) => {
+  const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingUser) {
-      setUsers(users.map(u => u.id === editingUser.id ? { ...u, ...formData } : u));
-      setEditingUser(null);
-    } else {
-      const user: UserAccount = {
-        id: crypto.randomUUID(),
-        ...formData,
-        createdAt: new Date().toISOString()
-      };
-      setUsers([...users, user]);
-      setIsAdding(false);
+    if (!newEmail || !newPassword) return;
+    
+    const newUser: UserAccount = {
+      id: Math.random().toString(36).substr(2, 9),
+      email: newEmail,
+      password: newPassword,
+      role: newRole,
+      expiryDate: newExpiryDate || undefined,
+      businessName: newBusinessName || undefined,
+      businessAddress: newBusinessAddress || undefined,
+      businessLocation: newBusinessLocation || undefined,
+      businessOwner: newBusinessOwner || undefined,
+      createdAt: new Date().toISOString()
+    };
+    
+    setUsers([...users, newUser]);
+    setNewEmail('');
+    setNewPassword('');
+    setNewExpiryDate('');
+    setNewBusinessName('');
+    setNewBusinessAddress('');
+    setNewBusinessLocation('');
+    setNewBusinessOwner('');
+  };
+
+  const handleDeleteUser = (id: string) => {
+    if (users.length <= 1) {
+      alert('Không thể xóa tài khoản cuối cùng.');
+      return;
     }
-    setFormData({ 
-      email: '', 
-      password: '', 
-      role: 'user', 
-      expiryDate: '',
-      businessName: '',
-      businessAddress: '',
-      businessLocation: '',
-      businessOwner: ''
-    });
-  };
-
-  const startEdit = (user: UserAccount) => {
-    setEditingUser(user);
-    setFormData({
-      email: user.email,
-      password: user.password,
-      role: user.role,
-      expiryDate: user.expiryDate || '',
-      businessName: user.businessName || '',
-      businessAddress: user.businessAddress || '',
-      businessLocation: user.businessLocation || '',
-      businessOwner: user.businessOwner || ''
-    });
-    setIsAdding(false);
-  };
-
-  const cancelForm = () => {
-    setIsAdding(false);
-    setEditingUser(null);
-    setFormData({ 
-      email: '', 
-      password: '', 
-      role: 'user', 
-      expiryDate: '',
-      businessName: '',
-      businessAddress: '',
-      businessLocation: '',
-      businessOwner: ''
-    });
-  };
-
-  const deleteUser = (id: string) => {
     setUsers(users.filter(u => u.id !== id));
   };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
-    >
-      <button 
-        onClick={() => setActiveTab('dashboard')}
-        className="flex items-center gap-2 text-neutral-500 hover:text-primary transition-all text-sm font-bold group mb-4"
-      >
-        <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
-          <ArrowLeft className="w-4 h-4" />
+    <div className="space-y-8 max-w-5xl mx-auto">
+      <div className="bg-white dark:bg-slate-900 p-8 rounded-[32px] border border-neutral-200 dark:border-slate-800 shadow-sm">
+        <div className="flex items-center gap-4 mb-8">
+          <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+            <Users className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">Quản lý Tài khoản</h2>
+            <p className="text-sm text-neutral-500 dark:text-slate-400 mt-1 font-medium">Thêm, sửa hoặc xóa tài khoản truy cập hệ thống.</p>
+          </div>
         </div>
-        Quay lại trang chủ
-      </button>
 
-      <header className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">Quản lý Tài khoản</h2>
-          <p className="text-neutral-500 dark:text-slate-400 mt-1 font-medium">Tạo và quản lý quyền truy cập của người dùng.</p>
-        </div>
-        <button
-          onClick={() => setIsAdding(true)}
-          className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 font-bold text-sm"
-        >
-          <UserPlus className="w-4 h-4" />
-          Thêm tài khoản
-        </button>
-      </header>
-
-      {(isAdding || editingUser) && (
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="saas-card p-8"
-        >
-          <h3 className="text-lg font-normal text-neutral-900 dark:text-white mb-6 flex items-center gap-2">
-            <div className="w-2 h-6 bg-primary rounded-full" />
-            {editingUser ? 'Chỉnh sửa tài khoản' : 'Thêm tài khoản mới'}
-          </h3>
-          <form onSubmit={handleSaveUser} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="space-y-2">
-              <label className="block text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest ml-1">Tài khoản</label>
-              <input
-                type="text"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none dark:text-white transition-all font-normal"
-                placeholder="Email hoặc tên đăng nhập"
-                required
+        <form onSubmit={handleAddUser} className="space-y-6 mb-12 p-8 bg-neutral-50 dark:bg-slate-800/50 rounded-[24px] border border-neutral-100 dark:border-slate-700">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-neutral-500 uppercase ml-1">Email/Tên đăng nhập</label>
+              <input 
+                type="text" 
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white"
+                placeholder="admin@example.com"
               />
             </div>
-            <div className="space-y-2">
-              <label className="block text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest ml-1">Mật khẩu</label>
-              <input
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none dark:text-white transition-all font-normal"
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-neutral-500 uppercase ml-1">Mật khẩu</label>
+              <input 
+                type="password" 
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white"
                 placeholder="••••••••"
-                required
               />
             </div>
-            <div className="space-y-2">
-              <label className="block text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest ml-1">Quyền hạn</label>
-              <select
-                value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'user' })}
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none dark:text-white transition-all font-normal appearance-none"
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-neutral-500 uppercase ml-1">Vai trò</label>
+              <select 
+                value={newRole}
+                onChange={(e) => setNewRole(e.target.value as 'admin' | 'user')}
+                className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white"
               >
                 <option value="user">Người dùng</option>
                 <option value="admin">Quản trị viên</option>
               </select>
             </div>
-            <div className="space-y-2">
-              <label className="block text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest ml-1">Hạn sử dụng</label>
-              <input
-                type="date"
-                value={formData.expiryDate}
-                onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none dark:text-white transition-all font-bold"
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-neutral-500 uppercase ml-1">Ngày hết hạn</label>
+              <input 
+                type="date" 
+                value={newExpiryDate}
+                onChange={(e) => setNewExpiryDate(e.target.value)}
+                className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white"
               />
             </div>
-            <div className="space-y-2">
-              <label className="block text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest ml-1">Tên cơ sở kinh doanh</label>
-              <input
-                type="text"
-                value={formData.businessName}
-                onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none dark:text-white transition-all font-normal"
-                placeholder="Tên cơ sở"
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-neutral-500 uppercase ml-1">Tên hộ kinh doanh</label>
+              <input 
+                type="text" 
+                value={newBusinessName}
+                onChange={(e) => setNewBusinessName(e.target.value)}
+                className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white"
+                placeholder="Tên hộ kinh doanh"
               />
             </div>
-            <div className="space-y-2">
-              <label className="block text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest ml-1">Địa chỉ</label>
-              <input
-                type="text"
-                value={formData.businessAddress}
-                onChange={(e) => setFormData({ ...formData, businessAddress: e.target.value })}
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none dark:text-white transition-all font-normal"
-                placeholder="Địa chỉ chi tiết"
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-neutral-500 uppercase ml-1">Chủ hộ</label>
+              <input 
+                type="text" 
+                value={newBusinessOwner}
+                onChange={(e) => setNewBusinessOwner(e.target.value)}
+                className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white"
+                placeholder="Họ tên chủ hộ"
               />
             </div>
-            <div className="space-y-2">
-              <label className="block text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest ml-1">Nơi kinh doanh</label>
-              <input
-                type="text"
-                value={formData.businessLocation}
-                onChange={(e) => setFormData({ ...formData, businessLocation: e.target.value })}
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none dark:text-white transition-all font-normal"
-                placeholder="Thành phố, Tỉnh"
+            <div className="md:col-span-3 space-y-1">
+              <label className="text-xs font-bold text-neutral-500 uppercase ml-1">Địa chỉ đăng ký</label>
+              <input 
+                type="text" 
+                value={newBusinessAddress}
+                onChange={(e) => setNewBusinessAddress(e.target.value)}
+                className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white"
+                placeholder="Địa chỉ trên giấy phép"
               />
             </div>
-            <div className="space-y-2">
-              <label className="block text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest ml-1">Chủ hộ kinh doanh</label>
-              <input
-                type="text"
-                value={formData.businessOwner}
-                onChange={(e) => setFormData({ ...formData, businessOwner: e.target.value })}
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none dark:text-white transition-all font-normal"
-                placeholder="Tên chủ hộ"
+            <div className="md:col-span-3 space-y-1">
+              <label className="text-xs font-bold text-neutral-500 uppercase ml-1">Nơi kinh doanh</label>
+              <input 
+                type="text" 
+                value={newBusinessLocation}
+                onChange={(e) => setNewBusinessLocation(e.target.value)}
+                className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white"
+                placeholder="Địa điểm kinh doanh thực tế"
               />
             </div>
-            <div className="md:col-span-2 lg:col-span-4 flex justify-end gap-3 mt-4 pt-6 border-t border-neutral-100 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={cancelForm}
-                className="px-6 py-2.5 text-neutral-600 dark:text-slate-400 hover:bg-neutral-100 dark:hover:bg-slate-800 rounded-xl transition-all font-bold text-sm"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                type="submit"
-                className="px-8 py-2.5 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all font-bold text-sm shadow-lg shadow-primary/20"
-              >
-                {editingUser ? 'Cập nhật tài khoản' : 'Lưu tài khoản'}
-              </button>
-            </div>
-          </form>
-        </motion.div>
-      )}
+          </div>
+          <div className="flex justify-end">
+            <button 
+              type="submit"
+              className="px-8 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary-hover transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+            >
+              <Plus className="w-5 h-5" />
+              Tạo tài khoản mới
+            </button>
+          </div>
+        </form>
 
-      <div className="saas-card p-0 overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-hidden border border-neutral-100 dark:border-slate-800 rounded-2xl">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-neutral-50 dark:bg-slate-800/50 border-b border-neutral-200 dark:border-slate-800">
-                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest">Tài khoản</th>
-                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest">Quyền hạn</th>
-                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest">Ngày tạo</th>
-                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest">Thông tin kinh doanh</th>
-                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest">Hạn sử dụng</th>
-                <th className="px-6 py-4 text-[11px] font-normal text-neutral-500 dark:text-slate-400 uppercase tracking-widest text-right">Thao tác</th>
+              <tr className="bg-neutral-50 dark:bg-slate-800/50 border-b border-neutral-100 dark:border-slate-800">
+                <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider">Tài khoản</th>
+                <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider">Vai trò</th>
+                <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
               {users.map((user) => (
-                <tr key={user.id} className="hover:bg-neutral-50 dark:hover:bg-slate-800/50 transition-colors group">
+                <tr key={user.id} className="hover:bg-neutral-50/50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black shadow-sm">
-                        {user.email?.charAt(0).toUpperCase() || '?'}
+                      <div className="w-8 h-8 bg-neutral-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-neutral-500">
+                        <User className="w-4 h-4" />
                       </div>
-                      <div className="flex flex-col">
-                        <span className="font-normal text-neutral-900 dark:text-white">{user.email || 'No Email'}</span>
-                        <span className="text-[10px] text-neutral-400 dark:text-slate-500 font-normal uppercase tracking-wider">ID: {user.id.slice(0, 8)}</span>
-                      </div>
+                      <span className="font-medium text-neutral-900 dark:text-white">{user.email}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <span className={cn(
-                      "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border",
-                      user.role === 'admin' 
-                        ? "bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-900/30" 
-                        : "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/30"
+                      "px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider",
+                      user.role === 'admin' ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
                     )}>
-                      {user.role === 'admin' ? 'Quản trị viên' : 'Người dùng'}
+                      {user.role === 'admin' ? 'Quản trị' : 'Người dùng'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-xs font-bold text-neutral-500 dark:text-slate-400 font-mono">
-                    {formatDate(user.createdAt)}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col gap-1">
-                      {user.businessName && <span className="text-xs font-bold text-neutral-900 dark:text-white">{user.businessName}</span>}
-                      {user.businessOwner && <span className="text-[10px] text-neutral-500 dark:text-slate-400">Chủ: {user.businessOwner}</span>}
-                      {(user.businessAddress || user.businessLocation) && (
-                        <div className="flex items-center gap-1 text-[10px] text-neutral-400 dark:text-slate-500">
-                          <MapPin className="w-3 h-3" />
-                          <span>{[user.businessAddress, user.businessLocation].filter(Boolean).join(', ')}</span>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-xs">
-                    {user.expiryDate ? (
-                      <span className={cn(
-                        "flex items-center gap-1.5 font-bold font-mono",
-                        new Date(user.expiryDate) < new Date() ? "text-red-500" : "text-neutral-600 dark:text-slate-400"
-                      )}>
-                        <Calendar className="w-3.5 h-3.5" />
-                        {formatDate(user.expiryDate)}
-                      </span>
-                    ) : (
-                      <span className="text-neutral-400 dark:text-slate-600 italic text-[11px] font-bold uppercase tracking-wider">Vô thời hạn</span>
-                    )}
-                  </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => startEdit(user)}
-                        className="w-9 h-9 flex items-center justify-center text-primary hover:bg-primary/10 rounded-xl transition-all"
-                        title="Chỉnh sửa"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      {user.email !== 'cosogiaoduchoanggia269@gmail.com' && (
-                        <ConfirmButton
-                          onConfirm={() => deleteUser(user.id)}
-                          className="w-9 h-9 flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all"
-                          icon={Trash2}
-                        />
-                      )}
-                    </div>
+                    <button 
+                      onClick={() => handleDeleteUser(user.id)}
+                      className="p-2 text-neutral-400 hover:text-red-500 transition-colors"
+                      title="Xóa tài khoản"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -3412,8 +3946,7 @@ function UserManagementSection({ users, setUsers, setActiveTab }: { users: UserA
           </table>
         </div>
       </div>
-      <VerticalImageGallery title="Quản lý Tài khoản" />
-    </motion.div>
+    </div>
   );
 }
 
@@ -4873,7 +5406,6 @@ function FinancialManagementSection({
           </div>
         </motion.div>
       )}
-      <VerticalImageGallery title="Quản lý Tài chính" />
     </div>
   );
 }

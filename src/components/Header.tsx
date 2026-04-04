@@ -9,7 +9,8 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  Building2
+  Building2,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { 
@@ -40,6 +41,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, currentUser, o
 
   const menuItems = [
     { id: 'dashboard', label: 'TRANG CHỦ', icon: Home },
+    { id: 'ai_lesson_plan', label: 'TẠO GIÁO ÁN NLS, AI', icon: Sparkles },
     { id: 'business', label: 'HỘ KINH DOANH', icon: Building2 },
     { id: 'students_group', label: 'HỌC SINH', icon: Users },
     { id: 'program', label: 'QUẢN LÝ CHƯƠNG TRÌNH DẠY', icon: BookOpen },

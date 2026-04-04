@@ -1,5 +1,5 @@
 {
   "name": "Quản lý cơ sở Dạy thêm",
-  "description": "Hệ thống quản lý chương trình dạy, học sinh và tài chính cho cơ sở dạy thêm.",
+  "description": "Hệ thống quản lý chương trình dạy, học sinh, tài chính và tạo giáo án tích hợp NLS, AI cho cơ sở dạy thêm.",
   "requestFramePermissions": []
 }
