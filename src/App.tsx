@@ -1287,7 +1287,9 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
       const htmlContent = rawHtml;
 
       const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) throw new Error('Thiếu API Key cho Gemini AI.');
+      if (!apiKey) {
+        throw new Error('Hệ thống chưa được cấu hình API Key. Vui lòng kiểm tra cài đặt môi trường.');
+      }
 
       const ai = new GoogleGenAI({ apiKey });
       
@@ -1954,7 +1956,9 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
     
     try {
       const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) throw new Error('Thiếu API Key cho Gemini AI.');
+      if (!apiKey) {
+        throw new Error('Hệ thống chưa được cấu hình API Key. Vui lòng kiểm tra cài đặt môi trường trên Vercel.');
+      }
 
       const ai = new GoogleGenAI({ apiKey });
       
@@ -2978,7 +2982,10 @@ function LessonPlanSection({
     }
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) return;
+
+      const ai = new GoogleGenAI({ apiKey });
       const prompt = `Dựa trên thông tin sau, hãy cho biết nội dung bài học (tên bài dạy) của tiết học này:
       Khối lớp: ${row.grade}
       Môn học: ${row.subject}
