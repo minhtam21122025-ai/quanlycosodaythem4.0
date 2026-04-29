@@ -358,26 +358,39 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const [users, setUsers] = useState<UserAccount[]>(() => {
     const saved = localStorage.getItem(USERS_KEY);
-    const defaultAdmin: UserAccount = {
-      id: 'admin-1',
-      email: 'cosogiaoduchoanggia269@gmail.com',
-      password: '123456@',
-      role: 'admin',
-      createdAt: new Date().toISOString()
-    };
-    if (saved) {
-      const parsed: UserAccount[] = JSON.parse(saved);
-      const adminIndex = parsed.findIndex(u => u.email.toLowerCase() === defaultAdmin.email.toLowerCase());
-      if (adminIndex === -1) {
-        return [defaultAdmin, ...parsed];
-      } else {
-        // Force update admin password in case it changed in code
-        const updatedUsers = [...parsed];
-        updatedUsers[adminIndex] = { ...updatedUsers[adminIndex], password: defaultAdmin.password, role: 'admin' };
-        return updatedUsers;
+    const admins: UserAccount[] = [
+      {
+        id: 'admin-1',
+        email: 'cosogiaoduchoanggia269@gmail.com',
+        password: '123456@',
+        role: 'admin',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'admin-2',
+        email: '0366000555',
+        password: '123456@',
+        role: 'admin',
+        createdAt: new Date().toISOString()
       }
+    ];
+
+    if (saved) {
+      let parsed: UserAccount[] = JSON.parse(saved);
+      
+      // Ensure all hardcoded admins are present and updated
+      admins.forEach(admin => {
+        const index = parsed.findIndex(u => u.email.toLowerCase() === admin.email.toLowerCase());
+        if (index === -1) {
+          parsed.push(admin);
+        } else {
+          parsed[index] = { ...parsed[index], password: admin.password, role: 'admin' };
+        }
+      });
+
+      return parsed;
     }
-    return [defaultAdmin];
+    return admins;
   });
 
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -496,27 +509,38 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
     
-    // Ensure default admin is always present and updated
-    const defaultAdminEmail = 'cosogiaoduchoanggia269@gmail.com';
-    const defaultAdminPassword = '123456@';
-    const adminIndex = users.findIndex(u => u.email.toLowerCase() === defaultAdminEmail.toLowerCase());
-    
-    if (adminIndex === -1) {
-      const defaultAdmin: UserAccount = {
-        id: 'admin-1',
-        email: defaultAdminEmail,
-        password: defaultAdminPassword,
-        role: 'admin',
-        createdAt: new Date().toISOString()
-      };
-      setUsers(prev => [defaultAdmin, ...prev]);
-    } else if (users[adminIndex].password !== defaultAdminPassword) {
-      // Force update password if it's different in code
-      setUsers(prev => prev.map(u => 
-        u.email.toLowerCase() === defaultAdminEmail.toLowerCase() 
-          ? { ...u, password: defaultAdminPassword, role: 'admin' } 
-          : u
-      ));
+    // Ensure default admins are always present and updated
+    const hardcodedAdmins = [
+      { email: 'cosogiaoduchoanggia269@gmail.com', password: '123456@' },
+      { email: '0366000555', password: '123456@' }
+    ];
+
+    let needsUpdate = false;
+    const updatedUsers = users.map(u => {
+      const hardcoded = hardcodedAdmins.find(ha => ha.email.toLowerCase() === u.email.toLowerCase());
+      if (hardcoded && (u.password !== hardcoded.password || u.role !== 'admin')) {
+        needsUpdate = true;
+        return { ...u, password: hardcoded.password, role: 'admin' };
+      }
+      return u;
+    });
+
+    // Check if any admin is missing completely
+    hardcodedAdmins.forEach(ha => {
+      if (!users.find(u => u.email.toLowerCase() === ha.email.toLowerCase())) {
+        needsUpdate = true;
+        updatedUsers.push({
+          id: `admin-${ha.email}`,
+          email: ha.email,
+          password: ha.password,
+          role: 'admin',
+          createdAt: new Date().toISOString()
+        });
+      }
+    });
+
+    if (needsUpdate) {
+      setUsers(updatedUsers);
     }
   }, [users]);
 
@@ -666,41 +690,44 @@ export default function App() {
         {/* Welcome Modal */}
         <AnimatePresence>
           {showWelcomeModal && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
               <motion.div
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl max-w-2xl w-full p-8 lg:p-12 border border-neutral-200 dark:border-slate-800 relative overflow-hidden"
+                className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 lg:p-12 border border-neutral-200 dark:border-slate-800 relative custom-scrollbar"
               >
-                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-green-500 to-orange-500" />
+                <div className="sticky top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-green-500 to-orange-500 -mt-6 lg:-mt-12 mb-6 lg:mb-8 z-10" />
                 
                 <div className="text-center space-y-6">
-                  <div className="w-24 h-24 bg-white dark:bg-slate-900 rounded-[24px] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-primary/20 relative p-4">
+                  <div className="w-16 h-16 lg:w-24 lg:h-24 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4 lg:mb-6 shadow-xl shadow-primary/20 relative p-3 border border-neutral-100 dark:border-slate-800">
                     <Logo className="w-full h-full" />
                   </div>
                   
-                  <h2 className="text-2xl lg:text-3xl font-normal text-neutral-900 dark:text-white leading-tight">
+                  <h2 className="text-xl lg:text-3xl font-black text-neutral-900 dark:text-white leading-tight tracking-tight uppercase">
                     Chào mừng Quý Thầy Cô đến với <span className="text-primary">HOÀNG GIA</span>
                   </h2>
-                  <p className="text-primary font-normal text-xl">admin</p>
+                  <p className="text-primary font-black text-sm lg:text-lg uppercase tracking-[0.2em]">{currentUser?.email}</p>
                   
-                  <div className="text-neutral-600 dark:text-slate-300 leading-relaxed text-lg font-normal">
+                  <div className="text-neutral-600 dark:text-slate-400 leading-relaxed text-sm lg:text-lg font-medium text-justify lg:text-center px-2">
                     Hệ thống được thiết kế tối ưu dành riêng cho các thầy cô và trung tâm dạy thêm. Bao gồm các chương trình: 
-                    <span className="text-blue-600 dark:text-blue-400 mx-1">Quản lý học sinh</span>, 
-                    <span className="text-green-600 dark:text-green-400 mx-1">Quản lý chương trình dạy</span>, 
-                    <span className="text-orange-600 dark:text-orange-400 mx-1">Quản lý tài chính</span>,
-                    <span className="text-purple-600 dark:text-purple-400 mx-1">Tạo giáo án tích hợp AI và NLS</span>,
-                    <span className="text-indigo-600 dark:text-indigo-400 mx-1">Tạo KHBD cho Trung tâm dạy thêm</span>. 
+                    <span className="text-blue-600 dark:text-blue-400 font-bold mx-1">Quản lý học sinh</span>, 
+                    <span className="text-green-600 dark:text-green-400 font-bold mx-1">Quản lý chương trình dạy</span>, 
+                    <span className="text-orange-600 dark:text-orange-400 font-bold mx-1">Quản lý tài chính</span>,
+                    <span className="text-purple-600 dark:text-purple-400 font-bold mx-1">Tạo giáo án tích hợp AI và NLS</span>,
+                    <span className="text-indigo-600 dark:text-indigo-400 font-bold mx-1">Tạo KHBD cho Trung tâm dạy thêm</span>. 
                     Chúng tôi cung cấp các công cụ mạnh mẽ để quản lý học sinh, chương trình giảng dạy, tài chính và hỗ trợ soạn giảng thông minh, giúp Quý Thầy Cô tập trung hoàn toàn vào sứ mệnh truyền đạt tri thức.
                   </div>
 
-                  <button
-                    onClick={() => setShowWelcomeModal(false)}
-                    className="mt-8 px-10 py-4 bg-primary text-white rounded-2xl font-bold hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 active:scale-95"
-                  >
-                    Bắt đầu làm việc
-                  </button>
+                  <div className="pt-4 lg:pt-8 pb-4">
+                    <button
+                      onClick={() => setShowWelcomeModal(false)}
+                      className="w-full sm:w-auto px-10 py-4 bg-primary text-white rounded-2xl font-black text-base lg:text-lg hover:bg-primary-hover transition-all shadow-xl shadow-primary/20 active:scale-95 uppercase tracking-widest flex items-center justify-center gap-3 mx-auto"
+                    >
+                      <Sparkles className="w-5 h-5" />
+                      Bắt đầu làm việc
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             </div>
@@ -777,17 +804,17 @@ function DashboardSection({
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="saas-card bg-gradient-to-br from-white to-neutral-50 dark:from-slate-900 dark:to-slate-800 border-l-4 border-l-primary"
+        className="saas-card bg-gradient-to-br from-white to-neutral-50 dark:from-slate-900 dark:to-slate-800 border-l-4 border-l-primary overflow-hidden"
       >
-        <div className="flex items-start gap-6">
-          <div className="w-20 h-20 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-primary/10 p-3">
+        <div className="flex flex-col md:flex-row items-start gap-6 p-6 lg:p-8">
+          <div className="w-16 h-16 lg:w-20 lg:h-20 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-primary/10 p-3 border border-neutral-100 dark:border-slate-800">
             <Logo className="w-full h-full" />
           </div>
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">
+          <div className="space-y-4 flex-1">
+            <h2 className="text-xl lg:text-2xl font-black text-neutral-900 dark:text-white leading-tight uppercase tracking-tight">
               Chào mừng Quý Thầy Cô đến với <span className="text-primary">HOÀNG GIA</span>
             </h2>
-            <p className="text-neutral-600 dark:text-slate-300 text-lg leading-relaxed">
+            <p className="text-neutral-600 dark:text-slate-300 text-sm lg:text-lg leading-relaxed text-justify">
               Hệ thống được thiết kế tối ưu dành riêng cho các thầy cô và trung tâm dạy thêm. Bao gồm các chương trình: 
               <span className="text-blue-600 dark:text-blue-400 font-bold mx-1">Quản lý học sinh</span>, 
               <span className="text-emerald-600 dark:text-emerald-400 font-bold mx-1">Quản lý chương trình dạy</span>, 
@@ -796,6 +823,14 @@ function DashboardSection({
               <span className="text-indigo-600 dark:text-indigo-400 font-bold mx-1">Tạo KHBD cho Trung tâm dạy thêm</span>. 
               Chúng tôi cung cấp các công cụ mạnh mẽ để quản lý học sinh, chương trình giảng dạy, tài chính và hỗ trợ soạn giảng thông minh, giúp Quý Thầy Cô tập trung hoàn toàn vào sứ mệnh truyền đạt tri thức.
             </p>
+            <div className="pt-2">
+              <button 
+                onClick={() => window.scrollTo({ top: 400, behavior: 'smooth' })}
+                className="px-6 py-2.5 bg-primary/10 dark:bg-primary/20 text-primary rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-primary hover:text-white transition-all"
+              >
+                Khám phá ngay
+              </button>
+            </div>
           </div>
         </div>
       </motion.div>
