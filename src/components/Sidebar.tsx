@@ -24,10 +24,11 @@ interface SidebarProps {
   onLogout: () => void;
   isOpen?: boolean;
   onClose?: () => void;
+  menuOrder?: string[];
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, currentUser, onLogout, isOpen, onClose }) => {
-  const menuItems = [
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, currentUser, onLogout, isOpen, onClose, menuOrder }) => {
+  const defaultItems = [
     { id: 'dashboard', label: 'TRANG CHỦ', icon: Home },
     { id: 'ai_lesson_plan', label: 'TẠO KHBD NLS, AI', icon: Sparkles },
     { id: 'teacher_lesson_plan', label: 'TẠO KHBD GIÁO VIÊN', icon: ClipboardList },
@@ -36,10 +37,28 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, currentUser,
     { id: 'program', label: 'QUẢN LÝ CHƯƠNG TRÌNH DẠY', icon: BookOpen },
     { id: 'finance_group', label: 'TÀI CHÍNH', icon: DollarSign },
     { id: 'users', label: 'TÀI KHOẢN', icon: Users, adminOnly: true },
-  ].filter(item => {
-    if (currentUser?.role === 'admin') return true;
-    return !item.adminOnly;
-  });
+  ];
+
+  const menuItems = React.useMemo(() => {
+    let items = [...defaultItems];
+    
+    if (menuOrder && menuOrder.length > 0) {
+      // Sort items based on menuOrder
+      items.sort((a, b) => {
+        const indexA = menuOrder.indexOf(a.id);
+        const indexB = menuOrder.indexOf(b.id);
+        if (indexA === -1 && indexB === -1) return 0;
+        if (indexA === -1) return 1;
+        if (indexB === -1) return -1;
+        return indexA - indexB;
+      });
+    }
+
+    return items.filter(item => {
+      if (currentUser?.role === 'admin') return true;
+      return !item.adminOnly;
+    });
+  }, [currentUser, menuOrder]);
 
   return (
     <>

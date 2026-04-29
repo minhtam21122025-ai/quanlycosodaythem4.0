@@ -29,6 +29,7 @@ import {
   Check,
   X,
   ChevronDown,
+  ChevronUp,
   BarChart3,
   Receipt,
   LogOut,
@@ -331,12 +332,16 @@ interface UserAccount {
   password: string;
   role: 'admin' | 'user';
   expiryDate?: string;
-  createdAt: string;
+  maxDevices?: number;
+  taxCode?: string;
   businessName?: string;
   businessAddress?: string;
-  businessLocation?: string;
   businessOwner?: string;
+  businessLocation?: string;
+  createdAt: string;
 }
+
+const SYNC_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbynIT2ZNiXJvmOB3LUi9YisDYS2Crin7G0skh-cDseNNIGXfy4PK3MMMcD0lYVhMSke/exec';
 
 // --- Components ---
 
@@ -420,6 +425,77 @@ export default function App() {
   const [expenseData, setExpenseData] = useState<ExpenseItem[]>([]);
   const [aiLessonPlans, setAiLessonPlans] = useState<{ nls: string, ai: string } | null>(null);
   const [currentPlan, setCurrentPlan] = useState<LessonPlan | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Menu Order state
+  const [menuOrder, setMenuOrder] = useState<string[]>(() => {
+    const saved = localStorage.getItem('MENU_ORDER');
+    return saved ? JSON.parse(saved) : [
+      'dashboard', 
+      'ai_lesson_plan', 
+      'teacher_lesson_plan', 
+      'business', 
+      'students_group', 
+      'program', 
+      'finance_group'
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('MENU_ORDER', JSON.stringify(menuOrder));
+  }, [menuOrder]);
+
+  // Synchronization logic
+  const syncToGoogleSheets = async (action: 'sync_users' | 'sync_business', payload: any) => {
+    setIsSyncing(true);
+    try {
+      await fetch(SYNC_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, ...payload })
+      });
+      console.log(`Sync ${action} success`);
+    } catch (error) {
+      console.error(`Sync ${action} failed`, error);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const fetchFromGoogleSheets = async () => {
+    setIsSyncing(true);
+    try {
+      const response = await fetch(`${SYNC_SCRIPT_URL}?action=fetch_data`);
+      const data = await response.json();
+      if (data.users && data.users.length > 0) {
+        // Map users from sheet back to UserAccount interface
+        const newUsers = data.users.map((u: any) => ({
+          ...u,
+          id: u.id || `user-${Date.now()}-${Math.random()}`,
+          role: u.role || 'user',
+          maxDevices: parseInt(u.maxDevices) || 1
+        }));
+        setUsers(newUsers);
+      }
+      if (data.businessInfo) {
+        setBusinessInfo(prev => ({
+          ...prev,
+          name: data.businessInfo.name || prev.name,
+          owner: data.businessInfo.owner || prev.owner,
+          taxId: data.businessInfo.taxId || prev.taxId,
+          address: data.businessInfo.address || prev.address,
+          businessLocation: data.businessInfo.businessLocation || prev.businessLocation
+        }));
+      }
+      alert('Tải dữ liệu từ Google Sheet thành công!');
+    } catch (error) {
+      console.error("Fetch failed", error);
+      alert('Tải dữ liệu thất bại. Vui lòng kiểm tra lại cấu hình script.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // Load/Reset data when user changes
   useEffect(() => {
@@ -600,7 +676,22 @@ export default function App() {
       case 'teacher_lesson_plan':
         return <TeacherLessonPlanSection currentUser={currentUser} />;
       case 'business':
-        return <BusinessConfigSection info={businessInfo} setInfo={setBusinessInfo} setActiveTab={setActiveTab} currentUser={currentUser} />;
+        return (
+          <BusinessConfigSection 
+            info={businessInfo} 
+            setInfo={setBusinessInfo} 
+            setActiveTab={setActiveTab} 
+            currentUser={currentUser} 
+            onSync={(info) => syncToGoogleSheets('sync_business', { info })}
+          />
+        );
+      case 'menu_settings':
+        return currentUser?.role === 'admin' ? (
+          <MenuSettingsSection 
+            menuOrder={menuOrder} 
+            setMenuOrder={setMenuOrder} 
+          />
+        ) : null;
       case 'program':
       case 'classes':
       case 'ppct':
@@ -656,6 +747,8 @@ export default function App() {
             users={users} 
             setUsers={setUsers} 
             setActiveTab={setActiveTab}
+            onSync={(updatedUsers) => syncToGoogleSheets('sync_users', { users: updatedUsers })}
+            onFetch={fetchFromGoogleSheets}
           />
         ) : null;
       default:
@@ -676,6 +769,7 @@ export default function App() {
         onLogout={handleLogout}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
+        menuOrder={menuOrder}
       />
       
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
@@ -2295,13 +2389,33 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
   );
 }
 
-function BusinessConfigSection({ info, setInfo, setActiveTab, currentUser }: { info: BusinessInfo, setInfo: (i: BusinessInfo) => void, setActiveTab: (t: string) => void, currentUser: UserAccount | null }) {
-  const [formData, setFormData] = useState<BusinessInfo>(info);
+function BusinessConfigSection({ info, setInfo, setActiveTab, currentUser, onSync }: { info: BusinessInfo, setInfo: (i: BusinessInfo) => void, setActiveTab: (t: string) => void, currentUser: UserAccount | null, onSync?: (info: BusinessInfo) => void }) {
+  const isAdmin = currentUser?.role === 'admin';
+  
+  // Create a merged info object for users - merge account-level config with global config
+  const displayInfo = React.useMemo(() => {
+    if (isAdmin) return info;
+    return {
+      name: currentUser?.businessName || info.name,
+      owner: currentUser?.businessOwner || info.owner,
+      taxId: currentUser?.taxCode || info.taxId,
+      address: currentUser?.businessAddress || info.address,
+      businessLocation: currentUser?.businessLocation || info.businessLocation
+    };
+  }, [info, currentUser, isAdmin]);
+
+  const [formData, setFormData] = React.useState<BusinessInfo>(displayInfo);
+
+  React.useEffect(() => {
+    setFormData(displayInfo);
+  }, [displayInfo]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) return;
     setInfo(formData);
-    alert('Đã lưu cấu hình hộ kinh doanh thành công!');
+    if (onSync) onSync(formData);
+    alert('Đã lưu và đồng bộ cấu hình hộ kinh doanh thành công!');
   };
 
   return (
@@ -2317,7 +2431,11 @@ function BusinessConfigSection({ info, setInfo, setActiveTab, currentUser }: { i
           </div>
           <div>
             <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">Cấu hình Hộ kinh doanh</h2>
-            <p className="text-sm text-neutral-500 dark:text-slate-400 mt-1 font-medium">Thiết lập thông tin cơ bản của hộ kinh doanh để in chứng từ.</p>
+            <p className="text-sm text-neutral-500 dark:text-slate-400 mt-1 font-medium">
+              {isAdmin 
+                ? "Thiết lập thông tin cơ bản của hộ kinh doanh để in chứng từ." 
+                : "Thông tin cơ bản của hộ kinh doanh (Chỉ xem)."}
+            </p>
           </div>
         </div>
 
@@ -2329,7 +2447,8 @@ function BusinessConfigSection({ info, setInfo, setActiveTab, currentUser }: { i
                 type="text" 
                 value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all"
+                disabled={!isAdmin}
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all disabled:opacity-70 disabled:cursor-not-allowed"
                 placeholder="Ví dụ: Hộ kinh doanh Nguyễn Văn A"
               />
             </div>
@@ -2339,7 +2458,8 @@ function BusinessConfigSection({ info, setInfo, setActiveTab, currentUser }: { i
                 type="text" 
                 value={formData.owner}
                 onChange={(e) => setFormData({...formData, owner: e.target.value})}
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all"
+                disabled={!isAdmin}
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all disabled:opacity-70 disabled:cursor-not-allowed"
                 placeholder="Họ và tên chủ hộ"
               />
             </div>
@@ -2349,7 +2469,8 @@ function BusinessConfigSection({ info, setInfo, setActiveTab, currentUser }: { i
                 type="text" 
                 value={formData.taxId}
                 onChange={(e) => setFormData({...formData, taxId: e.target.value})}
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all"
+                disabled={!isAdmin}
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all disabled:opacity-70 disabled:cursor-not-allowed"
                 placeholder="Mã số thuế (nếu có)"
               />
             </div>
@@ -2359,38 +2480,116 @@ function BusinessConfigSection({ info, setInfo, setActiveTab, currentUser }: { i
                 type="text" 
                 value={formData.address}
                 onChange={(e) => setFormData({...formData, address: e.target.value})}
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all"
+                disabled={!isAdmin}
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all disabled:opacity-70 disabled:cursor-not-allowed"
                 placeholder="Địa chỉ đăng ký"
               />
             </div>
-            <div className="md:col-span-2 space-y-2">
+            <div className="space-y-2">
               <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Nơi kinh doanh</label>
               <input 
                 type="text" 
                 value={formData.businessLocation}
                 onChange={(e) => setFormData({...formData, businessLocation: e.target.value})}
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all"
+                disabled={!isAdmin}
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all disabled:opacity-70 disabled:cursor-not-allowed"
                 placeholder="Địa điểm kinh doanh thực tế"
               />
             </div>
           </div>
 
           <div className="pt-4 flex gap-4">
-            <button 
-              type="submit"
-              className="px-8 py-3 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all font-bold shadow-lg shadow-primary/20"
-            >
-              Lưu cấu hình
-            </button>
+            {isAdmin && (
+              <button 
+                type="submit"
+                className="px-8 py-3 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all font-bold shadow-lg shadow-primary/20"
+              >
+                Lưu cấu hình
+              </button>
+            )}
             <button 
               type="button"
               onClick={() => setActiveTab('dashboard')}
               className="px-8 py-3 bg-neutral-100 dark:bg-slate-800 text-neutral-700 dark:text-slate-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-slate-700 transition-all font-bold"
             >
-              Hủy
+              Trở lại
             </button>
           </div>
         </form>
+      </motion.div>
+    </div>
+  );
+}
+
+function MenuSettingsSection({ menuOrder, setMenuOrder }: { menuOrder: string[], setMenuOrder: (o: string[]) => void }) {
+  const ALL_MENU_ITEMS = [
+    { id: 'dashboard', label: 'TRANG CHỦ', icon: Home },
+    { id: 'ai_lesson_plan', label: 'TẠO KHBD NLS, AI', icon: Sparkles },
+    { id: 'teacher_lesson_plan', label: 'TẠO KHBD GIÁO VIÊN', icon: ClipboardList },
+    { id: 'business', label: 'HỘ KINH DOANH', icon: Building2 },
+    { id: 'students_group', label: 'HỌC SINH', icon: Users },
+    { id: 'program', label: 'QUẢN LÝ CHƯƠNG TRÌNH DẠY', icon: BookOpen },
+    { id: 'finance_group', label: 'TÀI CHÍNH', icon: DollarSign },
+  ];
+
+  const moveUp = (index: number) => {
+    if (index === 0) return;
+    const newOrder = [...menuOrder];
+    [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
+    setMenuOrder(newOrder);
+  };
+
+  const moveDown = (index: number) => {
+    if (index === menuOrder.length - 1) return;
+    const newOrder = [...menuOrder];
+    [newOrder[index + 1], newOrder[index]] = [newOrder[index], newOrder[index + 1]];
+    setMenuOrder(newOrder);
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-8">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white dark:bg-slate-900 p-8 rounded-[32px] border border-neutral-200 dark:border-slate-800 shadow-sm"
+      >
+        <div className="mb-8">
+          <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">Cấu hình Thứ tự Menu</h2>
+          <p className="text-sm text-neutral-500 dark:text-slate-400 mt-1 font-medium">Di chuyển các mục menu để thay đổi thứ tự hiển thị cho toàn bộ hệ thống.</p>
+        </div>
+
+        <div className="space-y-3">
+          {menuOrder.map((id, index) => {
+            const item = ALL_MENU_ITEMS.find(i => i.id === id);
+            if (!item) return null;
+            return (
+              <div key={id} className="flex items-center justify-between p-4 bg-neutral-50 dark:bg-slate-800/50 rounded-2xl border border-neutral-100 dark:border-slate-700">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center text-primary shadow-sm">
+                    <item.icon className="w-5 h-5" />
+                  </div>
+                  <span className="font-bold text-neutral-800 dark:text-slate-200">{item.label}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => moveUp(index)}
+                    disabled={index === 0}
+                    className="p-2 hover:bg-neutral-200 dark:hover:bg-slate-700 rounded-lg disabled:opacity-30 transition-all"
+                  >
+                    <ChevronUp className="w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={() => moveDown(index)}
+                    disabled={index === menuOrder.length - 1}
+                    className="p-2 hover:bg-neutral-200 dark:hover:bg-slate-700 rounded-lg disabled:opacity-30 transition-all"
+                  >
+                    <ChevronDown className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </motion.div>
     </div>
   );
@@ -4521,11 +4720,13 @@ function LoginPage({ onLogin, users, darkMode, setDarkMode }: { onLogin: (user: 
   );
 }
 
-function UserManagementSection({ users, setUsers, setActiveTab }: { users: UserAccount[], setUsers: React.Dispatch<React.SetStateAction<UserAccount[]>>, setActiveTab: (t: string) => void }) {
+function UserManagementSection({ users, setUsers, setActiveTab, onSync, onFetch }: { users: UserAccount[], setUsers: React.Dispatch<React.SetStateAction<UserAccount[]>>, setActiveTab: (t: string) => void, onSync?: (users: UserAccount[]) => void, onFetch?: () => void }) {
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState<'admin' | 'user'>('user');
   const [newExpiryDate, setNewExpiryDate] = useState('');
+  const [newMaxDevices, setNewMaxDevices] = useState(1);
+  const [newTaxCode, setNewTaxCode] = useState('');
   const [newBusinessName, setNewBusinessName] = useState('');
   const [newBusinessAddress, setNewBusinessAddress] = useState('');
   const [newBusinessLocation, setNewBusinessLocation] = useState('');
@@ -4541,6 +4742,8 @@ function UserManagementSection({ users, setUsers, setActiveTab }: { users: UserA
       password: newPassword,
       role: newRole,
       expiryDate: newExpiryDate || undefined,
+      maxDevices: newMaxDevices,
+      taxCode: newTaxCode || undefined,
       businessName: newBusinessName || undefined,
       businessAddress: newBusinessAddress || undefined,
       businessLocation: newBusinessLocation || undefined,
@@ -4548,10 +4751,15 @@ function UserManagementSection({ users, setUsers, setActiveTab }: { users: UserA
       createdAt: new Date().toISOString()
     };
     
-    setUsers([...users, newUser]);
+    const updatedUsers = [...users, newUser];
+    setUsers(updatedUsers);
+    if (onSync) onSync(updatedUsers);
+
     setNewEmail('');
     setNewPassword('');
     setNewExpiryDate('');
+    setNewMaxDevices(1);
+    setNewTaxCode('');
     setNewBusinessName('');
     setNewBusinessAddress('');
     setNewBusinessLocation('');
@@ -4563,19 +4771,49 @@ function UserManagementSection({ users, setUsers, setActiveTab }: { users: UserA
       alert('Không thể xóa tài khoản cuối cùng.');
       return;
     }
-    setUsers(users.filter(u => u.id !== id));
+    const updatedUsers = users.filter(u => u.id !== id);
+    setUsers(updatedUsers);
+    if (onSync) onSync(updatedUsers);
   };
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
       <div className="bg-white dark:bg-slate-900 p-8 rounded-[32px] border border-neutral-200 dark:border-slate-800 shadow-sm">
-        <div className="flex items-center gap-4 mb-8">
-          <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-            <Users className="w-6 h-6" />
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+              <Users className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">Quản lý Tài khoản</h2>
+              <p className="text-sm text-neutral-500 dark:text-slate-400 mt-1 font-medium">Thêm, sửa hoặc xóa tài khoản truy cập hệ thống.</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">Quản lý Tài khoản</h2>
-            <p className="text-sm text-neutral-500 dark:text-slate-400 mt-1 font-medium">Thêm, sửa hoặc xóa tài khoản truy cập hệ thống.</p>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setActiveTab('menu_settings')}
+              className="px-4 py-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-200 transition-all text-sm"
+            >
+              <Settings className="w-4 h-4" />
+              Sắp xếp Menu
+            </button>
+            <button 
+              onClick={() => {
+                if (onSync) onSync(users);
+                alert('Đã gửi yêu cầu đồng bộ toàn bộ tài khoản lên Google Sheet!');
+              }}
+              className="px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-200 transition-all text-sm"
+            >
+              <Upload className="w-4 h-4" />
+              Đẩy lên Google Sheet
+            </button>
+            <button 
+              onClick={onFetch}
+              className="px-4 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-200 transition-all text-sm"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Tải từ Google Sheet
+            </button>
           </div>
         </div>
 
@@ -4611,6 +4849,26 @@ function UserManagementSection({ users, setUsers, setActiveTab }: { users: UserA
                 <option value="user">Người dùng</option>
                 <option value="admin">Quản trị viên</option>
               </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-neutral-500 uppercase ml-1">Mã số thuế</label>
+              <input 
+                type="text" 
+                value={newTaxCode}
+                onChange={(e) => setNewTaxCode(e.target.value)}
+                className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white"
+                placeholder="Mã số thuế"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-neutral-500 uppercase ml-1">Số máy tối đa</label>
+              <input 
+                type="number" 
+                value={newMaxDevices}
+                onChange={(e) => setNewMaxDevices(parseInt(e.target.value))}
+                min="1"
+                className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white"
+              />
             </div>
             <div className="space-y-1">
               <label className="text-xs font-bold text-neutral-500 uppercase ml-1">Ngày hết hạn</label>
@@ -4679,6 +4937,7 @@ function UserManagementSection({ users, setUsers, setActiveTab }: { users: UserA
               <tr className="bg-neutral-50 dark:bg-slate-800/50 border-b border-neutral-100 dark:border-slate-800">
                 <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider">Tài khoản</th>
                 <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider">Vai trò</th>
+                <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider">MST</th>
                 <th className="px-6 py-4 text-xs font-bold text-neutral-500 uppercase tracking-wider text-right">Thao tác</th>
               </tr>
             </thead>
@@ -4690,7 +4949,12 @@ function UserManagementSection({ users, setUsers, setActiveTab }: { users: UserA
                       <div className="w-8 h-8 bg-neutral-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-neutral-500">
                         <User className="w-4 h-4" />
                       </div>
-                      <span className="font-medium text-neutral-900 dark:text-white">{user.email}</span>
+                      <div className="flex flex-col">
+                        <span className="font-medium text-neutral-900 dark:text-white">{user.email}</span>
+                        {user.expiryDate && (
+                          <span className="text-[10px] text-neutral-400">Hết hạn: {formatDate(user.expiryDate)}</span>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -4700,6 +4964,9 @@ function UserManagementSection({ users, setUsers, setActiveTab }: { users: UserA
                     )}>
                       {user.role === 'admin' ? 'Quản trị' : 'Người dùng'}
                     </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-xs font-medium text-neutral-600 dark:text-slate-400">{user.taxCode || '-'}</span>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <button 
@@ -4758,6 +5025,18 @@ function FinancialManagementSection({
       }
     }
   }, [currentUser]);
+
+  // Merge account-level business info with global info for exports
+  const effectiveBusinessInfo = React.useMemo(() => {
+    if (currentUser?.role === 'admin') return businessInfo;
+    return {
+      name: currentUser?.businessName || businessInfo.name,
+      owner: currentUser?.businessOwner || businessInfo.owner,
+      taxId: currentUser?.taxCode || businessInfo.taxId,
+      address: currentUser?.businessAddress || businessInfo.address,
+      businessLocation: currentUser?.businessLocation || businessInfo.businessLocation
+    };
+  }, [businessInfo, currentUser]);
 
   const subNavItems = [
     { id: 'finance-config', label: 'Cấu hình & Tải dữ liệu', icon: Settings },
@@ -5068,19 +5347,19 @@ function FinancialManagementSection({
                       new Paragraph({
                         children: [
                           new TextRun({ text: "HỘ, CÁ NHÂN KINH DOANH: ", bold: true, size: 24 }),
-                          new TextRun({ text: businessInfo.name.toUpperCase(), bold: true, size: 24 }),
+                          new TextRun({ text: effectiveBusinessInfo.name.toUpperCase(), bold: true, size: 24 }),
                         ],
                       }),
                       new Paragraph({
                         children: [
                           new TextRun({ text: "Địa chỉ: ", bold: true, size: 24 }),
-                          new TextRun({ text: businessInfo.address, size: 24 }),
+                          new TextRun({ text: effectiveBusinessInfo.address, size: 24 }),
                         ],
                       }),
                       new Paragraph({
                         children: [
                           new TextRun({ text: "Mã số thuế: ", bold: true, size: 24 }),
-                          new TextRun({ text: config.taxCode || businessInfo.taxId || "................", size: 24 }),
+                          new TextRun({ text: effectiveBusinessInfo.taxId || "................", size: 24 }),
                         ],
                       }),
                     ],
@@ -5122,7 +5401,7 @@ function FinancialManagementSection({
           new Paragraph({
             alignment: AlignmentType.CENTER,
             children: [
-              new TextRun({ text: `Địa điểm kinh doanh: ${businessInfo.businessLocation || businessInfo.address}`, size: 26 }),
+              new TextRun({ text: `Địa điểm kinh doanh: ${effectiveBusinessInfo.businessLocation || effectiveBusinessInfo.address}`, size: 26 }),
             ],
           }),
           new Paragraph({
@@ -5217,7 +5496,7 @@ function FinancialManagementSection({
                         alignment: AlignmentType.CENTER,
                         spacing: { before: 1200 },
                         children: [
-                          new TextRun({ text: businessInfo.owner || "................", bold: true, size: 24 }),
+                          new TextRun({ text: effectiveBusinessInfo.owner || "................", bold: true, size: 24 }),
                         ],
                       }),
                     ],
@@ -5235,7 +5514,7 @@ function FinancialManagementSection({
   };
 
   const getReceiptVoucherChildren = (item: IncomeItem, index: number = 0) => {
-    const dateParts = config.receiptDate.split('-');
+    const dateParts = (config.receiptDate || "").split('-');
     const d = dateParts[2] || '...';
     const m = dateParts[1] || '...';
     const y = dateParts[0] || '...';
@@ -5264,19 +5543,19 @@ function FinancialManagementSection({
                   new Paragraph({
                     children: [
                       new TextRun({ text: "HỘ, CÁ NHÂN KINH DOANH: ", bold: true, size: 20 }),
-                      new TextRun({ text: businessInfo.name || "................", size: 20 }),
+                      new TextRun({ text: effectiveBusinessInfo.name || "................", size: 20 }),
                     ],
                   }),
                   new Paragraph({
                     children: [
                       new TextRun({ text: "Địa chỉ: ", bold: true, size: 20 }),
-                      new TextRun({ text: businessInfo.address || "................", size: 20 }),
+                      new TextRun({ text: effectiveBusinessInfo.address || "................", size: 20 }),
                     ],
                   }),
                   new Paragraph({
                     children: [
                       new TextRun({ text: "Mã số thuế: ", bold: true, size: 20 }),
-                      new TextRun({ text: config.taxCode || businessInfo.taxId || "................", size: 20 }),
+                      new TextRun({ text: effectiveBusinessInfo.taxId || "................", size: 20 }),
                     ],
                   }),
                 ],
@@ -5438,7 +5717,7 @@ function FinancialManagementSection({
               new TableCell({
                 children: [
                   new Paragraph({ spacing: { before: 400 } }),
-                  new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: businessInfo.owner || "", bold: true, size: 22 })] }),
+                  new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: effectiveBusinessInfo.owner || "", bold: true, size: 22 })] }),
                 ],
               }),
               new TableCell({
@@ -5474,7 +5753,7 @@ function FinancialManagementSection({
   };
 
   const getPaymentVoucherChildren = (item: ExpenseItem, index: number = 0) => {
-    const dateParts = config.paymentDate.split('-');
+    const dateParts = (config.paymentDate || "").split('-');
     const d = dateParts[2] || '...';
     const m = dateParts[1] || '...';
     const y = dateParts[0] || '...';
@@ -5503,19 +5782,19 @@ function FinancialManagementSection({
                   new Paragraph({
                     children: [
                       new TextRun({ text: "HỘ, CÁ NHÂN KINH DOANH: ", bold: true, size: 20 }),
-                      new TextRun({ text: businessInfo.name || "................", size: 20 }),
+                      new TextRun({ text: effectiveBusinessInfo.name || "................", size: 20 }),
                     ],
                   }),
                   new Paragraph({
                     children: [
                       new TextRun({ text: "Địa chỉ: ", bold: true, size: 20 }),
-                      new TextRun({ text: businessInfo.address || "................", size: 20 }),
+                      new TextRun({ text: effectiveBusinessInfo.address || "................", size: 20 }),
                     ],
                   }),
                   new Paragraph({
                     children: [
                       new TextRun({ text: "Mã số thuế: ", bold: true, size: 20 }),
-                      new TextRun({ text: config.taxCode || businessInfo.taxId || "................", size: 20 }),
+                      new TextRun({ text: effectiveBusinessInfo.taxId || "................", size: 20 }),
                     ],
                   }),
                 ],
@@ -5677,7 +5956,7 @@ function FinancialManagementSection({
               new TableCell({
                 children: [
                   new Paragraph({ spacing: { before: 400 } }),
-                  new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: businessInfo.owner || "", bold: true, size: 22 })] }),
+                  new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: effectiveBusinessInfo.owner || "", bold: true, size: 22 })] }),
                 ],
               }),
               new TableCell({
@@ -5891,21 +6170,11 @@ function FinancialManagementSection({
                   placeholder="Họ và tên thủ quỹ"
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Mã số thuế</label>
-                <input 
-                  type="text" 
-                  value={config.taxCode}
-                  onChange={(e) => setConfig({ ...config, taxCode: e.target.value })}
-                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all"
-                  placeholder="Nhập mã số thuế"
-                />
-              </div>
             </div>
             <div className="mt-8 flex justify-end pt-6 border-t border-neutral-100 dark:border-slate-800">
               <button 
                 onClick={() => {
-                  if (!config.reportPeriod || !config.receiptDate || !config.paymentDate || !config.preparer || !config.treasurer || !config.taxCode) {
+                  if (!config.reportPeriod || !config.receiptDate || !config.paymentDate || !config.preparer || !config.treasurer) {
                     alert("Vui lòng điền đầy đủ thông tin cấu hình.");
                     return;
                   }
