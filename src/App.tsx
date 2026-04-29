@@ -1429,7 +1429,7 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
         contents: prompt,
         config: {
           responseMimeType: "application/json",
-          maxOutputTokens: 50000, 
+          maxOutputTokens: 8192, 
           responseSchema: {
             type: Type.OBJECT,
             properties: {
@@ -2010,6 +2010,43 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
   const [result, setResult] = useState('');
   const [error, setError] = useState('');
 
+  // Split result into sections for easier management and sequential downloading
+  const lessonParts = useMemo(() => {
+    if (!result) return [];
+    
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = result;
+    
+    // We look for H2 headings which usually denote Part I, II, III in our prompt
+    const headings = Array.from(tempDiv.querySelectorAll('h2'));
+    if (headings.length === 0) {
+      return [{ title: 'Toàn bộ giáo án', content: result }];
+    }
+    
+    const parts: { title: string; content: string }[] = [];
+    headings.forEach((h, idx) => {
+      const nextH = headings[idx + 1];
+      let sectionContent = h.outerHTML;
+      let currentNode = h.nextSibling;
+      
+      while (currentNode && currentNode !== nextH) {
+        if (currentNode.nodeType === Node.ELEMENT_NODE) {
+          sectionContent += (currentNode as HTMLElement).outerHTML;
+        } else {
+          sectionContent += currentNode.textContent;
+        }
+        currentNode = currentNode.nextSibling;
+      }
+      
+      parts.push({
+        title: h.innerText || `Phần ${idx + 1}`,
+        content: sectionContent
+      });
+    });
+    
+    return parts;
+  }, [result]);
+
   const grades = Array.from({ length: 12 }, (_, i) => `Lớp ${i + 1}`);
   
   const subjects = [
@@ -2095,7 +2132,7 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
         contents: prompt,
         config: {
           responseMimeType: "application/json",
-          maxOutputTokens: 25000,
+          maxOutputTokens: 8192,
           responseSchema: {
             type: Type.OBJECT,
             properties: {
@@ -2364,20 +2401,34 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
           animate={{ opacity: 1, scale: 1 }}
           className="bg-white dark:bg-slate-900 p-10 rounded-[32px] border border-neutral-200 dark:border-slate-800 shadow-2xl relative"
         >
-          <div className="flex items-center justify-between mb-8 border-b border-neutral-100 dark:border-slate-800 pb-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 border-b border-neutral-100 dark:border-slate-800 pb-6 gap-4">
             <h3 className="text-2xl font-black text-neutral-900 dark:text-white flex items-center gap-3">
               <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
                 <FileText className="w-6 h-6" />
               </div>
-              Nội dung giáo án đã hoàn thành
+              Nội dung giáo án ({lessonParts.length} phần)
             </h3>
-            <button 
-              onClick={() => exportToDocx(result, `GiaoAn_${lessonName.replace(/\s+/g, '_')}.docx`)}
-              className="px-6 py-3 bg-green-600 text-white rounded-xl font-bold flex items-center gap-2 hover:bg-green-700 transition-all shadow-lg shadow-green-200 dark:shadow-none"
-            >
-              <Download className="w-5 h-5" />
-              Tải file Word (.docx)
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button 
+                onClick={() => exportToDocx(result, `GiaoAn_${lessonName.replace(/\s+/g, '_')}_ToanBo.docx`)}
+                className="px-6 py-3 bg-primary text-white rounded-xl font-bold flex items-center gap-2 hover:bg-primary-hover transition-all shadow-lg shadow-primary/20"
+              >
+                <Download className="w-5 h-5" />
+                Tải TOÀN BỘ (.docx)
+              </button>
+              
+              {lessonParts.length > 1 && lessonParts.map((part, idx) => (
+                <button 
+                  key={idx}
+                  onClick={() => exportToDocx(part.content, `GiaoAn_${lessonName.replace(/\s+/g, '_')}_Phan${idx + 1}.docx`)}
+                  className="px-4 py-3 bg-neutral-100 dark:bg-slate-800 text-neutral-700 dark:text-slate-200 rounded-xl font-bold flex items-center gap-2 hover:bg-neutral-200 dark:hover:bg-slate-700 transition-all border border-neutral-200 dark:border-slate-700 text-sm"
+                  title={part.title}
+                >
+                  <FileText className="w-4 h-4" />
+                  Phần {idx + 1}
+                </button>
+              ))}
+            </div>
           </div>
           <div 
             className="prose dark:prose-invert max-w-none min-h-[600px] p-10 bg-white dark:bg-slate-900 border-2 border-neutral-50 dark:border-slate-800 rounded-3xl text-base leading-relaxed font-sans shadow-inner overflow-x-auto"
