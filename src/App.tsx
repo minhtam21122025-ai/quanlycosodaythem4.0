@@ -52,7 +52,9 @@ import {
   Zap,
   HelpCircle,
   Layers,
-  RotateCcw
+  RotateCcw,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
@@ -352,10 +354,7 @@ export default function App() {
     localStorage.setItem(THEME_KEY, darkMode ? 'dark' : 'light');
   }, [darkMode]);
 
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
-    const saved = localStorage.getItem(AUTH_KEY);
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const [users, setUsers] = useState<UserAccount[]>(() => {
     const saved = localStorage.getItem(USERS_KEY);
     const defaultAdmin: UserAccount = {
@@ -366,11 +365,16 @@ export default function App() {
       createdAt: new Date().toISOString()
     };
     if (saved) {
-      const parsed = JSON.parse(saved);
-      if (!parsed.some((u: any) => u.email.toLowerCase() === defaultAdmin.email.toLowerCase())) {
+      const parsed: UserAccount[] = JSON.parse(saved);
+      const adminIndex = parsed.findIndex(u => u.email.toLowerCase() === defaultAdmin.email.toLowerCase());
+      if (adminIndex === -1) {
         return [defaultAdmin, ...parsed];
+      } else {
+        // Force update admin password in case it changed in code
+        const updatedUsers = [...parsed];
+        updatedUsers[adminIndex] = { ...updatedUsers[adminIndex], password: defaultAdmin.password, role: 'admin' };
+        return updatedUsers;
       }
-      return parsed;
     }
     return [defaultAdmin];
   });
@@ -490,17 +494,27 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
     
-    // Ensure default admin is always present
+    // Ensure default admin is always present and updated
     const defaultAdminEmail = 'cosogiaoduchoanggia269@gmail.com';
-    if (!users.some(u => u.email.toLowerCase() === defaultAdminEmail.toLowerCase())) {
+    const defaultAdminPassword = '123456@';
+    const adminIndex = users.findIndex(u => u.email.toLowerCase() === defaultAdminEmail.toLowerCase());
+    
+    if (adminIndex === -1) {
       const defaultAdmin: UserAccount = {
         id: 'admin-1',
         email: defaultAdminEmail,
-        password: '123456@',
+        password: defaultAdminPassword,
         role: 'admin',
         createdAt: new Date().toISOString()
       };
       setUsers(prev => [defaultAdmin, ...prev]);
+    } else if (users[adminIndex].password !== defaultAdminPassword) {
+      // Force update password if it's different in code
+      setUsers(prev => prev.map(u => 
+        u.email.toLowerCase() === defaultAdminEmail.toLowerCase() 
+          ? { ...u, password: defaultAdminPassword, role: 'admin' } 
+          : u
+      ));
     }
   }, [users]);
 
@@ -513,15 +527,6 @@ export default function App() {
       console.log('--------------------------------------------------');
     }
   }, []);
-
-  // Save auth to localStorage
-  useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem(AUTH_KEY, JSON.stringify(currentUser));
-    } else {
-      localStorage.removeItem(AUTH_KEY);
-    }
-  }, [currentUser]);
 
   // Sync currentUser with users array to get latest updates (like business info)
   useEffect(() => {
@@ -3936,6 +3941,7 @@ function StudentManagementSection({
 function LoginPage({ onLogin, users, darkMode, setDarkMode }: { onLogin: (user: UserAccount) => void, users: UserAccount[], darkMode: boolean, setDarkMode: (v: boolean) => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -4019,13 +4025,20 @@ function LoginPage({ onLogin, users, darkMode, setDarkMode }: { onLogin: (user: 
                 <Lock className="w-5 h-5 text-neutral-400 group-focus-within:text-primary transition-colors" />
               </div>
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-neutral-50 dark:bg-slate-900/50 border border-neutral-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-primary focus:border-transparent dark:text-white transition-all outline-none"
+                className="w-full pl-12 pr-12 py-4 bg-neutral-50 dark:bg-slate-900/50 border border-neutral-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-primary focus:border-transparent dark:text-white transition-all outline-none"
                 placeholder="••••••••"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-neutral-400 hover:text-primary transition-colors"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
             </div>
           </div>
 
