@@ -28,14 +28,17 @@ import {
 import { vi } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
 
+import Logo from './Logo';
+
 interface HeaderProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   currentUser: any;
   onLogout: () => void;
+  logoUrl?: string;
 }
 
-const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, currentUser, onLogout }) => {
+const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, currentUser, onLogout, logoUrl }) => {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
@@ -53,20 +56,54 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, currentUser, o
   });
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-[60] bg-white dark:bg-slate-900 border-b border-neutral-200 dark:border-slate-800 shadow-sm h-20 px-4 lg:px-8 flex items-center justify-between transition-all duration-300">
-      {/* 1. BÊN TRÁI (Brand) */}
-      <div className="flex items-center gap-3 min-w-[240px]">
-        <div className="w-10 h-10 bg-[#0078D4] rounded-xl flex items-center justify-center shadow-lg shadow-[#0078D4]/20">
-          <GraduationCap className="w-6 h-6 text-white" />
+    <header className="fixed top-0 left-0 right-0 z-[60] bg-white dark:bg-slate-900 border-b border-neutral-200 dark:border-slate-800 shadow-md h-28 px-4 lg:px-8 flex flex-col justify-center transition-all duration-300">
+      {/* Top Row: Brand and User Actions */}
+      <div className="flex items-center justify-between w-full mb-1">
+        {/* 1. BÊN TRÁI (Brand) */}
+        <div className="flex items-center gap-3 min-w-[200px]">
+          <div className="h-12 w-12 flex items-center justify-center bg-white dark:bg-slate-800 rounded-xl shadow-sm p-1">
+            <Logo className="h-full w-full" src={logoUrl} />
+          </div>
+          <div className="flex flex-col">
+            <h1 className="text-xl font-black tracking-tighter text-primary leading-none">HOÀNG GIA</h1>
+            <p className="text-[8px] font-bold text-neutral-400 dark:text-slate-500 tracking-widest uppercase mt-0.5">Trao cơ hội - Nhận niềm tin</p>
+          </div>
         </div>
-        <div className="flex flex-col">
-          <h1 className="text-xl font-black text-neutral-900 dark:text-white tracking-tight leading-none">HOÀNG GIA</h1>
-          <p className="text-[9px] font-bold text-[#0078D4] uppercase tracking-[0.15em] mt-1">TRAO CƠ HỘI - NHẬN NIỀM TIN</p>
+
+        {/* 3. BÊN PHẢI (User + Action) */}
+        <div className="flex items-center gap-4">
+          <div className="hidden sm:flex items-center gap-2">
+            <button 
+              onClick={() => setIsCalendarOpen(true)}
+              className="p-2 text-neutral-400 hover:text-primary hover:bg-primary/5 rounded-xl transition-all"
+            >
+              <Calendar className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="h-6 w-px bg-neutral-200 dark:bg-slate-800 hidden sm:block" />
+
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden md:block">
+              <p className="text-[10px] font-black text-neutral-900 dark:text-white leading-none uppercase">{currentUser?.role === 'admin' ? 'QUẢN TRỊ VIÊN' : 'NGƯỜI DÙNG'}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <button 
+                  onClick={onLogout}
+                  className="text-[9px] font-bold text-red-500 hover:underline uppercase tracking-tighter"
+                >
+                  Đăng xuất
+                </button>
+              </div>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-indigo-600 flex items-center justify-center text-white text-sm font-black shadow-lg border-2 border-white dark:border-slate-800">
+              {currentUser?.email?.charAt(0).toUpperCase() || 'A'}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* 2. Ở GIỮA (Menu điều hướng) - Hidden on mobile */}
-      <nav className="hidden lg:flex items-center gap-1">
+      {/* Bottom Row: Navigation Menu */}
+      <nav className="hidden lg:flex items-center justify-center gap-2 w-full border-t border-neutral-100 dark:border-slate-800 pt-2 flex-wrap">
         {menuItems.map((item) => {
           const isActive = activeTab === item.id || (item.id === 'program' && ['classes', 'ppct', 'lesson-plan', 'journal'].includes(activeTab)) || (item.id === 'students_group' && ['students-list', 'students-export'].includes(activeTab)) || (item.id === 'finance_group' && ['finance-config', 'finance-ledger', 'finance-vouchers'].includes(activeTab));
           
@@ -75,56 +112,19 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, currentUser, o
               key={item.id}
               onClick={() => setActiveTab(item.id)}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 group",
+                "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-200 group relative",
+                "border-b-4 active:border-b-0 active:translate-y-[2px]",
                 isActive 
-                  ? "bg-[#0078D4]/10 text-[#0078D4]" 
-                  : "text-neutral-500 dark:text-slate-400 hover:text-[#0078D4] dark:hover:text-[#0078D4] hover:bg-neutral-50 dark:hover:bg-slate-800"
+                  ? "bg-primary text-white border-primary-hover shadow-lg shadow-primary/20" 
+                  : "bg-white dark:bg-slate-800 text-neutral-600 dark:text-slate-300 border-neutral-200 dark:border-slate-700 hover:bg-neutral-50 dark:hover:bg-slate-700 shadow-sm"
               )}
             >
-              <item.icon className={cn("w-4 h-4", isActive ? "text-[#0078D4]" : "text-neutral-400 group-hover:text-[#0078D4]")} />
-              <span className="text-xs font-black tracking-wider">{item.label}</span>
+              <item.icon className={cn("w-3.5 h-3.5", isActive ? "text-white" : "text-neutral-400 group-hover:text-primary")} />
+              <span className="text-[10px] font-black tracking-tight uppercase">{item.label}</span>
             </button>
           );
         })}
       </nav>
-
-      {/* 3. BÊN PHẢI (User + Action) */}
-      <div className="flex items-center gap-4 lg:gap-6">
-        <div className="hidden sm:flex items-center gap-4">
-          <button 
-            onClick={() => setIsCalendarOpen(true)}
-            className="p-2 text-neutral-400 hover:text-[#0078D4] hover:bg-[#0078D4]/5 rounded-xl transition-all"
-          >
-            <Calendar className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="h-8 w-px bg-neutral-200 dark:bg-slate-800 hidden sm:block" />
-
-        <div className="flex items-center gap-3">
-          <div className="text-right hidden md:block">
-            <p className="text-sm font-black text-neutral-900 dark:text-white leading-none uppercase">{currentUser?.role === 'admin' ? 'ADMIN' : 'USER'}</p>
-            <div className="flex items-center gap-2 mt-1">
-              <button 
-                onClick={() => setActiveTab('dashboard')}
-                className="text-[10px] font-bold text-[#0078D4] hover:underline"
-              >
-                Quay lại trang chủ
-              </button>
-              <span className="text-neutral-300 dark:text-slate-700">|</span>
-              <button 
-                onClick={onLogout}
-                className="text-[10px] font-bold text-red-500 hover:underline"
-              >
-                Đăng xuất
-              </button>
-            </div>
-          </div>
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#0078D4] to-indigo-600 flex items-center justify-center text-white font-black shadow-lg shadow-[#0078D4]/20 border-2 border-white dark:border-slate-800">
-            {currentUser?.email?.charAt(0).toUpperCase() || 'A'}
-          </div>
-        </div>
-      </div>
       {/* Calendar Modal */}
       <AnimatePresence>
         {isCalendarOpen && (

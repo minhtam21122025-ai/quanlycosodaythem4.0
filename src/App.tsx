@@ -57,12 +57,12 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { AI_OBJECTIVES, SUBJECT_AI_INTEGRATION, NLS_MAPPING } from './constants/aiObjectives';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2pdf from 'html2pdf.js';
-import { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel, TextRun, VerticalAlign, BorderStyle, PageBreak } from 'docx';
+import { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel, TextRun, VerticalAlign, BorderStyle, PageBreak, ImageRun } from 'docx';
 import { saveAs } from 'file-saver';
 import { format, startOfWeek, endOfWeek, addDays, parseISO } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';
@@ -84,6 +84,7 @@ import {
 
 import Footer from './components/Footer';
 import Header from './components/Header';
+import Logo from './components/Logo';
 
 // --- Utilities ---
 
@@ -360,7 +361,7 @@ export default function App() {
     const defaultAdmin: UserAccount = {
       id: 'admin-1',
       email: 'cosogiaoduchoanggia269@gmail.com',
-      password: 'Laichau@123',
+      password: '123456@',
       role: 'admin',
       createdAt: new Date().toISOString()
     };
@@ -439,11 +440,9 @@ export default function App() {
         setClasses(data.classes && data.classes.length > 0 ? data.classes : DEFAULT_CLASSES);
         setPpctData(data.ppctData && data.ppctData.length > 0 ? data.ppctData : DEFAULT_PPCT);
         
-        // Clear soft data as requested by user
-        setStudents([]);
-        setIncomeData([]);
-        setExpenseData([]);
-        
+        if (data.students) setStudents(data.students);
+        if (data.incomeData) setIncomeData(data.incomeData);
+        if (data.expenseData) setExpenseData(data.expenseData);
         if (data.lessonPlans) setLessonPlans(data.lessonPlans);
         if (data.financialConfig) setFinancialConfig(data.financialConfig);
       } catch (e) {
@@ -497,7 +496,7 @@ export default function App() {
       const defaultAdmin: UserAccount = {
         id: 'admin-1',
         email: defaultAdminEmail,
-        password: 'Laichau@123',
+        password: '123456@',
         role: 'admin',
         createdAt: new Date().toISOString()
       };
@@ -510,7 +509,7 @@ export default function App() {
       console.log('--- HỆ THỐNG QUẢN LÝ CƠ SỞ DẠY THÊM HOÀNG GIA ---');
       console.log('Tài khoản quản trị mặc định:');
       console.log('Email:', 'cosogiaoduchoanggia269@gmail.com');
-      console.log('Mật khẩu:', 'Laichau@123');
+      console.log('Mật khẩu:', '123456@');
       console.log('--------------------------------------------------');
     }
   }, []);
@@ -644,7 +643,7 @@ export default function App() {
         onLogout={handleLogout}
       />
       
-      <div className="flex flex-1 pt-20 overflow-hidden">
+      <div className="flex flex-1 pt-28 overflow-hidden">
         {/* Welcome Modal */}
         <AnimatePresence>
           {showWelcomeModal && (
@@ -658,8 +657,8 @@ export default function App() {
                 <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-green-500 to-orange-500" />
                 
                 <div className="text-center space-y-6">
-                  <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-4">
-                    <Sparkles className="w-10 h-10 text-primary animate-pulse" />
+                  <div className="w-24 h-24 bg-white dark:bg-slate-900 rounded-[24px] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-primary/20 relative p-4">
+                    <Logo className="w-full h-full" />
                   </div>
                   
                   <h2 className="text-2xl lg:text-3xl font-normal text-neutral-900 dark:text-white leading-tight">
@@ -671,8 +670,9 @@ export default function App() {
                     Hệ thống được thiết kế tối ưu dành riêng cho các thầy cô và trung tâm dạy thêm. Bao gồm các chương trình: 
                     <span className="text-blue-600 dark:text-blue-400 mx-1">Quản lý học sinh</span>, 
                     <span className="text-green-600 dark:text-green-400 mx-1">Quản lý chương trình dạy</span>, 
-                    <span className="text-orange-600 dark:text-orange-400 mx-1">Quản lý tài chính</span>. 
-                    Chúng tôi cung cấp các công cụ mạnh mẽ để quản lý học sinh, chương trình giảng dạy và tài chính, giúp Quý Thầy Cô tập trung hoàn toàn vào sứ mệnh truyền đạt tri thức.
+                    <span className="text-orange-600 dark:text-orange-400 mx-1">Quản lý tài chính</span>,
+                    <span className="text-purple-600 dark:text-purple-400 mx-1">Tạo giáo án tích hợp AI và NLS</span>. 
+                    Chúng tôi cung cấp các công cụ mạnh mẽ để quản lý học sinh, chương trình giảng dạy, tài chính và hỗ trợ soạn giảng thông minh, giúp Quý Thầy Cô tập trung hoàn toàn vào sứ mệnh truyền đạt tri thức.
                   </div>
 
                   <button
@@ -763,8 +763,8 @@ function DashboardSection({
         className="saas-card bg-gradient-to-br from-white to-neutral-50 dark:from-slate-900 dark:to-slate-800 border-l-4 border-l-primary"
       >
         <div className="flex items-start gap-6">
-          <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center shrink-0">
-            <Sparkles className="w-8 h-8 text-primary" />
+          <div className="w-20 h-20 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-primary/10 p-3">
+            <Logo className="w-full h-full" />
           </div>
           <div className="space-y-4">
             <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">
@@ -774,8 +774,9 @@ function DashboardSection({
               Hệ thống được thiết kế tối ưu dành riêng cho các thầy cô và trung tâm dạy thêm. Bao gồm các chương trình: 
               <span className="text-blue-600 dark:text-blue-400 font-bold mx-1">Quản lý học sinh</span>, 
               <span className="text-emerald-600 dark:text-emerald-400 font-bold mx-1">Quản lý chương trình dạy</span>, 
-              <span className="text-orange-600 dark:text-orange-400 font-bold mx-1">Quản lý tài chính</span>. 
-              Chúng tôi cung cấp các công cụ mạnh mẽ để quản lý học sinh, chương trình giảng dạy và tài chính, giúp Quý Thầy Cô tập trung hoàn toàn vào sứ mệnh truyền đạt tri thức.
+              <span className="text-orange-600 dark:text-orange-400 font-bold mx-1">Quản lý tài chính</span>,
+              <span className="text-purple-600 dark:text-purple-400 font-bold mx-1">Tạo giáo án tích hợp AI và NLS</span>. 
+              Chúng tôi cung cấp các công cụ mạnh mẽ để quản lý học sinh, chương trình giảng dạy, tài chính và hỗ trợ soạn giảng thông minh, giúp Quý Thầy Cô tập trung hoàn toàn vào sứ mệnh truyền đạt tri thức.
             </p>
           </div>
         </div>
@@ -969,6 +970,64 @@ function VerticalImageGallery({ title }: { title: string }) {
 }
 
 const CURRICULUM_2018_DATA: Record<string, { subject: string; subSubjects: string[] }[]> = {
+  '1': [
+    { subject: 'Tiếng Việt', subSubjects: [] },
+    { subject: 'Toán', subSubjects: [] },
+    { subject: 'Đạo đức', subSubjects: [] },
+    { subject: 'Tự nhiên và Xã hội', subSubjects: [] },
+    { subject: 'Giáo dục thể chất', subSubjects: [] },
+    { subject: 'Âm nhạc', subSubjects: [] },
+    { subject: 'Mỹ thuật', subSubjects: [] },
+    { subject: 'Hoạt động trải nghiệm', subSubjects: [] },
+  ],
+  '2': [
+    { subject: 'Tiếng Việt', subSubjects: [] },
+    { subject: 'Toán', subSubjects: [] },
+    { subject: 'Đạo đức', subSubjects: [] },
+    { subject: 'Tự nhiên và Xã hội', subSubjects: [] },
+    { subject: 'Giáo dục thể chất', subSubjects: [] },
+    { subject: 'Âm nhạc', subSubjects: [] },
+    { subject: 'Mỹ thuật', subSubjects: [] },
+    { subject: 'Hoạt động trải nghiệm', subSubjects: [] },
+  ],
+  '3': [
+    { subject: 'Tiếng Việt', subSubjects: [] },
+    { subject: 'Toán', subSubjects: [] },
+    { subject: 'Đạo đức', subSubjects: [] },
+    { subject: 'Tự nhiên và Xã hội', subSubjects: [] },
+    { subject: 'Giáo dục thể chất', subSubjects: [] },
+    { subject: 'Âm nhạc', subSubjects: [] },
+    { subject: 'Mỹ thuật', subSubjects: [] },
+    { subject: 'Hoạt động trải nghiệm', subSubjects: [] },
+    { subject: 'Tin học và Công nghệ', subSubjects: ['Tin học', 'Công nghệ'] },
+    { subject: 'Ngoại ngữ 1', subSubjects: [] },
+  ],
+  '4': [
+    { subject: 'Tiếng Việt', subSubjects: [] },
+    { subject: 'Toán', subSubjects: [] },
+    { subject: 'Đạo đức', subSubjects: [] },
+    { subject: 'Lịch sử và Địa lí', subSubjects: [] },
+    { subject: 'Khoa học', subSubjects: [] },
+    { subject: 'Giáo dục thể chất', subSubjects: [] },
+    { subject: 'Âm nhạc', subSubjects: [] },
+    { subject: 'Mỹ thuật', subSubjects: [] },
+    { subject: 'Hoạt động trải nghiệm', subSubjects: [] },
+    { subject: 'Tin học và Công nghệ', subSubjects: ['Tin học', 'Công nghệ'] },
+    { subject: 'Ngoại ngữ 1', subSubjects: [] },
+  ],
+  '5': [
+    { subject: 'Tiếng Việt', subSubjects: [] },
+    { subject: 'Toán', subSubjects: [] },
+    { subject: 'Đạo đức', subSubjects: [] },
+    { subject: 'Lịch sử và Địa lí', subSubjects: [] },
+    { subject: 'Khoa học', subSubjects: [] },
+    { subject: 'Giáo dục thể chất', subSubjects: [] },
+    { subject: 'Âm nhạc', subSubjects: [] },
+    { subject: 'Mỹ thuật', subSubjects: [] },
+    { subject: 'Hoạt động trải nghiệm', subSubjects: [] },
+    { subject: 'Tin học và Công nghệ', subSubjects: ['Tin học', 'Công nghệ'] },
+    { subject: 'Ngoại ngữ 1', subSubjects: [] },
+  ],
   '6': [
     { subject: 'Toán', subSubjects: ['Số học và Đại số', 'Hình học và Đo lường', 'Thống kê và Xác suất'] },
     { subject: 'Ngữ văn', subSubjects: [] },
@@ -1092,8 +1151,10 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedSubSubject, setSelectedSubSubject] = useState('');
+  const [aiCompetency, setAiCompetency] = useState('');
+  const [digitalCompetency, setDigitalCompetency] = useState('');
   const [file, setFile] = useState<File | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGenerating, setIsGenerating] = useState<{ ai: boolean, nls: boolean }>({ ai: false, nls: false });
   const [result, setResult] = useState<{ nls: string, ai: string } | null>(null);
   const [error, setError] = useState('');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -1139,19 +1200,38 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
       return;
     }
 
-    setIsGenerating(true);
+    setIsGenerating(prev => ({ ...prev, [type]: true }));
     setError('');
-    // We don't necessarily want to clear the whole result if we are just adding to it
-    // but for simplicity let's just clear it or manage it per type
     
     try {
       console.log(`Starting ${type.toUpperCase()} lesson plan generation...`);
       const arrayBuffer = await file.arrayBuffer();
-      const { value: text } = await mammoth.extractRawText({ arrayBuffer });
+      
+      const images: string[] = [];
+      const imageAlts: string[] = [];
+      const { value: rawHtml } = await mammoth.convertToHtml(
+        { arrayBuffer },
+        { 
+          convertImage: mammoth.images.imgElement((image) => {
+            return image.read("base64").then((imageBuffer: any) => {
+              const base64 = `data:${image.contentType};base64,${imageBuffer}`;
+              images.push(base64);
+              const altText = (image as any).altText || "";
+              imageAlts.push(altText);
+              return {
+                src: `[[IMG_${images.length - 1}]]`,
+                alt: altText
+              };
+            });
+          })
+        }
+      );
 
-      if (!text || text.trim().length === 0) {
-        throw new Error('Không thể trích xuất văn bản từ file Word.');
+      if (!rawHtml || rawHtml.trim().length === 0) {
+        throw new Error('Không thể trích xuất nội dung từ file Word.');
       }
+
+      const htmlContent = rawHtml;
 
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) throw new Error('Thiếu API Key cho Gemini AI.');
@@ -1161,50 +1241,46 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
       const typeLabel = type === 'ai' ? 'Trí tuệ nhân tạo (AI)' : 'Năng lực số (NLS)';
       const integrationData = type === 'ai' 
         ? `Mục tiêu AI: ${JSON.stringify(AI_OBJECTIVES[selectedClass as keyof typeof AI_OBJECTIVES] || [])}\nHướng dẫn AI: ${JSON.stringify(SUBJECT_AI_INTEGRATION[selectedSubject as keyof typeof SUBJECT_AI_INTEGRATION] || {})}`
-        : `Danh mục Năng lực số (NLS): ${JSON.stringify(NLS_MAPPING[selectedClass === '6' || selectedClass === '7' ? '6-7' : '8-9'] || [])}`;
+        : `Danh mục Năng lực số (NLS): ${JSON.stringify(
+            NLS_MAPPING[
+              ['1', '2', '3'].includes(selectedClass) ? '1-3' :
+              ['4', '5'].includes(selectedClass) ? '4-5' :
+              ['6', '7'].includes(selectedClass) ? '6-7' :
+              ['8', '9'].includes(selectedClass) ? '8-9' : '10-12'
+            ] || []
+          )}`;
 
       const prompt = `
-        Bạn là một chuyên gia giáo dục tại Việt Nam, am hiểu về Công văn 3439 và việc tích hợp ${typeLabel} vào giảng dạy.
+        BẠN LÀ MỘT CHUYÊN GIA BIÊN TẬP GIÁO ÁN ĐIỆN TỬ 100% CHÍNH XÁC.
+        NHIỆM VỤ: Tích hợp ${typeLabel} vào giáo án HTML sau đây.
         
-        Dữ liệu hướng dẫn:
+        DỮ LIỆU HƯỚNG DẪN:
         ${integrationData}
+        Năng lực thêm: AI: ${aiCompetency || 'N/A'}, Số: ${digitalCompetency || 'N/A'}.
 
-        Nhiệm vụ của bạn là phân tích giáo án gốc sau đây và tạo ra phiên bản giáo án tích hợp ${typeLabel}.
+        GIÁO ÁN GỐC (HTML):
+        ${htmlContent}
 
-        Dữ liệu đầu vào:
-        - Lớp: ${selectedClass}
-        - Môn: ${selectedSubject}
-        - Phân môn: ${selectedSubSubject}
-        - Nội dung giáo án gốc:
-        ${text}
+        QUY TẮC "BẢO TOÀN TUYỆT ĐỐI":
+        1. CÔ LẬP PHẠM VI XỬ LÝ: Hệ thống AI chỉ được phép xử lý nội dung văn bản của File giáo án được tải lên. Tuyệt đối không được can thiệp, làm thay đổi hoặc làm ảnh hưởng đến các dữ liệu hệ thống khác (Học sinh, Tài chính, Chương trình, Tài khoản...).
+        2. SAO CHÉP CHÍNH XÁC (MIRRORING): Bạn phải đóng vai trò như một tấm gương. Các phần không liên quan đến việc tích hợp ${type.toUpperCase()} PHẢI được giữ nguyên từng dấu phẩy, từng thẻ HTML, từng dòng văn bản. Tuyệt đối không được thay đổi bất kỳ từ ngữ nào của giáo án gốc nếu không phải là phần chèn thêm nội dung tích hợp.
+        3. TÍNH BẤT BIẾN CỦA CÁC MỤC KHÁC: Khi bạn chỉnh sửa hoặc bổ sung vào một mục (ví dụ: mục Hoạt động), tất cả các mục khác (ví dụ: Chuẩn bị, Tiến trình khác...) phải được giữ nguyên hoàn toàn, không được phép chỉnh sửa hay tóm tắt lại.
+        4. CÔNG THỨC TOÁN HỌC (LATEEX): Chuyển đổi công thức toán/hóa sang LaTeX ($...$ hoặc $$...$$). Nếu [[IMG_X]] là công thức toán, hãy thay bằng mã LaTeX.
+        5. HÌNH ẢNH & BẢNG: Giữ nguyên mã [[IMG_X]] cho hình ảnh thực tế và cấu trúc thẻ <table>.
+        6. CHỈ ĐƯỢC PHÉP CHÈN THÊM (INSERTION ONLY): 
+            - Thêm mục "3. ${type === 'ai' ? 'Năng lực AI' : 'Năng lực số (NLS)'}" vào phần Mục tiêu.
+            - Chèn nội dung tích hợp vào các hoạt động. Nội dung chèn thêm PHẢI bôi đỏ <span style="color:red;">...</span>.
+        7. TRẢ VỀ TOÀN VĂN: Phải trả về đầy đủ từ đầu đến cuối giáo án. Không được cắt xén.
 
-        YÊU CẦU CẤU TRÚC TÍCH HỢP BẮT BUỘC:
-        
-        Phần 1. Mục tiêu:
-        - Tích hợp thêm các phẩm chất và năng lực (${type.toUpperCase()}) vào mục "3. Mục tiêu chính".
-        - Sử dụng các mã mục tiêu từ tài liệu hướng dẫn (nếu có).
-
-        Phần Các hoạt động:
-        Tại các hoạt động học tập tương thích, bổ sung thêm:
-        - Mục tiêu tích hợp (${type.toUpperCase()}).
-        - Hoạt động của Giáo viên: Các bước hướng dẫn, gợi mở cụ thể để học sinh tiếp cận hoặc ứng dụng ${type.toUpperCase()}.
-        - Hoạt động của Học sinh: Các thao tác, sản phẩm cụ thể của học sinh khi thực hiện nhiệm vụ tích hợp.
-        - Sản phẩm học tập: Kết quả cụ thể.
-
-        NGUYÊN TẮC THỰC HIỆN:
-        1. TUYỆT ĐỐI KHÔNG thay đổi nội dung gốc. Chỉ bổ sung thêm phần tích hợp.
-        2. GIỮ NGUYÊN định dạng, cấu trúc gốc.
-        3. Các nội dung bổ sung MỚI phải được đánh dấu bằng thẻ <span style="color:red;">nội dung bổ sung</span>.
-        4. Phù hợp với trình độ lớp ${selectedClass} và môn ${selectedSubject}.
-
-        Hãy trả về kết quả dưới dạng JSON với một trường duy nhất: "content", chứa nội dung HTML của giáo án đã tích hợp.
+        Trả về JSON: {"content": "..."}
       `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-pro-preview",
+        model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
+          maxOutputTokens: 50000, 
           responseSchema: {
             type: Type.OBJECT,
             properties: {
@@ -1215,16 +1291,102 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
         }
       });
 
-      const data = JSON.parse(response.text || '{}');
+      let text = response.text || '';
+      if (!text) throw new Error('AI không trả về kết quả.');
+
+      // Clean up potential markdown wrapping if AI ignores responseMimeType (rare but happens)
+      if (text.includes('```json')) {
+        text = text.split('```json')[1].split('```')[0].trim();
+      } else if (text.includes('```')) {
+        text = text.split('```')[1].split('```')[0].trim();
+      }
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error("JSON Parse Error:", e);
+        
+        // Robust repair and fallback extraction for truncated or malformed JSON
+        try {
+          // Fallback 1: Regex extraction for the "content" field
+          // We look for everything after "content": " and try to find a balanced or end-of-text capture
+          const contentMatch = text.match(/"content"\s*:\s*"(.*)/s);
+          if (contentMatch && contentMatch[1]) {
+            let extractedContent = contentMatch[1];
+            
+            // If it seems to have ending markers, try to strip them
+            // We search for the LAST sequence of "} or " } potentially with whitespace
+            const lastQuoteBrace = extractedContent.lastIndexOf('"}');
+            if (lastQuoteBrace !== -1) {
+              extractedContent = extractedContent.substring(0, lastQuoteBrace);
+            } else {
+              // If not found, it's likely truncated. Strip any trailing single quote that might be part of the truncation
+              if (extractedContent.endsWith('"') && !extractedContent.endsWith('\\"')) {
+                extractedContent = extractedContent.slice(0, -1);
+              }
+              // Also handle trailing backslash which might escape the quote we want to add later if we were parsing
+              if (extractedContent.endsWith('\\')) {
+                extractedContent = extractedContent.slice(0, -1);
+              }
+            }
+
+            // Unescape common JSON escapes in the string
+            // We use a more complete unescape sequence to handle the content safely
+            const unescapedContent = extractedContent
+              .replace(/\\"/g, '"')
+              .replace(/\\\\/g, '\\')
+              .replace(/\\n/g, '\n')
+              .replace(/\\r/g, '\r')
+              .replace(/\\t/g, '\t')
+              .replace(/\\f/g, '\f')
+              .replace(/\\b/g, '\b');
+
+            data = { content: unescapedContent };
+            console.log("Extracted massive content via regex fallback. Length:", unescapedContent.length);
+          } else {
+            // Fallback 2: Existing repair logic for smaller truncations
+            let fixedText = text.trim();
+            if (fixedText.endsWith('\\')) fixedText = fixedText.slice(0, -1);
+            const attempts = [fixedText + '"}', fixedText + '}', fixedText + '" }'];
+            let repaired = false;
+            for (const attempt of attempts) {
+              try {
+                data = JSON.parse(attempt);
+                repaired = true;
+                break;
+              } catch (err) { continue; }
+            }
+            if (!repaired) throw e;
+          }
+        } catch (e2) {
+          throw new Error('Nội dung giáo án quá khổng lồ (vượt quá 1 triệu ký tự) khiến hệ thống không thể xử lý trọn vẹn trong một lượt. Vui lòng thử chia nhỏ file giáo án thành các phần (ví dụ: chia theo tiết học) để đạt hiệu quả tốt nhất.');
+        }
+      }
+
+      if (!data || !data.content) throw new Error('Dữ liệu trả về không hợp lệ hoặc thiếu nội dung giáo án.');
+
+      // Restore images
+      let finalContent = data.content;
+      images.forEach((base64, index) => {
+        finalContent = finalContent.replace(new RegExp(`\\[\\[IMG_${index}\\]\\]`, 'g'), base64);
+        // Also handle cases where AI might have modified the format slightly
+        finalContent = finalContent.replace(new RegExp(`src="\\[\\[IMG_${index}\\]\\]"`, 'g'), `src="${base64}"`);
+      });
+      
       setResult(prev => ({
         ...prev,
-        [type]: data.content
+        [type]: finalContent
       }) as any);
     } catch (err: any) {
       console.error(err);
-      setError(`Có lỗi xảy ra: ${err.message}`);
+      let msg = err.message;
+      if (msg.includes('500') || msg.includes('INTERNAL') || msg.includes('Internal error')) {
+        msg = 'Máy chủ AI gặp sự cố tạm thời hoặc giáo án của bạn quá lớn để xử lý trong một lượt. Vui lòng thử lại sau giây lát hoặc chia nhỏ giáo án.';
+      }
+      setError(`Có lỗi xảy ra: ${msg}`);
     } finally {
-      setIsGenerating(false);
+      setIsGenerating(prev => ({ ...prev, [type]: false }));
     }
   };
 
@@ -1232,13 +1394,16 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
     try {
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
-      const paragraphs: Paragraph[] = [];
+      const children: any[] = [];
 
       const processNode = (node: Node): TextRun[] => {
         let runs: TextRun[] = [];
         node.childNodes.forEach(child => {
           if (child.nodeType === Node.TEXT_NODE) {
-            runs.push(new TextRun({ text: child.textContent || "" }));
+            runs.push(new TextRun({ 
+              text: child.textContent || "",
+              size: 26 // 13pt
+            }));
           } else if (child.nodeType === Node.ELEMENT_NODE) {
             const element = child as HTMLElement;
             const style = element.getAttribute('style') || '';
@@ -1249,44 +1414,159 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
               text: element.innerText,
               color: isRed ? "FF0000" : undefined,
               bold: isBold,
-              size: element.tagName.startsWith('H') ? 28 : 24,
+              size: element.tagName.startsWith('H') ? 30 : 26, // 15pt for headings, 13pt for normal
             }));
           }
         });
         return runs;
       };
 
-      doc.body.childNodes.forEach(node => {
-        if (node.nodeType === Node.ELEMENT_NODE) {
-          const element = node as HTMLElement;
-          const tagName = element.tagName.toLowerCase();
-          
-          if (['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tagName)) {
-            paragraphs.push(new Paragraph({
-              children: processNode(element),
-              heading: tagName.startsWith('h') ? HeadingLevel[`HEADING_${tagName.substring(1)}` as keyof typeof HeadingLevel] : undefined,
-              spacing: { after: 200, before: tagName.startsWith('h') ? 400 : 0 }
-            }));
-          } else if (tagName === 'ul' || tagName === 'ol') {
-            element.childNodes.forEach(li => {
-              if (li.nodeType === Node.ELEMENT_NODE && (li as HTMLElement).tagName.toLowerCase() === 'li') {
-                paragraphs.push(new Paragraph({
-                  children: processNode(li),
-                  bullet: tagName === 'ul' ? { level: 0 } : undefined,
-                  numbering: tagName === 'ol' ? { reference: 'my-numbering', level: 0 } : undefined,
-                  spacing: { after: 120 }
+      const convertElementToDocx = (element: HTMLElement) => {
+        const tagName = element.tagName.toLowerCase();
+        
+        if (['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tagName)) {
+          children.push(new Paragraph({
+            children: processNode(element),
+            heading: tagName.startsWith('h') ? HeadingLevel[`HEADING_${tagName.substring(1)}` as keyof typeof HeadingLevel] : undefined,
+            spacing: { after: 200, before: tagName.startsWith('h') ? 400 : 0 }
+          }));
+        } else if (tagName === 'img') {
+          const src = element.getAttribute('src');
+          if (src && src.startsWith('data:')) {
+            try {
+              const base64Data = src.split(',')[1];
+              const binaryString = atob(base64Data);
+              const len = binaryString.length;
+              const bytes = new Uint8Array(len);
+              for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+              }
+              
+              // Try to estimate size - for math formulas, they should be relatively wide but not tall
+              // If we can't get real dimensions, we use a more balanced default
+              children.push(new Paragraph({
+                children: [
+                  new ImageRun({
+                    data: bytes,
+                    transformation: {
+                      width: 250,
+                      height: 50, // Smaller default for potential equations
+                    },
+                  } as any),
+                ],
+                spacing: { after: 200 }
+              }));
+            } catch (e) {
+              console.error("Error adding image to docx:", e);
+            }
+          }
+        } else if (tagName === 'ul' || tagName === 'ol') {
+          element.childNodes.forEach(li => {
+            if (li.nodeType === Node.ELEMENT_NODE && (li as HTMLElement).tagName.toLowerCase() === 'li') {
+              children.push(new Paragraph({
+                children: processNode(li),
+                bullet: tagName === 'ul' ? { level: 0 } : undefined,
+                numbering: tagName === 'ol' ? { reference: 'my-numbering', level: 0 } : undefined,
+                spacing: { after: 120 }
+              }));
+            }
+          });
+        } else if (tagName === 'table') {
+          const rows: TableRow[] = [];
+          const trs = element.querySelectorAll('tr');
+          trs.forEach(tr => {
+            const cells: TableCell[] = [];
+            tr.childNodes.forEach(td => {
+              if (td.nodeType === Node.ELEMENT_NODE && (['td', 'th'].includes((td as HTMLElement).tagName.toLowerCase()))) {
+                const cellContent: Paragraph[] = [];
+                // Process content inside TD
+                td.childNodes.forEach(child => {
+                  if (child.nodeType === Node.TEXT_NODE && child.textContent?.trim()) {
+                    cellContent.push(new Paragraph({
+                      children: [new TextRun({ text: child.textContent, size: 26 })]
+                    }));
+                  } else if (child.nodeType === Node.ELEMENT_NODE) {
+                    const el = child as HTMLElement;
+                    if (['p', 'div', 'span', 'b', 'strong'].includes(el.tagName.toLowerCase())) {
+                      cellContent.push(new Paragraph({
+                        children: processNode(el)
+                      }));
+                    } else if (el.tagName.toLowerCase() === 'img') {
+                      const src = el.getAttribute('src');
+                      if (src && src.startsWith('data:')) {
+                        try {
+                          const base64Data = src.split(',')[1];
+                          const binaryString = atob(base64Data);
+                          const len = binaryString.length;
+                          const bytes = new Uint8Array(len);
+                          for (let i = 0; i < len; i++) {
+                            bytes[i] = binaryString.charCodeAt(i);
+                          }
+                          
+                          cellContent.push(new Paragraph({
+                            children: [
+                              new ImageRun({
+                                data: bytes,
+                                transformation: {
+                                  width: 100,
+                                  height: 30,
+                                },
+                              } as any),
+                            ],
+                          }));
+                        } catch (e) {
+                          console.error("Error adding table image to docx:", e);
+                        }
+                      }
+                    }
+                  }
+                });
+                
+                if (cellContent.length === 0) {
+                  cellContent.push(new Paragraph({ children: [] }));
+                }
+
+                cells.push(new TableCell({
+                  children: cellContent,
+                  verticalAlign: VerticalAlign.CENTER,
+                  borders: {
+                    top: { style: BorderStyle.SINGLE, size: 1 },
+                    bottom: { style: BorderStyle.SINGLE, size: 1 },
+                    left: { style: BorderStyle.SINGLE, size: 1 },
+                    right: { style: BorderStyle.SINGLE, size: 1 },
+                  }
                 }));
               }
             });
-          } else if (tagName === 'div') {
-             paragraphs.push(new Paragraph({
-              children: processNode(element),
-              spacing: { after: 200 }
+            if (cells.length > 0) {
+              rows.push(new TableRow({ children: cells }));
+            }
+          });
+
+          if (rows.length > 0) {
+            children.push(new Table({
+              rows: rows,
+              width: { size: 100, type: WidthType.PERCENTAGE },
             }));
+            children.push(new Paragraph({ children: [] })); // Spacer
           }
+        } else if (tagName === 'div') {
+           children.push(new Paragraph({
+            children: processNode(element),
+            spacing: { after: 200 }
+          }));
+        }
+      };
+
+      doc.body.childNodes.forEach(node => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          convertElementToDocx(node as HTMLElement);
         } else if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
-          paragraphs.push(new Paragraph({
-            children: [new TextRun({ text: node.textContent })],
+          children.push(new Paragraph({
+            children: [new TextRun({ 
+              text: node.textContent,
+              size: 26 // 13pt
+            })],
             spacing: { after: 200 }
           }));
         }
@@ -1294,7 +1574,7 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
 
       const documentDoc = new Document({
         sections: [{
-          children: paragraphs,
+          children: children,
         }],
       });
 
@@ -1374,6 +1654,29 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
           </div>
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Năng lực AI (Tùy chọn)</label>
+            <input 
+              type="text"
+              value={aiCompetency}
+              onChange={(e) => setAiCompetency(e.target.value)}
+              placeholder="Nhập năng lực AI..."
+              className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Năng lực số (Tùy chọn)</label>
+            <input 
+              type="text"
+              value={digitalCompetency}
+              onChange={(e) => setDigitalCompetency(e.target.value)}
+              placeholder="Nhập năng lực số..."
+              className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all"
+            />
+          </div>
+        </div>
+
         <div className="space-y-6">
           <div 
             onClick={() => {
@@ -1430,15 +1733,15 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button
               onClick={() => generateLessonPlan('ai')}
-              disabled={isGenerating || !file}
+              disabled={isGenerating.ai || !file}
               className={cn(
                 "py-4 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-3 shadow-xl",
-                isGenerating || !file
+                isGenerating.ai || !file
                   ? "bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed"
                   : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200 dark:shadow-none active:scale-[0.98]"
               )}
             >
-              {isGenerating ? (
+              {isGenerating.ai ? (
                 <RefreshCw className="w-6 h-6 animate-spin" />
               ) : (
                 <Zap className="w-6 h-6" />
@@ -1448,15 +1751,15 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
 
             <button
               onClick={() => generateLessonPlan('nls')}
-              disabled={isGenerating || !file}
+              disabled={isGenerating.nls || !file}
               className={cn(
                 "py-4 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-3 shadow-xl",
-                isGenerating || !file
+                isGenerating.nls || !file
                   ? "bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed"
                   : "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200 dark:shadow-none active:scale-[0.98]"
               )}
             >
-              {isGenerating ? (
+              {isGenerating.nls ? (
                 <RefreshCw className="w-6 h-6 animate-spin" />
               ) : (
                 <GraduationCap className="w-6 h-6" />
@@ -1471,40 +1774,6 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <motion.div 
             initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="bg-white dark:bg-slate-900 p-8 rounded-[32px] border border-neutral-200 dark:border-slate-800 shadow-sm"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-black text-neutral-900 dark:text-white flex items-center gap-2">
-                <div className="w-8 h-8 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400">
-                  <GraduationCap className="w-4 h-4" />
-                </div>
-                Giáo án tích hợp NLS
-              </h3>
-              {result.nls && (
-                <button 
-                  onClick={() => exportToDocx(result.nls, `GiaoAn_NLS_${selectedSubject}_Lop${selectedClass}.docx`)}
-                  className="p-2 text-neutral-400 hover:text-primary transition-all"
-                  title="Tải xuống (.docx)"
-                >
-                  <Download className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-            {result.nls ? (
-              <div 
-                className="prose dark:prose-invert max-w-none h-[600px] overflow-y-auto p-6 bg-neutral-50 dark:bg-slate-800/50 rounded-2xl border border-neutral-100 dark:border-slate-700 text-sm"
-                dangerouslySetInnerHTML={{ __html: result.nls }}
-              />
-            ) : (
-              <div className="h-[600px] flex items-center justify-center text-neutral-400 font-medium italic border-2 border-dashed border-neutral-100 dark:border-slate-800 rounded-2xl">
-                Chưa có nội dung NLS. Nhấn nút để tạo.
-              </div>
-            )}
-          </motion.div>
-
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             className="bg-white dark:bg-slate-900 p-8 rounded-[32px] border border-neutral-200 dark:border-slate-800 shadow-sm"
           >
@@ -1533,6 +1802,40 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
             ) : (
               <div className="h-[600px] flex items-center justify-center text-neutral-400 font-medium italic border-2 border-dashed border-neutral-100 dark:border-slate-800 rounded-2xl">
                 Chưa có nội dung AI. Nhấn nút để tạo.
+              </div>
+            )}
+          </motion.div>
+
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="bg-white dark:bg-slate-900 p-8 rounded-[32px] border border-neutral-200 dark:border-slate-800 shadow-sm"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-black text-neutral-900 dark:text-white flex items-center gap-2">
+                <div className="w-8 h-8 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400">
+                  <GraduationCap className="w-4 h-4" />
+                </div>
+                Giáo án tích hợp NLS
+              </h3>
+              {result.nls && (
+                <button 
+                  onClick={() => exportToDocx(result.nls, `GiaoAn_NLS_${selectedSubject}_Lop${selectedClass}.docx`)}
+                  className="p-2 text-neutral-400 hover:text-primary transition-all"
+                  title="Tải xuống (.docx)"
+                >
+                  <Download className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+            {result.nls ? (
+              <div 
+                className="prose dark:prose-invert max-w-none h-[600px] overflow-y-auto p-6 bg-neutral-50 dark:bg-slate-800/50 rounded-2xl border border-neutral-100 dark:border-slate-700 text-sm"
+                dangerouslySetInnerHTML={{ __html: result.nls }}
+              />
+            ) : (
+              <div className="h-[600px] flex items-center justify-center text-neutral-400 font-medium italic border-2 border-dashed border-neutral-100 dark:border-slate-800 rounded-2xl">
+                Chưa có nội dung NLS. Nhấn nút để tạo.
               </div>
             )}
           </motion.div>
@@ -3676,13 +3979,19 @@ function LoginPage({ onLogin, users, darkMode, setDarkMode }: { onLogin: (user: 
             initial={{ scale: 0, rotate: -20 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.2 }}
-            className="w-20 h-20 bg-gradient-to-br from-primary to-indigo-600 rounded-[24px] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-primary/40 relative"
+            className="w-24 h-24 bg-white dark:bg-slate-900 rounded-[24px] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-primary/20 relative p-4"
           >
-            <GraduationCap className="w-12 h-12 text-white" />
+            <Logo className="w-full h-full" />
             <div className="absolute -top-2 -right-2 w-6 h-6 bg-amber-400 rounded-full border-4 border-white dark:border-slate-900 shadow-sm" />
           </motion.div>
           <h1 className="text-3xl font-black text-neutral-900 dark:text-white tracking-tight">Chào mừng trở lại</h1>
           <p className="text-neutral-500 dark:text-slate-400 mt-2 font-bold text-sm uppercase tracking-widest">Hệ thống quản lý Hoàng Gia</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <span className="px-2 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded-lg">Quản lý học sinh</span>
+            <span className="px-2 py-1 bg-emerald-500/10 text-emerald-600 text-[10px] font-bold rounded-lg">Chương trình dạy</span>
+            <span className="px-2 py-1 bg-orange-500/10 text-orange-600 text-[10px] font-bold rounded-lg">Tài chính</span>
+            <span className="px-2 py-1 bg-purple-500/10 text-purple-600 text-[10px] font-bold rounded-lg">Giáo án AI & NLS</span>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">

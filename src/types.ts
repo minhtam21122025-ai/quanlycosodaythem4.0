@@ -9,6 +9,7 @@ export interface BusinessInfo {
   taxId: string;
   owner: string;
   businessLocation?: string;
+  logoUrl?: string;
 }
 
 export interface ClassSubject {
