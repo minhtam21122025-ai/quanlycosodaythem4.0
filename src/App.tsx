@@ -1425,7 +1425,7 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
       `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-1.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -2128,7 +2128,7 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
       `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-1.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -3244,7 +3244,7 @@ function LessonPlanSection({
       Trả về duy nhất tên bài học, không thêm gì khác.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-1.5-flash",
         contents: prompt,
       });
 
