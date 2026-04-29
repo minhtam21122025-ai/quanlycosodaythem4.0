@@ -90,20 +90,18 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, currentUser,
                   if (onClose) onClose();
                 }}
                 className={cn(
-                  "w-full flex items-center justify-between px-4 py-3.5 rounded-2xl transition-all duration-300 group",
+                  "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group",
                   isActive 
                     ? "bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]" 
                     : "text-neutral-500 dark:text-slate-400 hover:bg-neutral-50 dark:hover:bg-slate-800/50 hover:text-primary dark:hover:text-white"
                 )}
               >
-                <div className="flex items-center gap-3">
-                  <item.icon className={cn("w-5 h-5", isActive ? "text-white" : "text-neutral-400 group-hover:text-primary")} />
-                  <span className="text-[13px] font-black tracking-widest uppercase">{item.label}</span>
-                </div>
+                <item.icon className={cn("w-5 h-5 shrink-0", isActive ? "text-white" : "text-neutral-400 group-hover:text-primary")} />
+                <span className="text-[13px] font-black tracking-widest uppercase text-left">{item.label}</span>
                 {isActive && (
                   <motion.div
                     layoutId="active-nav"
-                    className="w-1.5 h-1.5 rounded-full bg-white shadow-sm"
+                    className="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-sm"
                   />
                 )}
               </button>

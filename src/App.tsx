@@ -1866,6 +1866,7 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
 function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | null }) {
   const [grade, setGrade] = useState('');
   const [subject, setSubject] = useState('');
+  const [subSubject, setSubSubject] = useState('');
   const [lessonName, setLessonName] = useState('');
   const [periods, setPeriods] = useState('1');
   const [config, setConfig] = useState({
@@ -1929,6 +1930,7 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
         THÔNG TIN CHUNG:
         - Khối: ${grade}
         - Môn: ${subject}
+        ${subSubject ? `- Phân môn: ${subSubject}` : ''}
         - Bài dạy: ${lessonName}
         - Thời lượng: ${periods} tiết
 
@@ -2118,15 +2120,28 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
+              <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Phân môn</label>
+              <input 
+                type="text"
+                value={subSubject}
+                onChange={(e) => setSubSubject(e.target.value)}
+                placeholder="Ví dụ: Hình học (để trống nếu không có)"
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all font-medium"
+              />
+            </div>
+            <div className="space-y-2">
               <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Tên bài dạy <span className="text-red-500">*</span></label>
               <input 
                 type="text"
                 value={lessonName}
                 onChange={(e) => setLessonName(e.target.value)}
                 placeholder="Ví dụ: Cấu tạo nguyên tử"
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all"
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all font-medium"
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Số tiết dạy</label>
               <input 
