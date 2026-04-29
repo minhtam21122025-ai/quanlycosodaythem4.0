@@ -86,6 +86,7 @@ import {
 
 import Footer from './components/Footer';
 import Header from './components/Header';
+import Sidebar from './components/Sidebar';
 import Logo from './components/Logo';
 
 // --- Utilities ---
@@ -382,6 +383,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo>({
     name: '',
     address: '',
@@ -571,6 +573,8 @@ export default function App() {
         );
       case 'ai_lesson_plan':
         return <AILessonPlanSection classes={classes} currentUser={currentUser} />;
+      case 'teacher_lesson_plan':
+        return <TeacherLessonPlanSection currentUser={currentUser} />;
       case 'business':
         return <BusinessConfigSection info={businessInfo} setInfo={setBusinessInfo} setActiveTab={setActiveTab} currentUser={currentUser} />;
       case 'program':
@@ -640,15 +644,25 @@ export default function App() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-bg-light dark:bg-bg-dark font-sans text-neutral-900 dark:text-slate-100 overflow-hidden transition-colors duration-300">
-      <Header 
+    <div className="flex h-screen bg-bg-light dark:bg-bg-dark font-sans text-neutral-900 dark:text-slate-100 overflow-hidden transition-colors duration-300">
+      <Sidebar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
         currentUser={currentUser} 
         onLogout={handleLogout}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
       />
       
-      <div className="flex flex-1 pt-28 overflow-hidden">
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        <Header 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab} 
+          currentUser={currentUser} 
+          onLogout={handleLogout}
+          onMenuToggle={() => setIsSidebarOpen(true)}
+        />
+        
         {/* Welcome Modal */}
         <AnimatePresence>
           {showWelcomeModal && (
@@ -676,7 +690,8 @@ export default function App() {
                     <span className="text-blue-600 dark:text-blue-400 mx-1">Quản lý học sinh</span>, 
                     <span className="text-green-600 dark:text-green-400 mx-1">Quản lý chương trình dạy</span>, 
                     <span className="text-orange-600 dark:text-orange-400 mx-1">Quản lý tài chính</span>,
-                    <span className="text-purple-600 dark:text-purple-400 mx-1">Tạo giáo án tích hợp AI và NLS</span>. 
+                    <span className="text-purple-600 dark:text-purple-400 mx-1">Tạo giáo án tích hợp AI và NLS</span>,
+                    <span className="text-indigo-600 dark:text-indigo-400 mx-1">Tạo KHBD cho Trung tâm dạy thêm</span>. 
                     Chúng tôi cung cấp các công cụ mạnh mẽ để quản lý học sinh, chương trình giảng dạy, tài chính và hỗ trợ soạn giảng thông minh, giúp Quý Thầy Cô tập trung hoàn toàn vào sứ mệnh truyền đạt tri thức.
                   </div>
 
@@ -692,10 +707,8 @@ export default function App() {
           )}
         </AnimatePresence>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 bg-bg-light dark:bg-bg-dark transition-colors duration-300">
-        {/* Page Content */}
-        <div className="flex-1 overflow-y-auto p-4 lg:p-8 custom-scrollbar">
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-y-auto p-4 lg:p-8 custom-scrollbar">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -710,11 +723,10 @@ export default function App() {
           </AnimatePresence>
           
           <Footer />
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
-  </div>
-);
+  );
 }
 
 // --- Section Components ---
@@ -780,7 +792,8 @@ function DashboardSection({
               <span className="text-blue-600 dark:text-blue-400 font-bold mx-1">Quản lý học sinh</span>, 
               <span className="text-emerald-600 dark:text-emerald-400 font-bold mx-1">Quản lý chương trình dạy</span>, 
               <span className="text-orange-600 dark:text-orange-400 font-bold mx-1">Quản lý tài chính</span>,
-              <span className="text-purple-600 dark:text-purple-400 font-bold mx-1">Tạo giáo án tích hợp AI và NLS</span>. 
+              <span className="text-purple-600 dark:text-purple-400 font-bold mx-1">Tạo giáo án tích hợp AI và NLS</span>,
+              <span className="text-indigo-600 dark:text-indigo-400 font-bold mx-1">Tạo KHBD cho Trung tâm dạy thêm</span>. 
               Chúng tôi cung cấp các công cụ mạnh mẽ để quản lý học sinh, chương trình giảng dạy, tài chính và hỗ trợ soạn giảng thông minh, giúp Quý Thầy Cô tập trung hoàn toàn vào sứ mệnh truyền đạt tri thức.
             </p>
           </div>
@@ -1845,6 +1858,384 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
             )}
           </motion.div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | null }) {
+  const [grade, setGrade] = useState('');
+  const [subject, setSubject] = useState('');
+  const [lessonName, setLessonName] = useState('');
+  const [periods, setPeriods] = useState('1');
+  const [config, setConfig] = useState({
+    multipleChoice: 0,
+    trueFalse: 0,
+    shortAnswer: 0,
+    essay: 0
+  });
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [result, setResult] = useState('');
+  const [error, setError] = useState('');
+
+  const grades = Array.from({ length: 12 }, (_, i) => `Lớp ${i + 1}`);
+  
+  const subjects = [
+    { name: 'Toán', levels: [1, 2, 3] },
+    { name: 'Ngữ văn / Tiếng Việt', levels: [1, 2, 3] },
+    { name: 'Ngoại ngữ', levels: [1, 2, 3] },
+    { name: 'Khoa học tự nhiên', levels: [2] },
+    { name: 'Lịch sử và Địa lý', levels: [1, 2] },
+    { name: 'Vật lý', levels: [3] },
+    { name: 'Hóa học', levels: [3] },
+    { name: 'Sinh học', levels: [3] },
+    { name: 'Lịch sử', levels: [3] },
+    { name: 'Địa lý', levels: [3] },
+    { name: 'GD Kinh tế và Pháp luật', levels: [3] },
+    { name: 'Tin học', levels: [1, 2, 3] },
+    { name: 'Công nghệ', levels: [1, 2, 3] },
+    { name: 'Tự nhiên và Xã hội', levels: [1] },
+    { name: 'Khoa học', levels: [1] },
+  ];
+
+  const getSubjectList = () => {
+    if (!grade) return subjects;
+    const gradeNum = parseInt(grade.replace(/\D/g, ''));
+    let level = 1; // 1: TH, 2: THCS, 3: THPT
+    if (gradeNum >= 6 && gradeNum <= 9) level = 2;
+    if (gradeNum >= 10) level = 3;
+    return subjects.filter(s => s.levels.includes(level));
+  };
+
+  const generatePlan = async () => {
+    if (!grade || !subject || !lessonName) {
+      setError('Vui lòng chọn Khối lớp, Môn học và nhập Tên bài dạy.');
+      return;
+    }
+
+    setIsGenerating(true);
+    setError('');
+    
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) throw new Error('Thiếu API Key cho Gemini AI.');
+
+      const ai = new GoogleGenAI({ apiKey });
+      
+      const prompt = `
+        BẠN LÀ CHUYÊN GIA BIÊN SOẠN TÀI LIỆU GIÁO DỤC CHUẨN GDPT 2018.
+        NHIỆM VỤ: Tạo một tài liệu giáo án/chuyên đề bài dạy hoàn chỉnh.
+
+        THÔNG TIN CHUNG:
+        - Khối: ${grade}
+        - Môn: ${subject}
+        - Bài dạy: ${lessonName}
+        - Thời lượng: ${periods} tiết
+
+        YÊU CẦU CẤU TRÚC (BẮT BUỘC THEO MẪU):
+        1. Tiêu đề: CHỦ ĐỀ: [Tên bài dạy] (Thời lượng: [Số tiết])
+        2. PHẦN I. TÓM TẮT LÍ THUYẾT:
+           - Viết chi tiết các kiến thức trọng tâm (đánh số 1, 2, 3...). 
+           - Nội dung phải chuyên sâu và dễ hiểu.
+        3. PHẦN II. CÁC DẠNG BÀI:
+           - Dạng 1. TN nhiều đáp án: Tạo đúng ${config.multipleChoice} câu hỏi.
+           - Dạng 2. TN Đúng sai: Tạo đúng ${config.trueFalse} câu hỏi (Mỗi câu có 4 ý a, b, c, d).
+           - Dạng 3. TN Trả lời ngắn: Tạo đúng ${config.shortAnswer} câu hỏi.
+           - Dạng 4. Tự luận: Tạo đúng ${config.essay} câu hỏi.
+        4. PHẦN III. ĐÁP ÁN:
+           - Cung cấp đáp án chi tiết cho toàn bộ các câu hỏi ở PHẦN II.
+        5. Kết thúc bằng dòng:  HẾT 
+
+        QUY TẮC PHẢI TUÂN THỦ:
+        - CÔNG THỨC TOÁN/LÝ/HÓA: Tuyệt đối sử dụng LaTeX ($...$ cho inline và $$...$$ cho block).
+        - TRÌNH BÀY: Sử dụng các thẻ HTML (h2, p, strong, table, ul, li) để tạo cấu trúc văn bản đẹp.
+        - ĐỊNH DẠNG CÂU HỎI: Các phương án lựa chọn (A, B, C, D) hoặc các ý (a, b, c, d) KHÔNG ĐƯỢC có dấu chấm (.) ở phía trước. Chỉ trình bày dưới dạng: "A. Nội dung" hoặc "a. Nội dung".
+        - CHẤT LƯỢNG: Câu hỏi phải bám sát nội dung lí thuyết đã trình bày.
+
+        Trả về JSON: {"content": "Nội dung HTML hoàn chỉnh"}
+      `;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          maxOutputTokens: 25000,
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              content: { type: Type.STRING }
+            },
+            required: ["content"]
+          }
+        }
+      });
+
+      const text = response.text || '';
+      const data = JSON.parse(text);
+      setResult(data.content);
+    } catch (e: any) {
+      console.error("AI Error:", e);
+      setError(e.message || 'Có lỗi xảy ra khi tạo giáo án.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const exportToDocx = async (htmlContent: string, filename: string) => {
+    try {
+      const doc = new DOMParser().parseFromString(htmlContent, 'text/html');
+      const children: any[] = [];
+
+      const processNode = (node: Node): any[] => {
+        const runs: any[] = [];
+        node.childNodes.forEach(child => {
+          if (child.nodeType === Node.TEXT_NODE) {
+            const text = child.textContent || '';
+            runs.push(new TextRun({
+              text,
+              size: 26,
+              font: "Times New Roman"
+            }));
+          } else if (child.nodeType === Node.ELEMENT_NODE) {
+            const element = child as HTMLElement;
+            const isBold = element.tagName === 'B' || element.tagName === 'STRONG' || element.tagName.startsWith('H');
+            runs.push(new TextRun({
+              text: element.innerText,
+              bold: isBold,
+              size: element.tagName.startsWith('H') ? 30 : 26,
+              font: "Times New Roman"
+            }));
+          }
+        });
+        return runs;
+      };
+
+      const convertElementToDocx = (element: HTMLElement) => {
+        const tagName = element.tagName.toLowerCase();
+        if (['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tagName)) {
+          children.push(new Paragraph({
+            children: processNode(element),
+            heading: tagName.startsWith('h') ? HeadingLevel[`HEADING_${tagName.substring(1)}` as keyof typeof HeadingLevel] : undefined,
+            spacing: { after: 200, before: tagName.startsWith('h') ? 400 : 0 }
+          }));
+        } else if (tagName === 'ul' || tagName === 'ol') {
+          element.childNodes.forEach(li => {
+            if (li.nodeType === Node.ELEMENT_NODE && (li as HTMLElement).tagName.toLowerCase() === 'li') {
+              children.push(new Paragraph({
+                children: processNode(li),
+                bullet: tagName === 'ul' ? { level: 0 } : undefined,
+                spacing: { after: 120 }
+              }));
+            }
+          });
+        } else if (tagName === 'table') {
+          const rows: TableRow[] = [];
+          element.querySelectorAll('tr').forEach(tr => {
+            const cells: TableCell[] = [];
+            tr.querySelectorAll('td, th').forEach(td => {
+              cells.push(new TableCell({
+                children: [new Paragraph({ children: processNode(td) })],
+                borders: {
+                  top: { style: BorderStyle.SINGLE, size: 1 },
+                  bottom: { style: BorderStyle.SINGLE, size: 1 },
+                  left: { style: BorderStyle.SINGLE, size: 1 },
+                  right: { style: BorderStyle.SINGLE, size: 1 },
+                }
+              }));
+            });
+            rows.push(new TableRow({ children: cells }));
+          });
+          children.push(new Table({ rows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+        }
+      };
+
+      doc.body.childNodes.forEach(node => {
+        if (node.nodeType === Node.ELEMENT_NODE) convertElementToDocx(node as HTMLElement);
+      });
+
+      const documentDoc = new Document({
+        sections: [{ children }],
+      });
+
+      const blob = await Packer.toBlob(documentDoc);
+      saveAs(blob, filename);
+    } catch (err) {
+      console.error("Docx Error:", err);
+      alert("Lỗi khi xuất file.");
+    }
+  };
+
+  return (
+    <div className="space-y-8 max-w-5xl mx-auto pb-12">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white dark:bg-slate-900 p-8 rounded-[32px] border border-neutral-200 dark:border-slate-800 shadow-sm"
+      >
+        <div className="flex items-center gap-4 mb-8">
+          <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+            <ClipboardList className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">Tạo giáo án giáo viên</h2>
+            <p className="text-sm text-neutral-500 dark:text-slate-400 mt-1 font-medium">Biên soạn giáo án/chuyên đề chuẩn GDPT 2018.</p>
+          </div>
+        </div>
+
+        <div className="space-y-8">
+          {/* Grade selection */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <label className="text-sm font-black text-neutral-900 dark:text-white uppercase tracking-wider pl-1">Chọn Khối lớp</label>
+              <select 
+                value={grade}
+                onChange={(e) => { setGrade(e.target.value); setSubject(''); }}
+                className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all font-bold"
+              >
+                <option value="">-- Chọn khối lớp --</option>
+                {grades.map(g => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+            </div>
+            {/* Subject selection */}
+            <div className="space-y-3">
+              <label className="text-sm font-black text-neutral-900 dark:text-white uppercase tracking-wider pl-1 font-sans">Chọn Môn học</label>
+              <select 
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                disabled={!grade}
+                className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all font-bold disabled:opacity-50"
+              >
+                <option value="">-- Chọn môn học --</option>
+                {getSubjectList().map(s => (
+                  <option key={s.name} value={s.name}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Tên bài dạy <span className="text-red-500">*</span></label>
+              <input 
+                type="text"
+                value={lessonName}
+                onChange={(e) => setLessonName(e.target.value)}
+                placeholder="Ví dụ: Cấu tạo nguyên tử"
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Số tiết dạy</label>
+              <input 
+                type="number"
+                value={periods}
+                onChange={(e) => setPeriods(e.target.value)}
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all"
+              />
+            </div>
+          </div>
+
+          <div className="bg-neutral-50 dark:bg-slate-800/30 p-6 rounded-2xl border border-neutral-100 dark:border-slate-800">
+            <h3 className="text-sm font-black text-neutral-900 dark:text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Settings className="w-4 h-4 text-primary" />
+              Cấu hình số câu hỏi bài tập
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-neutral-500 uppercase">TN nhiều đáp án</label>
+                <input 
+                  type="number"
+                  value={config.multipleChoice}
+                  onChange={(e) => setConfig({...config, multipleChoice: parseInt(e.target.value) || 0})}
+                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-lg outline-none text-sm dark:text-white"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-neutral-500 uppercase">TN Đúng/Sai</label>
+                <input 
+                  type="number"
+                  value={config.trueFalse}
+                  onChange={(e) => setConfig({...config, trueFalse: parseInt(e.target.value) || 0})}
+                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-lg outline-none text-sm dark:text-white"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-neutral-500 uppercase">TN trả lời ngắn</label>
+                <input 
+                  type="number"
+                  value={config.shortAnswer}
+                  onChange={(e) => setConfig({...config, shortAnswer: parseInt(e.target.value) || 0})}
+                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-lg outline-none text-sm dark:text-white"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-neutral-500 uppercase">Tự luận</label>
+                <input 
+                  type="number"
+                  value={config.essay}
+                  onChange={(e) => setConfig({...config, essay: parseInt(e.target.value) || 0})}
+                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-lg outline-none text-sm dark:text-white"
+                />
+              </div>
+            </div>
+          </div>
+
+          {error && (
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl text-sm font-bold flex items-center gap-3 border border-red-100 dark:border-red-900/30">
+              <Info className="w-5 h-5" />
+              {error}
+            </div>
+          )}
+
+          <button
+            onClick={generatePlan}
+            disabled={isGenerating}
+            className={cn(
+              "w-full py-5 rounded-2xl font-black text-xl transition-all flex items-center justify-center gap-3 shadow-xl",
+              isGenerating
+                ? "bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed"
+                : "bg-primary text-white hover:bg-primary-hover active:scale-[0.98] shadow-primary/30"
+            )}
+          >
+            {isGenerating ? (
+              <RefreshCw className="w-7 h-7 animate-spin" />
+            ) : (
+              <Sparkles className="w-7 h-7" />
+            )}
+            {isGenerating ? "Hệ thống đang biên soạn..." : "BIÊN SOẠN GIÁO ÁN THÔNG MINH"}
+          </button>
+        </div>
+      </motion.div>
+
+      {result && (
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white dark:bg-slate-900 p-10 rounded-[32px] border border-neutral-200 dark:border-slate-800 shadow-2xl relative"
+        >
+          <div className="flex items-center justify-between mb-8 border-b border-neutral-100 dark:border-slate-800 pb-6">
+            <h3 className="text-2xl font-black text-neutral-900 dark:text-white flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                <FileText className="w-6 h-6" />
+              </div>
+              Nội dung giáo án đã hoàn thành
+            </h3>
+            <button 
+              onClick={() => exportToDocx(result, `GiaoAn_${lessonName.replace(/\s+/g, '_')}.docx`)}
+              className="px-6 py-3 bg-green-600 text-white rounded-xl font-bold flex items-center gap-2 hover:bg-green-700 transition-all shadow-lg shadow-green-200 dark:shadow-none"
+            >
+              <Download className="w-5 h-5" />
+              Tải file Word (.docx)
+            </button>
+          </div>
+          <div 
+            className="prose dark:prose-invert max-w-none min-h-[600px] p-10 bg-white dark:bg-slate-900 border-2 border-neutral-50 dark:border-slate-800 rounded-3xl text-base leading-relaxed font-sans shadow-inner overflow-x-auto"
+            dangerouslySetInnerHTML={{ __html: result }}
+          />
+        </motion.div>
       )}
     </div>
   );
@@ -3997,6 +4388,7 @@ function LoginPage({ onLogin, users, darkMode, setDarkMode }: { onLogin: (user: 
             <span className="px-2 py-1 bg-emerald-500/10 text-emerald-600 text-[10px] font-bold rounded-lg">Chương trình dạy</span>
             <span className="px-2 py-1 bg-orange-500/10 text-orange-600 text-[10px] font-bold rounded-lg">Tài chính</span>
             <span className="px-2 py-1 bg-purple-500/10 text-purple-600 text-[10px] font-bold rounded-lg">Giáo án AI & NLS</span>
+            <span className="px-2 py-1 bg-indigo-500/10 text-indigo-600 text-[10px] font-bold rounded-lg">Tạo KHBD Trung tâm</span>
           </div>
         </div>
 
