@@ -157,6 +157,54 @@ const formatDate = (dateStr: string) => {
   return dateStr;
 };
 
+const sanitizeDocxText = (text: any): string => {
+  if (text === null || text === undefined) return "";
+  const str = String(text);
+  // Remove control characters that are invalid in XML 1.0 (Word document.xml)
+  // Valid: #x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]
+  return str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x84\x86-\x9F\uFDD0-\uFDEF\uFFFE\uFFFF]/g, "");
+};
+
+/**
+ * Splits HTML content into chunks of roughly maxChars length, trying to split at paragraph or section boundaries.
+ */
+const splitHtmlContent = (html: string, maxChars: number = 20000): string[] => {
+  if (html.length <= maxChars) return [html];
+  
+  const chunks: string[] = [];
+  let currentHtml = html;
+  
+  while (currentHtml.length > 0) {
+    if (currentHtml.length <= maxChars) {
+      chunks.push(currentHtml);
+      break;
+    }
+    
+    // Try to find a good split point (closing tag of p, div, li, h1-6)
+    let splitPoint = -1;
+    const searchString = currentHtml.substring(0, maxChars + 1000); // Look slightly ahead for a boundary
+    const regex = /<\/(p|div|li|h[1-6]|tr|section)>/g;
+    let match;
+    while ((match = regex.exec(searchString)) !== null) {
+      if (match.index + match[0].length <= maxChars + 1000) {
+        splitPoint = match.index + match[0].length;
+        if (splitPoint > maxChars) break; // If we passed maxChars, this is our best point
+      }
+    }
+    
+    if (splitPoint === -1) {
+      // Fallback: split at nearest space or just force split at maxChars
+      splitPoint = currentHtml.lastIndexOf(' ', maxChars);
+      if (splitPoint === -1) splitPoint = maxChars;
+    }
+    
+    chunks.push(currentHtml.substring(0, splitPoint));
+    currentHtml = currentHtml.substring(splitPoint).trim();
+  }
+  
+  return chunks;
+};
+
 const getLastDayOfMonth = (period: string) => {
   const match = period.match(/Tháng (\d{2})\/(\d{4})/i);
   if (match) {
@@ -467,6 +515,9 @@ export default function App() {
     setIsSyncing(true);
     try {
       const response = await fetch(`${SYNC_SCRIPT_URL}?action=fetch_data`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
       if (data.users && data.users.length > 0) {
         // Map users from sheet back to UserAccount interface
@@ -490,8 +541,8 @@ export default function App() {
       }
       alert('Tải dữ liệu từ Google Sheet thành công!');
     } catch (error) {
-      console.error("Fetch failed", error);
-      alert('Tải dữ liệu thất bại. Vui lòng kiểm tra lại cấu hình script.');
+      console.error("Fetch from Google Sheets failed:", error);
+      alert(`Tải dữ liệu thất bại: ${error instanceof Error ? error.message : 'Lỗi mạng hoặc script không phản hồi'}`);
     } finally {
       setIsSyncing(false);
     }
@@ -1425,7 +1476,7 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
       `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -1541,30 +1592,43 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
 
   const exportToDocx = async (html: string, filename: string) => {
     try {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-      const children: any[] = [];
+      const chunks = splitHtmlContent(html);
+      
+      for (let i = 0; i < chunks.length; i++) {
+        const chunkHtml = chunks[i];
+        const chunkFilename = chunks.length > 1 ? filename.replace('.docx', `_Phan_${i + 1}.docx`) : filename;
+        
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(chunkHtml, 'text/html');
+        const children: any[] = [];
 
       const processNode = (node: Node): TextRun[] => {
         let runs: TextRun[] = [];
         node.childNodes.forEach(child => {
           if (child.nodeType === Node.TEXT_NODE) {
             runs.push(new TextRun({ 
-              text: child.textContent || "",
-              size: 26 // 13pt
+              text: sanitizeDocxText(child.textContent),
+              size: 26, // 13pt
+              font: "Times New Roman"
             }));
           } else if (child.nodeType === Node.ELEMENT_NODE) {
             const element = child as HTMLElement;
             const style = element.getAttribute('style') || '';
             const isRed = style.includes('color:red') || style.includes('color: red');
             const isBold = element.tagName === 'B' || element.tagName === 'STRONG' || element.tagName.startsWith('H');
-            
-            runs.push(new TextRun({
-              text: element.innerText,
-              color: isRed ? "FF0000" : undefined,
-              bold: isBold,
-              size: element.tagName.startsWith('H') ? 30 : 26, // 15pt for headings, 13pt for normal
-            }));
+            const tagName = element.tagName.toLowerCase();
+
+            if (tagName === 'br') {
+              runs.push(new TextRun({ text: "", break: 1 }));
+            } else {
+              runs.push(new TextRun({
+                text: sanitizeDocxText(element.textContent),
+                color: isRed ? "FF0000" : undefined,
+                bold: isBold,
+                size: element.tagName.startsWith('H') ? 30 : 26,
+                font: "Times New Roman"
+              }));
+            }
           }
         });
         return runs;
@@ -1632,7 +1696,7 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
                 td.childNodes.forEach(child => {
                   if (child.nodeType === Node.TEXT_NODE && child.textContent?.trim()) {
                     cellContent.push(new Paragraph({
-                      children: [new TextRun({ text: child.textContent, size: 26 })]
+                      children: [new TextRun({ text: sanitizeDocxText(child.textContent || ""), size: 26, font: "Times New Roman" })]
                     }));
                   } else if (child.nodeType === Node.ELEMENT_NODE) {
                     const el = child as HTMLElement;
@@ -1713,7 +1777,7 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
         } else if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
           children.push(new Paragraph({
             children: [new TextRun({ 
-              text: node.textContent,
+              text: sanitizeDocxText(node.textContent || ""),
               size: 26 // 13pt
             })],
             spacing: { after: 200 }
@@ -1721,18 +1785,27 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
         }
       });
 
-      const documentDoc = new Document({
-        sections: [{
-          children: children,
-        }],
-      });
+        const documentDoc = new Document({
+          sections: [{
+            children: children,
+          }],
+        });
 
-      const blob = await Packer.toBlob(documentDoc);
-      saveAs(blob, filename);
+        const blob = await Packer.toBlob(documentDoc);
+        saveAs(blob, chunkFilename);
+        
+        // Wait briefly between chunks
+        if (chunks.length > 1) await new Promise(r => setTimeout(r, 500));
+      }
     } catch (err) {
       console.error("Lỗi khi xuất file docx:", err);
       alert("Có lỗi xảy ra khi xuất file Word. Vui lòng thử lại.");
     }
+  };
+
+  const exportAllToDocx = async () => {
+    if (result?.ai) await exportToDocx(result.ai, `GiaoAn_AI_${selectedClass}_${selectedSubject}.docx`);
+    if (result?.nls) await exportToDocx(result.nls, `NangLucSohu_AI_${selectedClass}_${selectedSubject}.docx`);
   };
 
   return (
@@ -1920,7 +1993,17 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
       </motion.div>
 
       {result && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="space-y-6">
+          <div className="flex justify-end">
+            <button
+              onClick={exportAllToDocx}
+              className="flex items-center gap-2 px-8 py-4 bg-black text-white dark:bg-white dark:text-black rounded-2xl hover:scale-105 active:scale-95 transition-all font-black shadow-2xl"
+            >
+              <Download className="w-6 h-6" />
+              Tải toàn bộ giáo án
+            </button>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <motion.div 
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -1989,6 +2072,7 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
             )}
           </motion.div>
         </div>
+      </div>
       )}
     </div>
   );
@@ -2119,7 +2203,7 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
         5. Kết thúc bằng dòng:  HẾT 
 
         QUY TẮC PHẢI TUÂN THỦ:
-        - CÔNG THỨC TOÁN/LÝ/HÓA: Tuyệt đối sử dụng LaTeX ($...$ cho inline và $$...$$ cho block).
+        - CÔNG THỨC TOÁN/LÝ/HÓA: Tuyệt đối sử dụng LaTeX ($...$ hoặc $$...$$).
         - TRÌNH BÀY: Sử dụng các thẻ HTML (h2, p, strong, table, ul, li) để tạo cấu trúc văn bản đẹp.
         - ĐỊNH DẠNG CÂU HỎI: Các phương án lựa chọn (A, B, C, D) hoặc các ý (a, b, c, d) KHÔNG ĐƯỢC có dấu chấm (.) ở phía trước. Chỉ trình bày dưới dạng: "A. Nội dung" hoặc "a. Nội dung".
         - CHẤT LƯỢNG: Câu hỏi phải bám sát nội dung lí thuyết đã trình bày.
@@ -2128,7 +2212,7 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
       `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -2163,21 +2247,26 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
         const runs: any[] = [];
         node.childNodes.forEach(child => {
           if (child.nodeType === Node.TEXT_NODE) {
-            const text = child.textContent || '';
             runs.push(new TextRun({
-              text,
+              text: sanitizeDocxText(child.textContent),
               size: 26,
               font: "Times New Roman"
             }));
           } else if (child.nodeType === Node.ELEMENT_NODE) {
             const element = child as HTMLElement;
             const isBold = element.tagName === 'B' || element.tagName === 'STRONG' || element.tagName.startsWith('H');
-            runs.push(new TextRun({
-              text: element.innerText,
-              bold: isBold,
-              size: element.tagName.startsWith('H') ? 30 : 26,
-              font: "Times New Roman"
-            }));
+            const tagName = element.tagName.toLowerCase();
+
+            if (tagName === 'br') {
+              runs.push(new TextRun({ text: "", break: 1 }));
+            } else {
+              runs.push(new TextRun({
+                text: sanitizeDocxText(element.textContent),
+                bold: isBold,
+                size: element.tagName.startsWith('H') ? 30 : 26,
+                font: "Times New Roman"
+              }));
+            }
           }
         });
         return runs;
@@ -3236,20 +3325,20 @@ function LessonPlanSection({
       if (!apiKey) return;
 
       const ai = new GoogleGenAI({ apiKey });
-      const prompt = `Dựa trên thông tin sau, hãy cho biết nội dung bài học (tên bài dạy) của tiết học này:
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Dựa trên thông tin sau, hãy cho biết nội dung bài học (tên bài dạy) của tiết học này:
       Khối lớp: ${row.grade}
       Môn học: ${row.subject}
       Phân môn: ${row.subSubject}
       Tiết theo PPCT: ${row.period}
-      Trả về duy nhất tên bài học, không thêm gì khác.`;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
-        contents: prompt,
+      Trả về duy nhất tên bài học, không thêm gì khác.`,
       });
 
-      if (response.text) {
-        handleRowChange(rowId, 'content', response.text.trim());
+      const text = response.text;
+
+      if (text) {
+        handleRowChange(rowId, 'content', text.trim());
       }
     } catch (error) {
       console.error("AI Auto-fill failed", error);
@@ -3267,12 +3356,12 @@ function LessonPlanSection({
         children: [
           new Paragraph({
             children: [
-              new TextRun({ text: `Hộ kinh doanh: ${businessInfo.name}`, size: 22 }),
+              new TextRun({ text: sanitizeDocxText(`Hộ kinh doanh: ${businessInfo.name}`), size: 22 }),
             ],
           }),
           new Paragraph({
             children: [
-              new TextRun({ text: `Địa chỉ: ${businessInfo.address}`, size: 22 }),
+              new TextRun({ text: sanitizeDocxText(`Địa chỉ: ${businessInfo.address}`), size: 22 }),
             ],
           }),
           new Paragraph({
@@ -3284,13 +3373,13 @@ function LessonPlanSection({
           new Paragraph({
             alignment: AlignmentType.CENTER,
             children: [
-              new TextRun({ text: `Họ tên giáo viên dạy: ${plan.teacherName}`, bold: true, size: 24 }),
+              new TextRun({ text: sanitizeDocxText(`Họ tên giáo viên dạy: ${plan.teacherName}`), bold: true, size: 24 }),
             ],
           }),
           new Paragraph({
             alignment: AlignmentType.CENTER,
             children: [
-              new TextRun({ text: `Tuần: ${plan.week} - Từ ngày: ${safeFormat(plan.startDate, 'dd/MM/yyyy')} - Đến ngày: ${safeFormat(plan.endDate, 'dd/MM/yyyy')}`, size: 22 }),
+              new TextRun({ text: sanitizeDocxText(`Tuần: ${plan.week} - Từ ngày: ${safeFormat(plan.startDate, 'dd/MM/yyyy')} - Đến ngày: ${safeFormat(plan.endDate, 'dd/MM/yyyy')}`), size: 22 }),
             ],
           }),
           new Table({
@@ -3302,7 +3391,7 @@ function LessonPlanSection({
                 ].map(text => new TableCell({
                   children: [new Paragraph({ 
                     alignment: AlignmentType.CENTER, 
-                    children: [new TextRun({ text, bold: true, size: 22 })] 
+                    children: [new TextRun({ text: sanitizeDocxText(text), bold: true, size: 22 })] 
                   })],
                   verticalAlign: VerticalAlign.CENTER,
                   shading: { fill: "F2F2F2" }
@@ -3322,7 +3411,7 @@ function LessonPlanSection({
                   
                   if (isNewDay) {
                     rowChildren.push(new TableCell({
-                      children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: dayText, size: 20 })] })],
+                      children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: sanitizeDocxText(dayText), size: 20 })] })],
                       verticalAlign: VerticalAlign.CENTER,
                       rowSpan: rowsToExport.filter(r => (r.day || r.date || '') === dayText).length,
                     }));
@@ -3334,22 +3423,22 @@ function LessonPlanSection({
 
                   rowChildren.push(new TableCell({
                     children: [
-                      new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: shiftLine1, size: 20 })] }),
-                      new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: shiftLine2, size: 18 })] }),
+                      new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: sanitizeDocxText(shiftLine1), size: 20 })] }),
+                      new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: sanitizeDocxText(shiftLine2), size: 18 })] }),
                     ],
                     verticalAlign: VerticalAlign.CENTER,
                   }));
 
                   [row.grade, row.subject, row.subSubject, row.period].forEach(text => {
                     rowChildren.push(new TableCell({
-                      children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(text), size: 20 })] })],
+                      children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: sanitizeDocxText(text), size: 20 })] })],
                       verticalAlign: VerticalAlign.CENTER,
                     }));
                   });
 
                   [row.content, row.notes].forEach(text => {
                     rowChildren.push(new TableCell({
-                      children: [new Paragraph({ children: [new TextRun({ text: String(text), size: 20 })] })],
+                      children: [new Paragraph({ children: [new TextRun({ text: sanitizeDocxText(text), size: 20 })] })],
                       verticalAlign: VerticalAlign.CENTER,
                     }));
                   });
@@ -3380,24 +3469,24 @@ function LessonPlanSection({
                 children: [
                   new TableCell({
                     children: [
-                      new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Người lập", bold: true, size: 22 })] }),
-                      new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `Ngày ${safeFormat(plan.startDate, 'dd/MM/yyyy')}`, size: 20 })] }),
-                      new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "(Ký, ghi rõ họ tên)", italics: true, size: 20 })] }),
+                      new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: sanitizeDocxText("Người lập"), bold: true, size: 22 })] }),
+                      new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: sanitizeDocxText(`Ngày ${safeFormat(plan.startDate, 'dd/MM/yyyy')}`), size: 20 })] }),
+                      new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: sanitizeDocxText("(Ký, ghi rõ họ tên)"), italics: true, size: 20 })] }),
                       new Paragraph({ 
                         alignment: AlignmentType.CENTER, 
-                        children: [new TextRun({ text: plan.teacherName, bold: true, size: 22 })],
+                        children: [new TextRun({ text: sanitizeDocxText(plan.teacherName), bold: true, size: 22 })],
                         spacing: { before: 1700 }
                       }),
                     ],
                   }),
                   new TableCell({
                     children: [
-                      new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Duyệt kế hoạch", bold: true, size: 22 })] }),
-                      new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `Ngày ${safeFormat(plan.startDate, 'dd/MM/yyyy')}`, size: 20 })] }),
-                      new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "(Ký, ghi rõ họ tên)", italics: true, size: 20 })] }),
+                      new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: sanitizeDocxText("Duyệt kế hoạch"), bold: true, size: 22 })] }),
+                      new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: sanitizeDocxText(`Ngày ${safeFormat(plan.startDate, 'dd/MM/yyyy')}`), size: 20 })] }),
+                      new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: sanitizeDocxText("(Ký, ghi rõ họ tên)"), italics: true, size: 20 })] }),
                       new Paragraph({ 
                         alignment: AlignmentType.CENTER, 
-                        children: [new TextRun({ text: businessInfo.owner, bold: true, size: 22 })],
+                        children: [new TextRun({ text: sanitizeDocxText(businessInfo.owner), bold: true, size: 22 })],
                         spacing: { before: 1700 }
                       }),
                     ],
@@ -3737,12 +3826,12 @@ function ClassJournalSection({
         children: [
           new Paragraph({
             children: [
-              new TextRun({ text: `Hộ kinh doanh: ${businessInfo.name}`, size: 22 }),
+              new TextRun({ text: sanitizeDocxText(`Hộ kinh doanh: ${businessInfo.name}`), size: 22 }),
             ],
           }),
           new Paragraph({
             children: [
-              new TextRun({ text: `Địa chỉ: ${businessInfo.address}`, size: 22 }),
+              new TextRun({ text: sanitizeDocxText(`Địa chỉ: ${businessInfo.address}`), size: 22 }),
             ],
           }),
           new Paragraph({
@@ -3754,7 +3843,7 @@ function ClassJournalSection({
           new Paragraph({
             alignment: AlignmentType.CENTER,
             children: [
-              new TextRun({ text: `Tuần: ${selectedPlan.week} - Từ ngày: ${safeFormat(selectedPlan.startDate, 'dd/MM/yyyy')} - Đến ngày: ${safeFormat(selectedPlan.endDate, 'dd/MM/yyyy')}`, size: 22 }),
+              new TextRun({ text: sanitizeDocxText(`Tuần: ${selectedPlan.week} - Từ ngày: ${safeFormat(selectedPlan.startDate, 'dd/MM/yyyy')} - Đến ngày: ${safeFormat(selectedPlan.endDate, 'dd/MM/yyyy')}`), size: 22 }),
             ],
           }),
           new Table({
@@ -3766,7 +3855,7 @@ function ClassJournalSection({
                 ].map(text => new TableCell({
                   children: [new Paragraph({ 
                     alignment: AlignmentType.CENTER, 
-                    children: [new TextRun({ text, bold: true, size: 22 })] 
+                    children: [new TextRun({ text: sanitizeDocxText(text), bold: true, size: 22 })] 
                   })],
                   verticalAlign: VerticalAlign.CENTER,
                   shading: { fill: "F2F2F2" }
@@ -3778,7 +3867,8 @@ function ClassJournalSection({
                 let lastDay = "";
                 
                 rowsToExport.forEach((row) => {
-                  const dayText = row.day + (row.date ? ` (${row.date})` : '');
+                  const dayStr = row.day + (row.date ? ` (${row.date})` : '');
+                  const dayText = sanitizeDocxText(dayStr);
                   const isNewDay = dayText !== lastDay;
                   if (isNewDay) lastDay = dayText;
 
@@ -3786,9 +3876,9 @@ function ClassJournalSection({
                   
                   if (isNewDay) {
                     rowChildren.push(new TableCell({
-                      children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: dayText, size: 20 })] })],
+                      children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: sanitizeDocxText(dayText), size: 20 })] })],
                       verticalAlign: VerticalAlign.CENTER,
-                      rowSpan: rowsToExport.filter(r => (r.day + (r.date ? ` (${r.date})` : '')) === dayText).length,
+                      rowSpan: rowsToExport.filter(r => (r.day + (r.date ? ` (${r.date})` : '')) === dayStr).length,
                     }));
                   }
 
@@ -3799,8 +3889,8 @@ function ClassJournalSection({
 
                   rowChildren.push(new TableCell({
                     children: [
-                      new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: shiftLine1, size: 20 })] }),
-                      new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: shiftLine2, size: 18 })] }),
+                      new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: sanitizeDocxText(shiftLine1), size: 20 })] }),
+                      new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: sanitizeDocxText(shiftLine2), size: 18 })] }),
                     ],
                     verticalAlign: VerticalAlign.CENTER,
                   }));
@@ -3808,7 +3898,7 @@ function ClassJournalSection({
                   // Lớp, Môn, Phân môn, Tiết - Centered
                   [row.grade, row.subject, row.subSubject, row.period].forEach(text => {
                     rowChildren.push(new TableCell({
-                      children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(text), size: 20 })] })],
+                      children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: sanitizeDocxText(text), size: 20 })] })],
                       verticalAlign: VerticalAlign.CENTER,
                     }));
                   });
@@ -3816,7 +3906,7 @@ function ClassJournalSection({
                   // Content, Attendance, Comments, Signature - Left aligned
                   [row.content, row.attendance || '', row.comments || '', row.signature || ''].forEach(text => {
                     rowChildren.push(new TableCell({
-                      children: [new Paragraph({ children: [new TextRun({ text: String(text), size: 20 })] })],
+                      children: [new Paragraph({ children: [new TextRun({ text: sanitizeDocxText(text), size: 20 })] })],
                       verticalAlign: VerticalAlign.CENTER,
                     }));
                   });
@@ -3852,25 +3942,25 @@ function ClassJournalSection({
                       new Paragraph({
                         alignment: AlignmentType.CENTER,
                         children: [
-                          new TextRun({ text: "Xác nhận của Hộ Kinh doanh", bold: true, size: 22 }),
+                          new TextRun({ text: sanitizeDocxText("Xác nhận của Hộ Kinh doanh"), bold: true, size: 22 }),
                         ],
                       }),
                       new Paragraph({
                         alignment: AlignmentType.CENTER,
                         children: [
-                          new TextRun({ text: `Ngày ${safeFormat(selectedPlan.endDate, 'dd/MM/yyyy')}`, size: 20 }),
+                          new TextRun({ text: sanitizeDocxText(`Ngày ${safeFormat(selectedPlan.endDate, 'dd/MM/yyyy')}`), size: 20 }),
                         ],
                       }),
                       new Paragraph({
                         alignment: AlignmentType.CENTER,
                         children: [
-                          new TextRun({ text: "(Ký, ghi rõ họ tên)", italics: true, size: 20 }),
+                          new TextRun({ text: sanitizeDocxText("(Ký, ghi rõ họ tên)"), italics: true, size: 20 }),
                         ],
                       }),
                       new Paragraph({
                         alignment: AlignmentType.CENTER,
                         children: [
-                          new TextRun({ text: businessInfo.owner, bold: true, size: 22 }),
+                          new TextRun({ text: sanitizeDocxText(businessInfo.owner), bold: true, size: 22 }),
                         ],
                         spacing: { before: 1700 } // Approx 3cm spacing
                       }),
@@ -4293,36 +4383,36 @@ function StudentManagementSection({
         alignment: AlignmentType.CENTER,
         spacing: { line: 312 },
         children: [
-          new TextRun({ text: "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM", bold: true, size: 28 }),
+          new TextRun({ text: sanitizeDocxText("CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM"), bold: true, size: 28 }),
         ],
       }),
       new Paragraph({
         alignment: AlignmentType.CENTER,
         spacing: { line: 312 },
         children: [
-          new TextRun({ text: "Độc lập - Tự do - Hạnh phúc", bold: true, size: 26 }),
+          new TextRun({ text: sanitizeDocxText("Độc lập - Tự do - Hạnh phúc"), bold: true, size: 26 }),
         ],
       }),
       new Paragraph({
         alignment: AlignmentType.CENTER,
         spacing: { line: 312 },
         children: [
-          new TextRun({ text: "----------***----------", size: 24 }),
+          new TextRun({ text: sanitizeDocxText("----------***----------"), size: 24 }),
         ],
       }),
       new Paragraph({
         alignment: AlignmentType.CENTER,
         spacing: { before: 400, after: 400, line: 312 },
         children: [
-          new TextRun({ text: "ĐƠN ĐĂNG KÍ HỌC THÊM", bold: true, size: 32 }),
+          new TextRun({ text: sanitizeDocxText("ĐƠN ĐĂNG KÍ HỌC THÊM"), bold: true, size: 32 }),
         ],
       }),
       new Paragraph({
         indent: { left: 1134 },
         spacing: { line: 312 },
         children: [
-          new TextRun({ text: "Kính gửi: ", italics: true, size: 28 }),
-          new TextRun({ text: businessInfo.name || "................................................................", bold: true, size: 28 }),
+          new TextRun({ text: sanitizeDocxText("Kính gửi: "), italics: true, size: 28 }),
+          new TextRun({ text: sanitizeDocxText(businessInfo.name || "................................................................"), bold: true, size: 28 }),
         ],
       }),
       new Paragraph({ spacing: { before: 200, line: 312 } }),
@@ -4330,100 +4420,100 @@ function StudentManagementSection({
         indent: { firstLine: 567 },
         spacing: { line: 312 },
         children: [
-          new TextRun({ text: "Tôi tên là: ", size: 28 }),
-          new TextRun({ text: student.parentName || "................................................................", size: 28 }),
+          new TextRun({ text: sanitizeDocxText("Tôi tên là: "), size: 28 }),
+          new TextRun({ text: sanitizeDocxText(student.parentName || "................................................................"), size: 28 }),
         ],
       }),
       new Paragraph({
         indent: { firstLine: 567 },
         spacing: { line: 312 },
         children: [
-          new TextRun({ text: "Số điện thoại: ", size: 28 }),
-          new TextRun({ text: student.phone || "................................................................", size: 28 }),
+          new TextRun({ text: sanitizeDocxText("Số điện thoại: "), size: 28 }),
+          new TextRun({ text: sanitizeDocxText(student.phone || "................................................................"), size: 28 }),
         ],
       }),
       new Paragraph({
         indent: { firstLine: 567 },
         spacing: { line: 312 },
         children: [
-          new TextRun({ text: "Là Phụ huynh của học sinh: ", size: 28 }),
-          new TextRun({ text: student.name || "................................................................", size: 28 }),
+          new TextRun({ text: sanitizeDocxText("Là Phụ huynh của học sinh: "), size: 28 }),
+          new TextRun({ text: sanitizeDocxText(student.name || "................................................................"), size: 28 }),
         ],
       }),
       new Paragraph({
         indent: { firstLine: 567 },
         spacing: { line: 312 },
         children: [
-          new TextRun({ text: "Lớp: ", size: 28 }),
-          new TextRun({ text: student.grade || "................................................................", size: 28 }),
+          new TextRun({ text: sanitizeDocxText("Lớp: "), size: 28 }),
+          new TextRun({ text: sanitizeDocxText(student.grade || "................................................................"), size: 28 }),
         ],
       }),
       new Paragraph({
         indent: { firstLine: 567 },
         spacing: { line: 312 },
         children: [
-          new TextRun({ text: "Đang học tại trường: ", size: 28 }),
-          new TextRun({ text: student.school || "................................................................", size: 28 }),
+          new TextRun({ text: sanitizeDocxText("Đang học tại trường: "), size: 28 }),
+          new TextRun({ text: sanitizeDocxText(student.school || "................................................................"), size: 28 }),
         ],
       }),
       new Paragraph({
         indent: { firstLine: 567 },
         spacing: { line: 312 },
         children: [
-          new TextRun({ text: "Môn đăng kí học: ", size: 28 }),
-          new TextRun({ text: student.subject || "................................................................", size: 28 }),
+          new TextRun({ text: sanitizeDocxText("Môn đăng kí học: "), size: 28 }),
+          new TextRun({ text: sanitizeDocxText(student.subject || "................................................................"), size: 28 }),
         ],
       }),
       new Paragraph({
         indent: { firstLine: 567 },
         spacing: { before: 200, line: 312 },
         children: [
-          new TextRun({ text: `Tôi viết đơn này đăng kí học thêm môn ${student.subject || '........'} trong năm 2026, do `, size: 28 }),
-          new TextRun({ text: businessInfo.name || "................", size: 28 }),
-          new TextRun({ text: " tổ chức tại ", size: 28 }),
-          new TextRun({ text: businessInfo.address || "................", size: 28 }),
+          new TextRun({ text: sanitizeDocxText(`Tôi viết đơn này đăng kí học thêm môn ${student.subject || '........'} trong năm 2026, do `), size: 28 }),
+          new TextRun({ text: sanitizeDocxText(businessInfo.name || "................"), size: 28 }),
+          new TextRun({ text: sanitizeDocxText(" tổ chức tại "), size: 28 }),
+          new TextRun({ text: sanitizeDocxText(businessInfo.address || "................"), size: 28 }),
         ],
       }),
       new Paragraph({
         indent: { firstLine: 567 },
         spacing: { before: 200, line: 312 },
         children: [
-          new TextRun({ text: "Tôi xin cam kết đối với con tôi sẽ:", size: 28 }),
+          new TextRun({ text: sanitizeDocxText("Tôi xin cam kết đối với con tôi sẽ:"), size: 28 }),
         ],
       }),
       new Paragraph({
         indent: { firstLine: 567 },
         spacing: { line: 312 },
         children: [
-          new TextRun({ text: "+ Chấp hành nghiêm túc nội quy lớp học.", size: 28 }),
+          new TextRun({ text: sanitizeDocxText("+ Chấp hành nghiêm túc nội quy lớp học."), size: 28 }),
         ],
       }),
       new Paragraph({
         indent: { firstLine: 567 },
         spacing: { line: 312 },
         children: [
-          new TextRun({ text: "+ Tham gia học tập đầy đủ, đúng giờ.", size: 28 }),
+          new TextRun({ text: sanitizeDocxText("+ Tham gia học tập đầy đủ, đúng giờ."), size: 28 }),
         ],
       }),
       new Paragraph({
         indent: { firstLine: 567 },
         spacing: { line: 312 },
         children: [
-          new TextRun({ text: "+ Hoàn thành bài tập và chủ động trong học tập.", size: 28 }),
+          new TextRun({ text: sanitizeDocxText("+ Hoàn thành bài tập và chủ động trong học tập."), size: 28 }),
         ],
       }),
       new Paragraph({
         indent: { firstLine: 567 },
         spacing: { line: 312 },
         children: [
-          new TextRun({ text: "Rất mong cơ sở xem xét và chấp thuận.", size: 28 }),
+          new TextRun({ text: sanitizeDocxText("Rất mong cơ sở xem xét và chấp thuận."), size: 28 }),
         ],
       }),
       new Paragraph({
         indent: { firstLine: 567 },
         spacing: { before: 400, line: 312 },
         children: [
-          new TextRun({ text: "Tôi xin trân trọng cảm ơn!", italics: true, size: 28 }),
+          new TextRun({ text: sanitizeDocxText("Tôi xin trân trọng cảm ơn!"), italics: true, size: 28 }),
         ],
       }),
       new Paragraph({ spacing: { before: 400, line: 312 } }),
@@ -4448,7 +4538,7 @@ function StudentManagementSection({
                     alignment: AlignmentType.CENTER,
                     spacing: { line: 312 },
                     children: [
-                      new TextRun({ text: `Lai châu, ngày ${d} tháng ${m} năm ${y}`, italics: true, size: 26 }),
+                      new TextRun({ text: sanitizeDocxText(`Lai châu, ngày ${d} tháng ${m} năm ${y}`), italics: true, size: 26 }),
                     ],
                   }),
                   new Paragraph({
@@ -4469,7 +4559,7 @@ function StudentManagementSection({
                     alignment: AlignmentType.CENTER,
                     spacing: { before: 1400, line: 312 },
                     children: [
-                      new TextRun({ text: student.parentName || "", bold: true, size: 28 }),
+                      new TextRun({ text: sanitizeDocxText(student.parentName || ""), bold: true, size: 28 }),
                     ],
                   }),
                 ],
@@ -5397,20 +5487,20 @@ function FinancialManagementSection({
                     children: [
                       new Paragraph({
                         children: [
-                          new TextRun({ text: "HỘ, CÁ NHÂN KINH DOANH: ", bold: true, size: 24 }),
-                          new TextRun({ text: effectiveBusinessInfo.name.toUpperCase(), bold: true, size: 24 }),
+                          new TextRun({ text: sanitizeDocxText("HỘ, CÁ NHÂN KINH DOANH: "), bold: true, size: 24 }),
+                          new TextRun({ text: sanitizeDocxText(effectiveBusinessInfo.name?.toUpperCase() || ""), bold: true, size: 24 }),
                         ],
                       }),
                       new Paragraph({
                         children: [
-                          new TextRun({ text: "Địa chỉ: ", bold: true, size: 24 }),
-                          new TextRun({ text: effectiveBusinessInfo.address, size: 24 }),
+                          new TextRun({ text: sanitizeDocxText("Địa chỉ: "), bold: true, size: 24 }),
+                          new TextRun({ text: sanitizeDocxText(effectiveBusinessInfo.address || ""), size: 24 }),
                         ],
                       }),
                       new Paragraph({
                         children: [
-                          new TextRun({ text: "Mã số thuế: ", bold: true, size: 24 }),
-                          new TextRun({ text: effectiveBusinessInfo.taxId || "................", size: 24 }),
+                          new TextRun({ text: sanitizeDocxText("Mã số thuế: "), bold: true, size: 24 }),
+                          new TextRun({ text: sanitizeDocxText(effectiveBusinessInfo.taxId) || "................", size: 24 }),
                         ],
                       }),
                     ],
@@ -5418,24 +5508,24 @@ function FinancialManagementSection({
                   new TableCell({
                     width: { size: 40, type: WidthType.PERCENTAGE },
                     children: [
-                      new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        children: [
-                          new TextRun({ text: "Mẫu số S1a-HKD", bold: true, size: 22 }),
-                        ],
-                      }),
-                      new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        children: [
-                          new TextRun({ text: "(Kèm theo Thông tư số 152/2025/TT-BTC", italics: true, size: 20 }),
-                        ],
-                      }),
-                      new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        children: [
-                          new TextRun({ text: "ngày 31 tháng 12 năm 2025 của Bộ trưởng Bộ Tài chính)", italics: true, size: 20 }),
-                        ],
-                      }),
+                          new Paragraph({
+                            alignment: AlignmentType.CENTER,
+                            children: [
+                              new TextRun({ text: sanitizeDocxText("Mẫu số S1a-HKD"), bold: true, size: 22 }),
+                            ],
+                          }),
+                          new Paragraph({
+                            alignment: AlignmentType.CENTER,
+                            children: [
+                              new TextRun({ text: sanitizeDocxText("(Kèm theo Thông tư số 152/2025/TT-BTC"), italics: true, size: 20 }),
+                            ],
+                          }),
+                          new Paragraph({
+                            alignment: AlignmentType.CENTER,
+                            children: [
+                              new TextRun({ text: sanitizeDocxText("ngày 31 tháng 12 năm 2025 của Bộ trưởng Bộ Tài chính)"), italics: true, size: 20 }),
+                            ],
+                          }),
                     ],
                   }),
                 ],
@@ -5446,27 +5536,27 @@ function FinancialManagementSection({
             alignment: AlignmentType.CENTER,
             spacing: { before: 600, after: 300 },
             children: [
-              new TextRun({ text: "SỔ CHI TIẾT DOANH THU BÁN HÀNG HÓA, DỊCH VỤ", bold: true, size: 36 }),
+              new TextRun({ text: sanitizeDocxText("SỔ CHI TIẾT DOANH THU BÁN HÀNG HÓA, DỊCH VỤ"), bold: true, size: 36 }),
             ],
           }),
           new Paragraph({
             alignment: AlignmentType.CENTER,
             children: [
-              new TextRun({ text: `Địa điểm kinh doanh: ${effectiveBusinessInfo.businessLocation || effectiveBusinessInfo.address}`, size: 26 }),
+              new TextRun({ text: sanitizeDocxText(`Địa điểm kinh doanh: ${effectiveBusinessInfo.businessLocation || effectiveBusinessInfo.address}`), size: 26 }),
             ],
           }),
           new Paragraph({
             alignment: AlignmentType.CENTER,
             spacing: { after: 400 },
             children: [
-              new TextRun({ text: `Kỳ kê khai: ${config.reportPeriod}`, size: 26 }),
+              new TextRun({ text: sanitizeDocxText(`Kỳ kê khai: ${config.reportPeriod}`), size: 26 }),
             ],
           }),
           new Paragraph({
             alignment: AlignmentType.RIGHT,
             spacing: { after: 200 },
             children: [
-              new TextRun({ text: "Đơn vị tính: VNĐ", italics: true, size: 24 }),
+              new TextRun({ text: sanitizeDocxText("Đơn vị tính: VNĐ"), italics: true, size: 24 }),
             ],
           }),
           new Table({
@@ -5474,29 +5564,29 @@ function FinancialManagementSection({
             rows: [
               new TableRow({
                 children: [
-                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Ngày tháng", bold: true, size: 26 })] })], verticalAlign: VerticalAlign.CENTER }),
-                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Giao dịch", bold: true, size: 26 })] })], verticalAlign: VerticalAlign.CENTER }),
-                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Số tiền", bold: true, size: 26 })] })], verticalAlign: VerticalAlign.CENTER }),
+                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: sanitizeDocxText("Ngày tháng"), bold: true, size: 26 })] })], verticalAlign: VerticalAlign.CENTER }),
+                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: sanitizeDocxText("Giao dịch"), bold: true, size: 26 })] })], verticalAlign: VerticalAlign.CENTER }),
+                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: sanitizeDocxText("Số tiền"), bold: true, size: 26 })] })], verticalAlign: VerticalAlign.CENTER }),
                 ],
               }),
               new TableRow({
                 children: [
-                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "A", italics: true, size: 24 })] })] }),
-                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "B", italics: true, size: 24 })] })] }),
-                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "1", italics: true, size: 24 })] })] }),
+                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: sanitizeDocxText("A"), italics: true, size: 24 })] })] }),
+                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: sanitizeDocxText("B"), italics: true, size: 24 })] })] }),
+                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: sanitizeDocxText("1"), italics: true, size: 24 })] })] }),
                 ],
               }),
               ...incomeData.map(item => new TableRow({
                 children: [
-                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: formatDate(item.date) || getLastDayOfMonth(config.reportPeriod), size: 26 })] })] }),
-                  new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: `Thu tiền học phí - ${item.name} ${item.address}`, size: 26 })] })] }),
-                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: item.amount.toLocaleString(), size: 26 })] })] }),
+                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: sanitizeDocxText(formatDate(item.date) || getLastDayOfMonth(config.reportPeriod)), size: 26 })] })] }),
+                  new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: sanitizeDocxText(`Thu tiền học phí - ${item.name} ${item.address}`), size: 26 })] })] }),
+                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: sanitizeDocxText(item.amount.toLocaleString()), size: 26 })] })] }),
                 ],
               })),
               new TableRow({
                 children: [
-                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Tổng cộng", bold: true, size: 26 })] })], columnSpan: 2 }),
-                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: incomeData.reduce((sum, item) => sum + item.amount, 0).toLocaleString(), bold: true, size: 26 })] })] }),
+                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: sanitizeDocxText("Tổng cộng"), bold: true, size: 26 })] })], columnSpan: 2 }),
+                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: sanitizeDocxText(incomeData.reduce((sum, item) => sum + item.amount, 0).toLocaleString()), bold: true, size: 26 })] })] }),
                 ],
               }),
             ],
@@ -5522,32 +5612,32 @@ function FinancialManagementSection({
                       new Paragraph({
                         alignment: AlignmentType.CENTER,
                         children: [
-                          new TextRun({ text: "Ngày ...... tháng ...... năm ......", italics: true, size: 24 }),
+                          new TextRun({ text: sanitizeDocxText("Ngày ...... tháng ...... năm ......"), italics: true, size: 24 }),
                         ],
                       }),
                       new Paragraph({
                         alignment: AlignmentType.CENTER,
                         children: [
-                          new TextRun({ text: "NGƯỜI ĐẠI DIỆN HỘ KINH DOANH/", bold: true, size: 24 }),
+                          new TextRun({ text: sanitizeDocxText("NGƯỜI ĐẠI DIỆN HỘ KINH DOANH/"), bold: true, size: 24 }),
                         ],
                       }),
                       new Paragraph({
                         alignment: AlignmentType.CENTER,
                         children: [
-                          new TextRun({ text: "CÁ NHÂN KINH DOANH", bold: true, size: 24 }),
+                          new TextRun({ text: sanitizeDocxText("CÁ NHÂN KINH DOANH"), bold: true, size: 24 }),
                         ],
                       }),
                       new Paragraph({
                         alignment: AlignmentType.CENTER,
                         children: [
-                          new TextRun({ text: "(Ký, ghi rõ họ tên, đóng dấu(nếu có))", italics: true, size: 20 }),
+                          new TextRun({ text: sanitizeDocxText("(Ký, ghi rõ họ tên, đóng dấu(nếu có))"), italics: true, size: 20 }),
                         ],
                       }),
                       new Paragraph({
                         alignment: AlignmentType.CENTER,
                         spacing: { before: 1200 },
                         children: [
-                          new TextRun({ text: effectiveBusinessInfo.owner || "................", bold: true, size: 24 }),
+                          new TextRun({ text: sanitizeDocxText(effectiveBusinessInfo.owner || "................"), bold: true, size: 24 }),
                         ],
                       }),
                     ],
@@ -5646,40 +5736,40 @@ function FinancialManagementSection({
           new TableRow({
             children: [
               new TableCell({ width: { size: 25, type: WidthType.PERCENTAGE }, children: [] }),
-              new TableCell({
-                width: { size: 50, type: WidthType.PERCENTAGE },
-                children: [
-                  new Paragraph({
-                    alignment: AlignmentType.CENTER,
+                  new TableCell({
+                    width: { size: 50, type: WidthType.PERCENTAGE },
                     children: [
-                      new TextRun({ text: "PHIẾU THU", bold: true, size: 32 }),
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        children: [
+                          new TextRun({ text: sanitizeDocxText("PHIẾU THU"), bold: true, size: 32 }),
+                        ],
+                      }),
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        children: [
+                          new TextRun({ text: sanitizeDocxText(`Ngày ${d} tháng ${m} năm ${y}`), italics: true, size: 20 }),
+                        ],
+                      }),
                     ],
                   }),
-                  new Paragraph({
-                    alignment: AlignmentType.CENTER,
+                  new TableCell({
+                    width: { size: 25, type: WidthType.PERCENTAGE },
                     children: [
-                      new TextRun({ text: `Ngày ${d} tháng ${m} năm ${y}`, italics: true, size: 20 }),
+                      new Paragraph({
+                        children: [
+                          new TextRun({ text: sanitizeDocxText("Quyển số: "), size: 20 }),
+                          new TextRun({ text: sanitizeDocxText("................"), size: 20 }),
+                        ],
+                      }),
+                      new Paragraph({
+                        children: [
+                          new TextRun({ text: sanitizeDocxText("Số: "), size: 20 }),
+                          new TextRun({ text: sanitizeDocxText(voucherNo), size: 20 }),
+                        ],
+                      }),
                     ],
                   }),
-                ],
-              }),
-              new TableCell({
-                width: { size: 25, type: WidthType.PERCENTAGE },
-                children: [
-                  new Paragraph({
-                    children: [
-                      new TextRun({ text: "Quyển số: ", size: 20 }),
-                      new TextRun({ text: "................", size: 20 }),
-                    ],
-                  }),
-                  new Paragraph({
-                    children: [
-                      new TextRun({ text: "Số: ", size: 20 }),
-                      new TextRun({ text: voucherNo, size: 20 }),
-                    ],
-                  }),
-                ],
-              }),
             ],
           }),
         ],
@@ -5688,36 +5778,36 @@ function FinancialManagementSection({
       new Paragraph({ spacing: { before: 200 } }),
       new Paragraph({
         children: [
-          new TextRun({ text: "Họ và tên người nộp tiền: ", size: 26 }),
-          new TextRun({ text: item.name || "................................................................", bold: true, size: 26 }),
+          new TextRun({ text: sanitizeDocxText("Họ và tên người nộp tiền: "), size: 26 }),
+          new TextRun({ text: sanitizeDocxText(item.name || "................................................................"), bold: true, size: 26 }),
         ],
       }),
       new Paragraph({
         children: [
-          new TextRun({ text: "Địa chỉ: ", size: 26 }),
-          new TextRun({ text: item.address || "................................................................", size: 26 }),
+          new TextRun({ text: sanitizeDocxText("Địa chỉ: "), size: 26 }),
+          new TextRun({ text: sanitizeDocxText(item.address || "................................................................"), size: 26 }),
         ],
       }),
       new Paragraph({
         children: [
-          new TextRun({ text: "Lý do nộp: ", size: 26 }),
-          new TextRun({ text: `Nộp tiền học phí ${config.reportPeriod}`, size: 26 }),
+          new TextRun({ text: sanitizeDocxText("Lý do nộp: "), size: 26 }),
+          new TextRun({ text: sanitizeDocxText(`Nộp tiền học phí ${config.reportPeriod}`), size: 26 }),
         ],
       }),
       new Paragraph({
         children: [
-          new TextRun({ text: "Số tiền: ", size: 26 }),
-          new TextRun({ text: `${item.amount.toLocaleString()} VNĐ`, bold: true, size: 26 }),
-          new TextRun({ text: " (Viết bằng chữ): ", size: 26 }),
-          new TextRun({ text: numberToVietnameseWords(item.amount), italics: true, size: 26 }),
+          new TextRun({ text: sanitizeDocxText("Số tiền: "), size: 26 }),
+          new TextRun({ text: sanitizeDocxText(`${item.amount.toLocaleString()} VNĐ`), bold: true, size: 26 }),
+          new TextRun({ text: sanitizeDocxText(" (Viết bằng chữ): "), size: 26 }),
+          new TextRun({ text: sanitizeDocxText(numberToVietnameseWords(item.amount)), italics: true, size: 26 }),
         ],
       }),
       new Paragraph({
         children: [
-          new TextRun({ text: "Kèm theo: ", size: 26 }),
-          new TextRun({ text: `Bảng chấm công và thu tiền ${config.reportPeriod}`, size: 26 }),
-          new TextRun({ text: " Chứng từ gốc: ", size: 26 }),
-          new TextRun({ text: "................", size: 26 }),
+          new TextRun({ text: sanitizeDocxText("Kèm theo: "), size: 26 }),
+          new TextRun({ text: sanitizeDocxText(`Bảng chấm công và thu tiền ${config.reportPeriod}`), size: 26 }),
+          new TextRun({ text: sanitizeDocxText(" Chứng từ gốc: "), size: 26 }),
+          new TextRun({ text: sanitizeDocxText("................"), size: 26 }),
         ],
       }),
 
@@ -5796,8 +5886,8 @@ function FinancialManagementSection({
       new Paragraph({ spacing: { before: 200 } }),
       new Paragraph({
         children: [
-          new TextRun({ text: "Đã nhận đủ số tiền (viết bằng chữ): ", size: 20 }),
-          new TextRun({ text: "....................................................................................................", size: 20 }),
+          new TextRun({ text: sanitizeDocxText("Đã nhận đủ số tiền (viết bằng chữ): "), size: 20 }),
+          new TextRun({ text: sanitizeDocxText("...................................................................................................."), size: 20 }),
         ],
       }),
     ];
@@ -5885,40 +5975,40 @@ function FinancialManagementSection({
           new TableRow({
             children: [
               new TableCell({ width: { size: 25, type: WidthType.PERCENTAGE }, children: [] }),
-              new TableCell({
-                width: { size: 50, type: WidthType.PERCENTAGE },
-                children: [
-                  new Paragraph({
-                    alignment: AlignmentType.CENTER,
+                  new TableCell({
+                    width: { size: 50, type: WidthType.PERCENTAGE },
                     children: [
-                      new TextRun({ text: "PHIẾU CHI", bold: true, size: 32 }),
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        children: [
+                          new TextRun({ text: sanitizeDocxText("PHIẾU CHI"), bold: true, size: 32 }),
+                        ],
+                      }),
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        children: [
+                          new TextRun({ text: sanitizeDocxText(`Ngày ${d} tháng ${m} năm ${y}`), italics: true, size: 20 }),
+                        ],
+                      }),
                     ],
                   }),
-                  new Paragraph({
-                    alignment: AlignmentType.CENTER,
+                  new TableCell({
+                    width: { size: 25, type: WidthType.PERCENTAGE },
                     children: [
-                      new TextRun({ text: `Ngày ${d} tháng ${m} năm ${y}`, italics: true, size: 20 }),
+                      new Paragraph({
+                        children: [
+                          new TextRun({ text: sanitizeDocxText("Quyển số: "), size: 20 }),
+                          new TextRun({ text: sanitizeDocxText("................"), size: 20 }),
+                        ],
+                      }),
+                      new Paragraph({
+                        children: [
+                          new TextRun({ text: sanitizeDocxText("Số: "), size: 20 }),
+                          new TextRun({ text: sanitizeDocxText(voucherNo), size: 20 }),
+                        ],
+                      }),
                     ],
                   }),
-                ],
-              }),
-              new TableCell({
-                width: { size: 25, type: WidthType.PERCENTAGE },
-                children: [
-                  new Paragraph({
-                    children: [
-                      new TextRun({ text: "Quyển số: ", size: 20 }),
-                      new TextRun({ text: "................", size: 20 }),
-                    ],
-                  }),
-                  new Paragraph({
-                    children: [
-                      new TextRun({ text: "Số: ", size: 20 }),
-                      new TextRun({ text: voucherNo, size: 20 }),
-                    ],
-                  }),
-                ],
-              }),
             ],
           }),
         ],
@@ -5927,36 +6017,36 @@ function FinancialManagementSection({
       new Paragraph({ spacing: { before: 200 } }),
       new Paragraph({
         children: [
-          new TextRun({ text: "Họ và tên người nhận tiền: ", size: 26 }),
-          new TextRun({ text: item.name || "................................................................", bold: true, size: 26 }),
+          new TextRun({ text: sanitizeDocxText("Họ và tên người nhận tiền: "), size: 26 }),
+          new TextRun({ text: sanitizeDocxText(item.name || "................................................................"), bold: true, size: 26 }),
         ],
       }),
       new Paragraph({
         children: [
-          new TextRun({ text: "Địa chỉ: ", size: 26 }),
-          new TextRun({ text: item.address || "................................................................", size: 26 }),
+          new TextRun({ text: sanitizeDocxText("Địa chỉ: "), size: 26 }),
+          new TextRun({ text: sanitizeDocxText(item.address || "................................................................"), size: 26 }),
         ],
       }),
       new Paragraph({
         children: [
-          new TextRun({ text: "Lý do chi: ", size: 26 }),
-          new TextRun({ text: `Chi tiền học phí ${config.reportPeriod}`, size: 26 }),
+          new TextRun({ text: sanitizeDocxText("Lý do chi: "), size: 26 }),
+          new TextRun({ text: sanitizeDocxText(`Chi tiền học phí ${config.reportPeriod}`), size: 26 }),
         ],
       }),
       new Paragraph({
         children: [
-          new TextRun({ text: "Số tiền: ", size: 26 }),
-          new TextRun({ text: `${item.amount.toLocaleString()} VNĐ`, bold: true, size: 26 }),
-          new TextRun({ text: " (Viết bằng chữ): ", size: 26 }),
-          new TextRun({ text: numberToVietnameseWords(item.amount), italics: true, size: 26 }),
+          new TextRun({ text: sanitizeDocxText("Số tiền: "), size: 26 }),
+          new TextRun({ text: sanitizeDocxText(`${item.amount.toLocaleString()} VNĐ`), bold: true, size: 26 }),
+          new TextRun({ text: sanitizeDocxText(" (Viết bằng chữ): "), size: 26 }),
+          new TextRun({ text: sanitizeDocxText(numberToVietnameseWords(item.amount)), italics: true, size: 26 }),
         ],
       }),
       new Paragraph({
         children: [
-          new TextRun({ text: "Kèm theo: ", size: 26 }),
-          new TextRun({ text: `Bảng chấm công và thu tiền ${config.reportPeriod}`, size: 26 }),
-          new TextRun({ text: " Chứng từ gốc: ", size: 26 }),
-          new TextRun({ text: "................", size: 26 }),
+          new TextRun({ text: sanitizeDocxText("Kèm theo: "), size: 26 }),
+          new TextRun({ text: sanitizeDocxText(`Bảng chấm công và thu tiền ${config.reportPeriod}`), size: 26 }),
+          new TextRun({ text: sanitizeDocxText(" Chứng từ gốc: "), size: 26 }),
+          new TextRun({ text: sanitizeDocxText("................"), size: 26 }),
         ],
       }),
 
