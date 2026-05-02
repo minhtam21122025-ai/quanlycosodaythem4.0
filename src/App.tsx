@@ -285,86 +285,51 @@ const AUTH_KEY = 'tutoring_center_auth';
 const USERS_KEY = 'tutoring_center_users';
 const THEME_KEY = 'tutoring_center_theme';
 
+const getBaseGrade = (cls: string) => {
+  const match = cls.match(/^\d+/);
+  return match ? match[0] : cls;
+};
+
+const ALL_CLASSES = [
+  '6', '6A1', '6A2', '6A3',
+  '7', '7A1', '7A2', '7A3',
+  '8', '8A1', '8A2', '8A3',
+  '9', '9A1', '9A2', '9A3',
+  '10', '11', '12'
+];
+
 const DEFAULT_CLASSES: ClassSubject[] = [
   // Lớp 6
-  { id: 'c6-1', grade: '6', subject: 'Toán', subSubject: 'Số học và Đại số' },
-  { id: 'c6-2', grade: '6', subject: 'Toán', subSubject: 'Hình học và Đo lường' },
-  { id: 'c6-3', grade: '6', subject: 'Toán', subSubject: 'Thống kê và Xác suất' },
+  { id: 'c6-1', grade: '6', subject: 'Toán', subSubject: 'Số học' },
+  { id: 'c6-2', grade: '6', subject: 'Toán', subSubject: 'Đại số' },
+  { id: 'c6-3', grade: '6', subject: 'Toán', subSubject: 'Hình học' },
   { id: 'c6-4', grade: '6', subject: 'Ngữ văn', subSubject: '' },
-  { id: 'c6-5', grade: '6', subject: 'Tiếng Anh', subSubject: '' },
-  { id: 'c6-6', grade: '6', subject: 'Khoa học tự nhiên', subSubject: 'Vật lí' },
   { id: 'c6-7', grade: '6', subject: 'Khoa học tự nhiên', subSubject: 'Hóa học' },
   { id: 'c6-8', grade: '6', subject: 'Khoa học tự nhiên', subSubject: 'Sinh học' },
-  { id: 'c6-9', grade: '6', subject: 'Lịch sử và Địa lí', subSubject: 'Lịch sử' },
-  { id: 'c6-10', grade: '6', subject: 'Lịch sử và Địa lí', subSubject: 'Địa lí' },
-  { id: 'c6-11', grade: '6', subject: 'Giáo dục công dân', subSubject: '' },
-  { id: 'c6-12', grade: '6', subject: 'Công nghệ', subSubject: '' },
-  { id: 'c6-13', grade: '6', subject: 'Tin học', subSubject: '' },
-  { id: 'c6-14', grade: '6', subject: 'Âm nhạc', subSubject: '' },
-  { id: 'c6-15', grade: '6', subject: 'Mỹ thuật', subSubject: '' },
-  { id: 'c6-16', grade: '6', subject: 'Hoạt động trải nghiệm, hướng nghiệp', subSubject: '' },
-  { id: 'c6-17', grade: '6', subject: 'Giáo dục thể chất', subSubject: '' },
-  { id: 'c6-18', grade: '6', subject: 'Nội dung giáo dục địa phương', subSubject: '' },
 
   // Lớp 7
-  { id: 'c7-1', grade: '7', subject: 'Toán', subSubject: 'Số học và Đại số' },
-  { id: 'c7-2', grade: '7', subject: 'Toán', subSubject: 'Hình học và Đo lường' },
-  { id: 'c7-3', grade: '7', subject: 'Toán', subSubject: 'Thống kê và Xác suất' },
+  { id: 'c7-1', grade: '7', subject: 'Toán', subSubject: 'Số học' },
+  { id: 'c7-2', grade: '7', subject: 'Toán', subSubject: 'Đại số' },
+  { id: 'c7-3', grade: '7', subject: 'Toán', subSubject: 'Hình học' },
   { id: 'c7-4', grade: '7', subject: 'Ngữ văn', subSubject: '' },
-  { id: 'c7-5', grade: '7', subject: 'Tiếng Anh', subSubject: '' },
-  { id: 'c7-6', grade: '7', subject: 'Khoa học tự nhiên', subSubject: 'Vật lí' },
   { id: 'c7-7', grade: '7', subject: 'Khoa học tự nhiên', subSubject: 'Hóa học' },
   { id: 'c7-8', grade: '7', subject: 'Khoa học tự nhiên', subSubject: 'Sinh học' },
-  { id: 'c7-9', grade: '7', subject: 'Lịch sử và Địa lí', subSubject: 'Lịch sử' },
-  { id: 'c7-10', grade: '7', subject: 'Lịch sử và Địa lí', subSubject: 'Địa lí' },
-  { id: 'c7-11', grade: '7', subject: 'Giáo dục công dân', subSubject: '' },
-  { id: 'c7-12', grade: '7', subject: 'Công nghệ', subSubject: '' },
-  { id: 'c7-13', grade: '7', subject: 'Tin học', subSubject: '' },
-  { id: 'c7-14', grade: '7', subject: 'Âm nhạc', subSubject: '' },
-  { id: 'c7-15', grade: '7', subject: 'Mỹ thuật', subSubject: '' },
-  { id: 'c7-16', grade: '7', subject: 'Hoạt động trải nghiệm, hướng nghiệp', subSubject: '' },
-  { id: 'c7-17', grade: '7', subject: 'Giáo dục thể chất', subSubject: '' },
-  { id: 'c7-18', grade: '7', subject: 'Nội dung giáo dục địa phương', subSubject: '' },
 
   // Lớp 8
-  { id: 'c8-1', grade: '8', subject: 'Toán', subSubject: 'Số học và Đại số' },
-  { id: 'c8-2', grade: '8', subject: 'Toán', subSubject: 'Hình học và Đo lường' },
-  { id: 'c8-3', grade: '8', subject: 'Toán', subSubject: 'Thống kê và Xác suất' },
+  { id: 'c8-1', grade: '8', subject: 'Toán', subSubject: 'Số học' },
+  { id: 'c8-2', grade: '8', subject: 'Toán', subSubject: 'Đại số' },
+  { id: 'c8-3', grade: '8', subject: 'Toán', subSubject: 'Hình học' },
   { id: 'c8-4', grade: '8', subject: 'Ngữ văn', subSubject: '' },
-  { id: 'c8-5', grade: '8', subject: 'Tiếng Anh', subSubject: '' },
-  { id: 'c8-6', grade: '8', subject: 'Khoa học tự nhiên', subSubject: 'Vật lí' },
   { id: 'c8-7', grade: '8', subject: 'Khoa học tự nhiên', subSubject: 'Hóa học' },
   { id: 'c8-8', grade: '8', subject: 'Khoa học tự nhiên', subSubject: 'Sinh học' },
-  { id: 'c8-9', grade: '8', subject: 'Lịch sử và Địa lí', subSubject: 'Lịch sử' },
-  { id: 'c8-10', grade: '8', subject: 'Lịch sử và Địa lí', subSubject: 'Địa lí' },
-  { id: 'c8-11', grade: '8', subject: 'Giáo dục công dân', subSubject: '' },
-  { id: 'c8-12', grade: '8', subject: 'Công nghệ', subSubject: '' },
-  { id: 'c8-13', grade: '8', subject: 'Tin học', subSubject: '' },
-  { id: 'c8-14', grade: '8', subject: 'Âm nhạc', subSubject: '' },
-  { id: 'c8-15', grade: '8', subject: 'Mỹ thuật', subSubject: '' },
-  { id: 'c8-16', grade: '8', subject: 'Hoạt động trải nghiệm, hướng nghiệp', subSubject: '' },
-  { id: 'c8-17', grade: '8', subject: 'Giáo dục thể chất', subSubject: '' },
-  { id: 'c8-18', grade: '8', subject: 'Nội dung giáo dục địa phương', subSubject: '' },
 
   // Lớp 9
-  { id: 'c9-1', grade: '9', subject: 'Toán', subSubject: 'Số học và Đại số' },
-  { id: 'c9-2', grade: '9', subject: 'Toán', subSubject: 'Hình học và Đo lường' },
-  { id: 'c9-3', grade: '9', subject: 'Toán', subSubject: 'Thống kê và Xác suất' },
+  { id: 'c9-1', grade: '9', subject: 'Toán', subSubject: 'Số học' },
+  { id: 'c9-2', grade: '9', subject: 'Toán', subSubject: 'Đại số' },
+  { id: 'c9-3', grade: '9', subject: 'Toán', subSubject: 'Hình học' },
   { id: 'c9-4', grade: '9', subject: 'Ngữ văn', subSubject: '' },
-  { id: 'c9-5', grade: '9', subject: 'Tiếng Anh', subSubject: '' },
-  { id: 'c9-6', grade: '9', subject: 'Khoa học tự nhiên', subSubject: 'Vật lí' },
   { id: 'c9-7', grade: '9', subject: 'Khoa học tự nhiên', subSubject: 'Hóa học' },
   { id: 'c9-8', grade: '9', subject: 'Khoa học tự nhiên', subSubject: 'Sinh học' },
-  { id: 'c9-9', grade: '9', subject: 'Lịch sử và Địa lí', subSubject: 'Lịch sử' },
-  { id: 'c9-10', grade: '9', subject: 'Lịch sử và Địa lí', subSubject: 'Địa lí' },
-  { id: 'c9-11', grade: '9', subject: 'Giáo dục công dân', subSubject: '' },
-  { id: 'c9-12', grade: '9', subject: 'Công nghệ', subSubject: '' },
-  { id: 'c9-13', grade: '9', subject: 'Tin học', subSubject: '' },
-  { id: 'c9-14', grade: '9', subject: 'Âm nhạc', subSubject: '' },
-  { id: 'c9-15', grade: '9', subject: 'Mỹ thuật', subSubject: '' },
-  { id: 'c9-16', grade: '9', subject: 'Hoạt động trải nghiệm, hướng nghiệp', subSubject: '' },
-  { id: 'c9-17', grade: '9', subject: 'Giáo dục thể chất', subSubject: '' },
-  { id: 'c9-18', grade: '9', subject: 'Nội dung giáo dục địa phương', subSubject: '' },
 ];
 
 const DEFAULT_PPCT: PPCTItem[] = [
@@ -451,11 +416,11 @@ export default function App() {
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo>({
-    name: '',
-    address: '',
-    taxId: '',
-    owner: '',
-    businessLocation: ''
+    name: 'CƠ SỞ GIÁO DỤC HOÀNG GIA',
+    address: 'SN 269 Lê Duẩn - P. Tân Phong - T. Lai Châu',
+    taxId: '034150007741',
+    owner: 'Hoàng Thị Mơ',
+    businessLocation: 'Lai Châu'
   });
   const [classes, setClasses] = useState<ClassSubject[]>([]);
   const [ppctData, setPpctData] = useState<PPCTItem[]>([]);
@@ -474,6 +439,28 @@ export default function App() {
   const [aiLessonPlans, setAiLessonPlans] = useState<{ nls: string, ai: string } | null>(null);
   const [currentPlan, setCurrentPlan] = useState<LessonPlan | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // Merge account-level business info with global info for exports
+  const effectiveBusinessInfo = React.useMemo(() => {
+    // Fixed values for Royal Education center
+    const fixedInfo: BusinessInfo = {
+      name: 'CƠ SỞ GIÁO DỤC HOÀNG GIA',
+      address: 'SN 269 Lê Duẩn - P. Tân Phong - T. Lai Châu',
+      taxId: '034150007741',
+      owner: 'Hoàng Thị Mơ',
+      businessLocation: 'Lai Châu'
+    };
+
+    if (currentUser?.role === 'admin') return fixedInfo;
+    
+    return {
+      name: currentUser?.businessName || fixedInfo.name,
+      owner: currentUser?.businessOwner || fixedInfo.owner,
+      taxId: currentUser?.taxCode || fixedInfo.taxId,
+      address: currentUser?.businessAddress || fixedInfo.address,
+      businessLocation: currentUser?.businessLocation || fixedInfo.businessLocation
+    };
+  }, [currentUser]);
 
   // Menu Order state
   const [menuOrder, setMenuOrder] = useState<string[]>(() => {
@@ -757,9 +744,10 @@ export default function App() {
             lessonPlans={lessonPlans}
             setLessonPlans={setLessonPlans}
             deletePlan={deletePlan}
-            businessInfo={businessInfo}
+            businessInfo={effectiveBusinessInfo}
             activeSubTab={activeTab}
             setActiveTab={setActiveTab}
+            currentUser={currentUser}
           />
         );
       case 'students_group':
@@ -769,9 +757,10 @@ export default function App() {
           <StudentManagementSection 
             students={students}
             setStudents={setStudents}
-            businessInfo={businessInfo}
+            businessInfo={effectiveBusinessInfo}
             activeSubTab={activeTab}
             setActiveTab={setActiveTab}
+            currentUser={currentUser}
           />
         );
       case 'finance_group':
@@ -786,7 +775,7 @@ export default function App() {
             setIncomeData={setIncomeData}
             expenseData={expenseData}
             setExpenseData={setExpenseData}
-            businessInfo={businessInfo}
+            businessInfo={effectiveBusinessInfo}
             activeSubTab={activeTab}
             setActiveTab={setActiveTab}
             currentUser={currentUser}
@@ -1359,13 +1348,15 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
 
   const subjects = useMemo(() => {
     if (!selectedClass) return [];
-    const data = CURRICULUM_2018_DATA[selectedClass] || [];
+    const baseGrade = getBaseGrade(selectedClass);
+    const data = CURRICULUM_2018_DATA[baseGrade] || [];
     return data.map(d => d.subject).sort();
   }, [selectedClass]);
 
   const subSubjects = useMemo(() => {
     if (!selectedClass || !selectedSubject) return [];
-    const data = CURRICULUM_2018_DATA[selectedClass] || [];
+    const baseGrade = getBaseGrade(selectedClass);
+    const data = CURRICULUM_2018_DATA[baseGrade] || [];
     const subjectData = data.find(d => d.subject === selectedSubject);
     return subjectData ? subjectData.subSubjects.sort() : [];
   }, [selectedClass, selectedSubject]);
@@ -1439,14 +1430,15 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
       const ai = new GoogleGenAI({ apiKey });
       
       const typeLabel = type === 'ai' ? 'Trí tuệ nhân tạo (AI)' : 'Năng lực số (NLS)';
+      const baseGrade = getBaseGrade(selectedClass);
       const integrationData = type === 'ai' 
-        ? `Mục tiêu AI: ${JSON.stringify(AI_OBJECTIVES[selectedClass as keyof typeof AI_OBJECTIVES] || [])}\nHướng dẫn AI: ${JSON.stringify(SUBJECT_AI_INTEGRATION[selectedSubject as keyof typeof SUBJECT_AI_INTEGRATION] || {})}`
+        ? `Mục tiêu AI: ${JSON.stringify(AI_OBJECTIVES[baseGrade as keyof typeof AI_OBJECTIVES] || [])}\nHướng dẫn AI: ${JSON.stringify(SUBJECT_AI_INTEGRATION[selectedSubject as keyof typeof SUBJECT_AI_INTEGRATION] || {})}`
         : `Danh mục Năng lực số (NLS): ${JSON.stringify(
             NLS_MAPPING[
-              ['1', '2', '3'].includes(selectedClass) ? '1-3' :
-              ['4', '5'].includes(selectedClass) ? '4-5' :
-              ['6', '7'].includes(selectedClass) ? '6-7' :
-              ['8', '9'].includes(selectedClass) ? '8-9' : '10-12'
+              ['1', '2', '3'].includes(baseGrade) ? '1-3' :
+              ['4', '5'].includes(baseGrade) ? '4-5' :
+              ['6', '7'].includes(baseGrade) ? '6-7' :
+              ['8', '9'].includes(baseGrade) ? '8-9' : '10-12'
             ] || []
           )}`;
 
@@ -1838,7 +1830,7 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
               className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all"
             >
               <option value="">Chọn lớp</option>
-              {Object.keys(CURRICULUM_2018_DATA).sort((a, b) => Number(a) - Number(b)).map(grade => (
+              {ALL_CLASSES.map(grade => (
                 <option key={grade} value={grade}>Lớp {grade}</option>
               ))}
             </select>
@@ -2132,12 +2124,13 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
     return parts;
   }, [result]);
 
-  const grades = Array.from({ length: 12 }, (_, i) => `Lớp ${i + 1}`);
+  const grades_list = ALL_CLASSES;
   
   const subjects = [
     { name: 'Toán', levels: [1, 2, 3] },
-    { name: 'Ngữ văn / Tiếng Việt', levels: [1, 2, 3] },
-    { name: 'Ngoại ngữ', levels: [1, 2, 3] },
+    { name: 'Ngữ văn', levels: [2, 3] },
+    { name: 'Tiếng Việt', levels: [1] },
+    { name: 'Tiếng Anh', levels: [1, 2, 3] },
     { name: 'Khoa học tự nhiên', levels: [2] },
     { name: 'Lịch sử và Địa lý', levels: [1, 2] },
     { name: 'Vật lý', levels: [3] },
@@ -2150,6 +2143,12 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
     { name: 'Công nghệ', levels: [1, 2, 3] },
     { name: 'Tự nhiên và Xã hội', levels: [1] },
     { name: 'Khoa học', levels: [1] },
+    { name: 'Đạo đức', levels: [1] },
+    { name: 'Giáo dục công dân', levels: [2] },
+    { name: 'Âm nhạc', levels: [1, 2, 3] },
+    { name: 'Mỹ thuật', levels: [1, 2, 3] },
+    { name: 'Hoạt động trải nghiệm, hướng nghiệp', levels: [1, 2, 3] },
+    { name: 'Giáo dục thể chất', levels: [1, 2, 3] },
   ];
 
   const getSubjectList = () => {
@@ -2420,8 +2419,8 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
                 className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all font-bold"
               >
                 <option value="">-- Chọn khối lớp --</option>
-                {grades.map(g => (
-                  <option key={g} value={g}>{g}</option>
+                {grades_list.map(g => (
+                  <option key={g} value={g}>Lớp {g}</option>
                 ))}
               </select>
             </div>
@@ -2812,22 +2811,28 @@ function MenuSettingsSection({ menuOrder, setMenuOrder }: { menuOrder: string[],
   );
 }
 
-function ClassConfigSection({ classes, setClasses, setActiveTab }: { key?: string, classes: ClassSubject[], setClasses: (c: ClassSubject[]) => void, setActiveTab: (t: string) => void }) {
+function ClassConfigSection({ classes, setClasses, setActiveTab, currentUser }: { key?: string, classes: ClassSubject[], setClasses: (c: ClassSubject[]) => void, setActiveTab: (t: string) => void, currentUser: UserAccount | null }) {
+  const isAdmin = currentUser?.role === 'admin';
+
   const addRow = () => {
+    if (!isAdmin) return;
     setClasses([...classes, { id: crypto.randomUUID(), grade: '', subject: '', subSubject: '' }]);
   };
 
   const resetToDefault = () => {
+    if (!isAdmin) return;
     if (window.confirm("Bạn có chắc chắn muốn khôi phục cấu hình mặc định? Toàn bộ dữ liệu hiện tại sẽ bị ghi đè.")) {
       setClasses(DEFAULT_CLASSES);
     }
   };
 
   const removeRow = (id: string) => {
+    if (!isAdmin) return;
     setClasses(classes.filter((c) => c.id !== id));
   };
 
   const handleChange = (id: string, field: keyof ClassSubject, value: string) => {
+    if (!isAdmin) return;
     setClasses(classes.map(c => c.id === id ? { ...c, [field]: value } : c));
   };
 
@@ -2843,20 +2848,24 @@ function ClassConfigSection({ classes, setClasses, setActiveTab }: { key?: strin
           <p className="text-sm text-neutral-500 dark:text-slate-400 mt-1 font-medium">Thiết lập các khối lớp, môn học và phân môn cho cơ sở.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button 
-            onClick={resetToDefault}
-            className="px-6 py-3 bg-neutral-100 dark:bg-slate-800 text-neutral-700 dark:text-slate-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-slate-700 transition-all font-bold text-sm flex items-center gap-2"
-          >
-            <RotateCcw className="w-4 h-4" />
-            Khôi phục mặc định
-          </button>
-          <button 
-            onClick={addRow}
-            className="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 font-bold text-sm flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Thêm dòng mới
-          </button>
+          {isAdmin && (
+            <>
+              <button 
+                onClick={resetToDefault}
+                className="px-6 py-3 bg-neutral-100 dark:bg-slate-800 text-neutral-700 dark:text-slate-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-slate-700 transition-all font-bold text-sm flex items-center gap-2"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Khôi phục mặc định
+              </button>
+              <button 
+                onClick={addRow}
+                className="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 font-bold text-sm flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Thêm dòng mới
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -2886,33 +2895,38 @@ function ClassConfigSection({ classes, setClasses, setActiveTab }: { key?: strin
                       <input
                         value={cls.grade}
                         onChange={(e) => handleChange(cls.id, 'grade', e.target.value)}
+                        disabled={!isAdmin}
                         placeholder="VD: 6"
-                        className="w-full bg-transparent border-none focus:ring-0 text-sm font-black text-neutral-900 dark:text-white placeholder-neutral-300 dark:placeholder-slate-700"
+                        className="w-full bg-transparent border-none focus:ring-0 text-sm font-black text-neutral-900 dark:text-white placeholder-neutral-300 dark:placeholder-slate-700 disabled:opacity-80"
                       />
                     </td>
                     <td className="px-8 py-4">
                       <input
                         value={cls.subject}
                         onChange={(e) => handleChange(cls.id, 'subject', e.target.value)}
+                        disabled={!isAdmin}
                         placeholder="VD: Toán"
-                        className="w-full bg-transparent border-none focus:ring-0 text-sm font-bold text-neutral-700 dark:text-slate-300 placeholder-neutral-300 dark:placeholder-slate-700"
+                        className="w-full bg-transparent border-none focus:ring-0 text-sm font-bold text-neutral-700 dark:text-slate-300 placeholder-neutral-300 dark:placeholder-slate-700 disabled:opacity-80"
                       />
                     </td>
                     <td className="px-8 py-4">
                       <input
                         value={cls.subSubject}
                         onChange={(e) => handleChange(cls.id, 'subSubject', e.target.value)}
+                        disabled={!isAdmin}
                         placeholder="VD: Đại số"
-                        className="w-full bg-transparent border-none focus:ring-0 text-sm font-bold text-neutral-500 dark:text-slate-400 placeholder-neutral-300 dark:placeholder-slate-700 italic"
+                        className="w-full bg-transparent border-none focus:ring-0 text-sm font-bold text-neutral-500 dark:text-slate-400 placeholder-neutral-300 dark:placeholder-slate-700 italic disabled:opacity-80"
                       />
                     </td>
                     <td className="px-8 py-4 text-right">
-                      <button
-                        onClick={() => removeRow(cls.id)}
-                        className="w-9 h-9 rounded-xl flex items-center justify-center text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all opacity-0 group-hover:opacity-100"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => removeRow(cls.id)}
+                          className="w-9 h-9 rounded-xl flex items-center justify-center text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all opacity-0 group-hover:opacity-100"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   </motion.tr>
                 ))}
@@ -2934,18 +2948,21 @@ function ClassConfigSection({ classes, setClasses, setActiveTab }: { key?: strin
   );
 }
 
-function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiveTab }: { 
+function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiveTab, currentUser }: { 
   key?: string,
   ppctData: PPCTItem[], 
   setPpctData: (d: PPCTItem[]) => void, 
   classes: ClassSubject[],
   setPlans: (p: LessonPlan[]) => void,
   plans: LessonPlan[],
-  setActiveTab: (t: string) => void
+  setActiveTab: (t: string) => void,
+  currentUser: UserAccount | null
 }) {
+  const isAdmin = currentUser?.role === 'admin';
   const [activeGrade, setActiveGrade] = useState<string>('6');
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isAdmin) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -2986,6 +3003,7 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
   };
 
   const deleteRow = (id: string) => {
+    if (!isAdmin) return;
     setPpctData(ppctData.filter(d => d.id !== id));
   };
 
@@ -3000,15 +3018,18 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
   };
 
   const clearData = () => {
+    if (!isAdmin) return;
     const targetGrade = normalizeGrade(activeGrade);
     setPpctData(ppctData.filter(item => normalizeGrade(item.grade) !== targetGrade));
   };
 
   const handleChange = (id: string, field: keyof PPCTItem, value: any) => {
+    if (!isAdmin) return;
     setPpctData(ppctData.map(item => item.id === id ? { ...item, [field]: value } : item));
   };
 
   const addRow = () => {
+    if (!isAdmin) return;
     setPpctData([...ppctData, {
       id: crypto.randomUUID(),
       grade: activeGrade,
@@ -3021,6 +3042,7 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
   };
 
   const resetToDefault = () => {
+    if (!isAdmin) return;
     if (window.confirm("Bạn có chắc chắn muốn khôi phục phân phối chương trình mặc định?")) {
       setPpctData(DEFAULT_PPCT);
     }
@@ -3106,20 +3128,24 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
           <p className="text-sm text-neutral-500 dark:text-slate-400 mt-1">Quản lý kế hoạch giảng dạy chi tiết theo từng khối lớp.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <button 
-            onClick={resetToDefault}
-            className="px-6 py-3 bg-neutral-100 dark:bg-slate-800 text-neutral-700 dark:text-slate-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-slate-700 transition-all font-bold text-sm flex items-center gap-2"
-          >
-            <RotateCcw className="w-4 h-4" />
-            Khôi phục mặc định
-          </button>
-          <button 
-            onClick={syncToLessonPlan}
-            className="px-6 py-3 bg-neutral-100 dark:bg-slate-800 text-neutral-700 dark:text-slate-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-slate-700 transition-all font-bold text-sm flex items-center gap-2"
-          >
-            <Calendar className="w-4 h-4" />
-            Tạo lịch báo giảng
-          </button>
+          {isAdmin && (
+            <>
+              <button 
+                onClick={resetToDefault}
+                className="px-6 py-3 bg-neutral-100 dark:bg-slate-800 text-neutral-700 dark:text-slate-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-slate-700 transition-all font-bold text-sm flex items-center gap-2"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Khôi phục mặc định
+              </button>
+              <button 
+                onClick={syncToLessonPlan}
+                className="px-6 py-3 bg-neutral-100 dark:bg-slate-800 text-neutral-700 dark:text-slate-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-slate-700 transition-all font-bold text-sm flex items-center gap-2"
+              >
+                <Calendar className="w-4 h-4" />
+                Tạo lịch báo giảng
+              </button>
+            </>
+          )}
           <button 
             onClick={downloadSamplePPCT}
             className="px-6 py-3 bg-neutral-100 dark:bg-slate-800 text-neutral-700 dark:text-slate-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-slate-700 transition-all font-bold text-sm flex items-center gap-2"
@@ -3127,18 +3153,22 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
             <Download className="w-4 h-4" />
             Tải file mẫu
           </button>
-          <label className="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 font-bold text-sm flex items-center gap-3 cursor-pointer">
-            <Upload className="w-4 h-4" />
-            Nhập từ Excel
-            <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleFileUpload} />
-          </label>
-          <button 
-            onClick={addRow}
-            className="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 font-bold text-sm flex items-center gap-3"
-          >
-            <Plus className="w-4 h-4" />
-            Thêm dòng mới
-          </button>
+          {isAdmin && (
+            <>
+              <label className="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 font-bold text-sm flex items-center gap-3 cursor-pointer">
+                <Upload className="w-4 h-4" />
+                Nhập từ Excel
+                <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleFileUpload} />
+              </label>
+              <button 
+                onClick={addRow}
+                className="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 font-bold text-sm flex items-center gap-3"
+              >
+                <Plus className="w-4 h-4" />
+                Thêm dòng mới
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -3159,7 +3189,7 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
             </button>
           ))}
         </div>
-        {filteredData.length > 0 && (
+        {filteredData.length > 0 && isAdmin && (
           <ConfirmButton
             onConfirm={clearData}
             className="text-sm text-red-600 dark:text-red-400 font-bold flex items-center gap-2 px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all"
@@ -3191,14 +3221,16 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
                       type="number"
                       value={item.period}
                       onChange={(e) => handleChange(item.id, 'period', Number(e.target.value))}
-                      className="w-full bg-transparent border-none focus:ring-0 text-sm font-normal text-neutral-900 dark:text-white text-center font-mono"
+                      disabled={!isAdmin}
+                      className="w-full bg-transparent border-none focus:ring-0 text-sm font-normal text-neutral-900 dark:text-white text-center font-mono disabled:opacity-80"
                     />
                   </td>
                   <td className="px-6 py-4">
                     <input
                       value={item.subject}
                       onChange={(e) => handleChange(item.id, 'subject', e.target.value)}
-                      className="w-full bg-transparent border-none focus:ring-0 text-sm font-normal text-primary"
+                      disabled={!isAdmin}
+                      className="w-full bg-transparent border-none focus:ring-0 text-sm font-normal text-primary disabled:opacity-80"
                       placeholder="Môn học"
                     />
                   </td>
@@ -3206,7 +3238,8 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
                     <input
                       value={item.subSubject}
                       onChange={(e) => handleChange(item.id, 'subSubject', e.target.value)}
-                      className="w-full bg-transparent border-none focus:ring-0 text-sm text-neutral-500 dark:text-slate-400 italic"
+                      disabled={!isAdmin}
+                      className="w-full bg-transparent border-none focus:ring-0 text-sm text-neutral-500 dark:text-slate-400 italic disabled:opacity-80"
                       placeholder="Phân môn"
                     />
                   </td>
@@ -3214,17 +3247,20 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
                     <input
                       value={item.content}
                       onChange={(e) => handleChange(item.id, 'content', e.target.value)}
-                      className="w-full bg-transparent border-none focus:ring-0 text-sm text-neutral-700 dark:text-slate-300 font-medium"
+                      disabled={!isAdmin}
+                      className="w-full bg-transparent border-none focus:ring-0 text-sm text-neutral-700 dark:text-slate-300 font-medium disabled:opacity-80"
                       placeholder="Nội dung bài dạy"
                     />
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button
-                      onClick={() => deleteRow(item.id)}
-                      className="w-9 h-9 rounded-xl flex items-center justify-center text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all opacity-0 group-hover:opacity-100"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => deleteRow(item.id)}
+                        className="w-9 h-9 rounded-xl flex items-center justify-center text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -4197,7 +4233,8 @@ function ProgramManagementSection({
   deletePlan, 
   businessInfo, 
   activeSubTab, 
-  setActiveTab 
+  setActiveTab,
+  currentUser
 }: { 
   classes: ClassSubject[], 
   setClasses: (c: ClassSubject[]) => void, 
@@ -4208,8 +4245,10 @@ function ProgramManagementSection({
   deletePlan: (id: string) => void, 
   businessInfo: BusinessInfo, 
   activeSubTab: string, 
-  setActiveTab: (t: string) => void 
+  setActiveTab: (t: string) => void,
+  currentUser: UserAccount | null
 }) {
+  const effectiveBusinessInfo = businessInfo;
   const subNavItems = [
     { id: 'classes', label: 'Cấu hình lớp học', icon: GraduationCap, description: 'Thiết lập khối lớp, môn học và phân môn.' },
     { id: 'ppct', label: 'Phân phối chương trình', icon: BookOpen, description: 'Quản lý nội dung giảng dạy theo từng tiết.' },
@@ -4290,16 +4329,16 @@ function ProgramManagementSection({
       {renderSubNav()}
       <AnimatePresence mode="wait">
         {activeSubTab === 'classes' && (
-          <ClassConfigSection key="classes" classes={classes} setClasses={setClasses} setActiveTab={setActiveTab} />
+          <ClassConfigSection key="classes" classes={classes} setClasses={setClasses} setActiveTab={setActiveTab} currentUser={currentUser} />
         )}
         {activeSubTab === 'ppct' && (
-          <PPCTSection key="ppct" ppctData={ppctData} setPpctData={setPpctData} classes={classes} plans={lessonPlans} setPlans={setLessonPlans} setActiveTab={setActiveTab} />
+          <PPCTSection key="ppct" ppctData={ppctData} setPpctData={setPpctData} classes={classes} plans={lessonPlans} setPlans={setLessonPlans} setActiveTab={setActiveTab} currentUser={currentUser} />
         )}
         {activeSubTab === 'lesson-plan' && (
-          <LessonPlanSection key="lesson-plan" plans={lessonPlans} setPlans={setLessonPlans} classes={classes} ppctData={ppctData} deletePlan={deletePlan} businessInfo={businessInfo} setActiveTab={setActiveTab} />
+          <LessonPlanSection key="lesson-plan" plans={lessonPlans} setPlans={setLessonPlans} classes={classes} ppctData={ppctData} deletePlan={deletePlan} businessInfo={effectiveBusinessInfo} setActiveTab={setActiveTab} />
         )}
         {activeSubTab === 'journal' && (
-          <ClassJournalSection key="journal" plans={lessonPlans} setPlans={setLessonPlans} deletePlan={deletePlan} businessInfo={businessInfo} setActiveTab={setActiveTab} />
+          <ClassJournalSection key="journal" plans={lessonPlans} setPlans={setLessonPlans} deletePlan={deletePlan} businessInfo={effectiveBusinessInfo} setActiveTab={setActiveTab} />
         )}
       </AnimatePresence>
     </div>
@@ -4311,14 +4350,17 @@ function StudentManagementSection({
   setStudents, 
   businessInfo,
   activeSubTab,
-  setActiveTab
+  setActiveTab,
+  currentUser
 }: { 
   students: Student[], 
   setStudents: (s: Student[]) => void,
   businessInfo: BusinessInfo,
   activeSubTab: string,
-  setActiveTab: (t: string) => void
+  setActiveTab: (t: string) => void,
+  currentUser: UserAccount | null
 }) {
+  const isAdmin = currentUser?.role === 'admin';
   const subNavItems = [
     { id: 'students-list', label: 'Tải danh sách học sinh', icon: Upload },
     { id: 'students-export', label: 'Xuất đơn đăng kí học thêm', icon: FileText },
@@ -4396,6 +4438,10 @@ function StudentManagementSection({
 
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isAdmin) {
+      alert('Chỉ quản trị viên mới có thể nhập danh sách học sinh.');
+      return;
+    }
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -4772,7 +4818,7 @@ function StudentManagementSection({
                             <FileText className="w-4 h-4" />
                           </button>
                         )}
-                        {activeSubTab === 'students-list' && (
+                        {activeSubTab === 'students-list' && isAdmin && (
                           <ConfirmButton
                             onConfirm={() => setStudents(students.filter(s => s.id !== student.id))}
                             className="w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
@@ -5244,17 +5290,8 @@ function FinancialManagementSection({
     }
   }, [currentUser]);
 
-  // Merge account-level business info with global info for exports
-  const effectiveBusinessInfo = React.useMemo(() => {
-    if (currentUser?.role === 'admin') return businessInfo;
-    return {
-      name: currentUser?.businessName || businessInfo.name,
-      owner: currentUser?.businessOwner || businessInfo.owner,
-      taxId: currentUser?.taxCode || businessInfo.taxId,
-      address: currentUser?.businessAddress || businessInfo.address,
-      businessLocation: currentUser?.businessLocation || businessInfo.businessLocation
-    };
-  }, [businessInfo, currentUser]);
+  const isAdmin = currentUser?.role === 'admin';
+  const effectiveBusinessInfo = businessInfo;
 
   const subNavItems = [
     { id: 'finance-config', label: 'Cấu hình & Tải dữ liệu', icon: Settings },
@@ -5393,6 +5430,10 @@ function FinancialManagementSection({
   };
 
   const handleIncomeUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isAdmin) {
+      alert('Chỉ quản trị viên mới có thể nhập dữ liệu doanh thu.');
+      return;
+    }
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -5444,6 +5485,10 @@ function FinancialManagementSection({
   };
 
   const handleExpenseUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isAdmin) {
+      alert('Chỉ quản trị viên mới có thể nhập dữ liệu chi phí.');
+      return;
+    }
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -6345,8 +6390,9 @@ function FinancialManagementSection({
                 <input 
                   type="text" 
                   value={config.reportPeriod}
-                  onChange={(e) => setConfig({ ...config, reportPeriod: e.target.value })}
-                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all"
+                  onChange={(e) => isAdmin && setConfig({ ...config, reportPeriod: e.target.value })}
+                  disabled={!isAdmin}
+                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all disabled:opacity-70"
                   placeholder="Tháng 01/2026"
                 />
               </div>
@@ -6355,8 +6401,9 @@ function FinancialManagementSection({
                 <input 
                   type="date" 
                   value={config.receiptDate}
-                  onChange={(e) => setConfig({ ...config, receiptDate: e.target.value })}
-                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all"
+                  onChange={(e) => isAdmin && setConfig({ ...config, receiptDate: e.target.value })}
+                  disabled={!isAdmin}
+                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all disabled:opacity-70"
                 />
               </div>
               <div className="space-y-2">
@@ -6364,8 +6411,9 @@ function FinancialManagementSection({
                 <input 
                   type="date" 
                   value={config.paymentDate}
-                  onChange={(e) => setConfig({ ...config, paymentDate: e.target.value })}
-                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all"
+                  onChange={(e) => isAdmin && setConfig({ ...config, paymentDate: e.target.value })}
+                  disabled={!isAdmin}
+                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all disabled:opacity-70"
                 />
               </div>
               <div className="space-y-2">
@@ -6373,8 +6421,9 @@ function FinancialManagementSection({
                 <input 
                   type="text" 
                   value={config.preparer}
-                  onChange={(e) => setConfig({ ...config, preparer: e.target.value })}
-                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all"
+                  onChange={(e) => isAdmin && setConfig({ ...config, preparer: e.target.value })}
+                  disabled={!isAdmin}
+                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all disabled:opacity-70"
                   placeholder="Họ và tên người lập biểu"
                 />
               </div>
@@ -6383,27 +6432,30 @@ function FinancialManagementSection({
                 <input 
                   type="text" 
                   value={config.treasurer}
-                  onChange={(e) => setConfig({ ...config, treasurer: e.target.value })}
-                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all"
+                  onChange={(e) => isAdmin && setConfig({ ...config, treasurer: e.target.value })}
+                  disabled={!isAdmin}
+                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white transition-all disabled:opacity-70"
                   placeholder="Họ và tên thủ quỹ"
                 />
               </div>
             </div>
-            <div className="mt-8 flex justify-end pt-6 border-t border-neutral-100 dark:border-slate-800">
-              <button 
-                onClick={() => {
-                  if (!config.reportPeriod || !config.receiptDate || !config.paymentDate || !config.preparer || !config.treasurer) {
-                    alert("Vui lòng điền đầy đủ thông tin cấu hình.");
-                    return;
-                  }
-                  setIsConfigSaved(true);
-                  alert("Đã lưu cấu hình báo cáo!");
-                }}
-                className="flex items-center gap-2 px-8 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 dark:shadow-none font-bold"
-              >
-                <Save className="w-4 h-4" /> Lưu cấu hình
-              </button>
-            </div>
+            {isAdmin && (
+              <div className="mt-8 flex justify-end pt-6 border-t border-neutral-100 dark:border-slate-800">
+                <button 
+                  onClick={() => {
+                    if (!config.reportPeriod || !config.receiptDate || !config.paymentDate || !config.preparer || !config.treasurer) {
+                      alert("Vui lòng điền đầy đủ thông tin cấu hình.");
+                      return;
+                    }
+                    setIsConfigSaved(true);
+                    alert("Đã lưu cấu hình báo cáo!");
+                  }}
+                  className="flex items-center gap-2 px-8 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 dark:shadow-none font-bold"
+                >
+                  <Save className="w-4 h-4" /> Lưu cấu hình
+                </button>
+              </div>
+            )}
           </div>
         </motion.div>
       )}
@@ -6435,20 +6487,22 @@ function FinancialManagementSection({
                 </button>
               </div>
               
-              <div className="flex flex-col sm:flex-row gap-4">
-                <label className="flex-1 flex items-center justify-center gap-3 px-6 py-4 border-2 border-dashed border-neutral-200 dark:border-slate-700 rounded-2xl hover:border-emerald-500 dark:hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10 transition-all cursor-pointer group/label">
-                  <Upload className="w-5 h-5 text-neutral-400 group-hover/label:text-emerald-600 dark:group-hover/label:text-emerald-400" />
-                  <span className="text-sm font-bold text-neutral-600 dark:text-slate-300 group-hover/label:text-emerald-700 dark:group-hover/label:text-emerald-400">Tải lên file Excel</span>
-                  <input type="file" accept=".xlsx, .xls" onChange={handleIncomeUpload} className="hidden" />
-                </label>
-                <ConfirmButton
-                  onConfirm={() => setIncomeData([])}
-                  className="px-6 py-4 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30 rounded-2xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-all font-bold text-sm"
-                  icon={Trash2}
-                >
-                  Xóa dữ liệu
-                </ConfirmButton>
-              </div>
+              {isAdmin && (
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <label className="flex-1 flex items-center justify-center gap-3 px-6 py-4 border-2 border-dashed border-neutral-200 dark:border-slate-700 rounded-2xl hover:border-emerald-500 dark:hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10 transition-all cursor-pointer group/label">
+                    <Upload className="w-5 h-5 text-neutral-400 group-hover/label:text-emerald-600 dark:group-hover/label:text-emerald-400" />
+                    <span className="text-sm font-bold text-neutral-600 dark:text-slate-300 group-hover/label:text-emerald-700 dark:group-hover/label:text-emerald-400">Tải lên file Excel</span>
+                    <input type="file" accept=".xlsx, .xls" onChange={handleIncomeUpload} className="hidden" />
+                  </label>
+                  <ConfirmButton
+                    onConfirm={() => setIncomeData([])}
+                    className="px-6 py-4 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30 rounded-2xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-all font-bold text-sm"
+                    icon={Trash2}
+                  >
+                    Xóa dữ liệu
+                  </ConfirmButton>
+                </div>
+              )}
               {incomeData.length > 0 && (
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.95 }}
@@ -6483,20 +6537,22 @@ function FinancialManagementSection({
                 </button>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-4">
-                <label className="flex-1 flex items-center justify-center gap-3 px-6 py-4 border-2 border-dashed border-neutral-200 dark:border-slate-700 rounded-2xl hover:border-orange-500 dark:hover:border-orange-500 hover:bg-orange-50/50 dark:hover:bg-orange-900/10 transition-all cursor-pointer group/label">
-                  <Upload className="w-5 h-5 text-neutral-400 group-hover/label:text-orange-600 dark:group-hover/label:text-orange-400" />
-                  <span className="text-sm font-bold text-neutral-600 dark:text-slate-300 group-hover/label:text-orange-700 dark:group-hover/label:text-orange-400">Tải lên file Excel</span>
-                  <input type="file" accept=".xlsx, .xls" onChange={handleExpenseUpload} className="hidden" />
-                </label>
-                <ConfirmButton
-                  onConfirm={() => setExpenseData([])}
-                  className="px-6 py-4 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30 rounded-2xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-all font-bold text-sm"
-                  icon={Trash2}
-                >
-                  Xóa dữ liệu
-                </ConfirmButton>
-              </div>
+              {isAdmin && (
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <label className="flex-1 flex items-center justify-center gap-3 px-6 py-4 border-2 border-dashed border-neutral-200 dark:border-slate-700 rounded-2xl hover:border-orange-500 dark:hover:border-orange-500 hover:bg-orange-50/50 dark:hover:bg-orange-900/10 transition-all cursor-pointer group/label">
+                    <Upload className="w-5 h-5 text-neutral-400 group-hover/label:text-orange-600 dark:group-hover/label:text-orange-400" />
+                    <span className="text-sm font-bold text-neutral-600 dark:text-slate-300 group-hover/label:text-orange-700 dark:group-hover/label:text-orange-400">Tải lên file Excel</span>
+                    <input type="file" accept=".xlsx, .xls" onChange={handleExpenseUpload} className="hidden" />
+                  </label>
+                  <ConfirmButton
+                    onConfirm={() => setExpenseData([])}
+                    className="px-6 py-4 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30 rounded-2xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-all font-bold text-sm"
+                    icon={Trash2}
+                  >
+                    Xóa dữ liệu
+                  </ConfirmButton>
+                </div>
+              )}
               {expenseData.length > 0 && (
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.95 }}

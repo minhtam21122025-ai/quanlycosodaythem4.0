@@ -112,11 +112,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, currentUser,
                   "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group",
                   isActive 
                     ? "bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]" 
-                    : "text-slate-700 dark:text-slate-300 hover:bg-neutral-50 dark:hover:bg-slate-800/50 hover:text-primary dark:hover:text-white"
+                    : "text-slate-950 dark:text-slate-100 hover:bg-neutral-100 dark:hover:bg-slate-800/50 hover:text-primary dark:hover:text-white font-black"
                 )}
               >
-                <item.icon className={cn("w-5 h-5 shrink-0", isActive ? "text-white" : "text-slate-500 group-hover:text-primary")} />
-                <span className="text-[13px] font-bold tracking-widest uppercase text-left">{item.label}</span>
+                <item.icon className={cn("w-5 h-5 shrink-0", isActive ? "text-white" : "text-slate-900 dark:text-slate-200 group-hover:text-primary")} />
+                <span className="text-[13px] font-black tracking-widest uppercase text-left">{item.label}</span>
                 {isActive && (
                   <motion.div
                     layoutId="active-nav"
