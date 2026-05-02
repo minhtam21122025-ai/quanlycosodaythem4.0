@@ -35,6 +35,7 @@ import {
   LogOut,
   Info,
   Lock,
+  Key,
   UserPlus,
   Calendar,
   RefreshCw,
@@ -1216,7 +1217,7 @@ const CURRICULUM_2018_DATA: Record<string, { subject: string; subSubjects: strin
     { subject: 'Ngoại ngữ 1', subSubjects: [] },
   ],
   '6': [
-    { subject: 'Toán', subSubjects: ['Số học và Đại số', 'Hình học và Đo lường', 'Thống kê và Xác suất'] },
+    { subject: 'Toán', subSubjects: ['Số học', 'Đại số', 'Hình học'] },
     { subject: 'Ngữ văn', subSubjects: [] },
     { subject: 'Tiếng Anh', subSubjects: [] },
     { subject: 'Khoa học tự nhiên', subSubjects: ['Vật lí', 'Hóa học', 'Sinh học'] },
@@ -1231,7 +1232,7 @@ const CURRICULUM_2018_DATA: Record<string, { subject: string; subSubjects: strin
     { subject: 'Nội dung giáo dục địa phương', subSubjects: [] },
   ],
   '7': [
-    { subject: 'Toán', subSubjects: ['Số học và Đại số', 'Hình học và Đo lường', 'Thống kê và Xác suất'] },
+    { subject: 'Toán', subSubjects: ['Số học', 'Đại số', 'Hình học'] },
     { subject: 'Ngữ văn', subSubjects: [] },
     { subject: 'Tiếng Anh', subSubjects: [] },
     { subject: 'Khoa học tự nhiên', subSubjects: ['Vật lí', 'Hóa học', 'Sinh học'] },
@@ -1246,7 +1247,7 @@ const CURRICULUM_2018_DATA: Record<string, { subject: string; subSubjects: strin
     { subject: 'Nội dung giáo dục địa phương', subSubjects: [] },
   ],
   '8': [
-    { subject: 'Toán', subSubjects: ['Số học và Đại số', 'Hình học và Đo lường', 'Thống kê và Xác suất'] },
+    { subject: 'Toán', subSubjects: ['Số học', 'Đại số', 'Hình học'] },
     { subject: 'Ngữ văn', subSubjects: [] },
     { subject: 'Tiếng Anh', subSubjects: [] },
     { subject: 'Khoa học tự nhiên', subSubjects: ['Vật lí', 'Hóa học', 'Sinh học'] },
@@ -1261,7 +1262,7 @@ const CURRICULUM_2018_DATA: Record<string, { subject: string; subSubjects: strin
     { subject: 'Nội dung giáo dục địa phương', subSubjects: [] },
   ],
   '9': [
-    { subject: 'Toán', subSubjects: ['Số học và Đại số', 'Hình học và Đo lường', 'Thống kê và Xác suất'] },
+    { subject: 'Toán', subSubjects: ['Số học', 'Đại số', 'Hình học'] },
     { subject: 'Ngữ văn', subSubjects: [] },
     { subject: 'Tiếng Anh', subSubjects: [] },
     { subject: 'Khoa học tự nhiên', subSubjects: ['Vật lí', 'Hóa học', 'Sinh học'] },
@@ -2077,12 +2078,17 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
   const [lessonName, setLessonName] = useState('');
   const [semester, setSemester] = useState('Học kì I');
   const [periods, setPeriods] = useState('1');
+  const [userApiKey, setUserApiKey] = useState(() => localStorage.getItem('teacher_ai_api_key') || '');
   const [config, setConfig] = useState({
     multipleChoice: 0,
     trueFalse: 0,
     shortAnswer: 0,
     essay: 0
   });
+
+  useEffect(() => {
+    localStorage.setItem('teacher_ai_api_key', userApiKey);
+  }, [userApiKey]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState('');
   const [error, setError] = useState('');
@@ -2170,9 +2176,9 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
     setError('');
     
     try {
-      const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
+      const apiKey = userApiKey || process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
       if (!apiKey) {
-        throw new Error('Hệ thống chưa được cấu hình API Key. Vui lòng kiểm tra cài đặt môi trường trên Vercel.');
+        throw new Error('Hệ thống chưa được cấu hình API Key. Vui lòng nhập API Key để tiếp tục hoặc liên hệ quản trị viên.');
       }
 
       const ai = new GoogleGenAI({ apiKey });
@@ -2409,6 +2415,24 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
         </div>
 
         <div className="space-y-8">
+          {/* API Key Input */}
+          <div className="p-6 bg-amber-50/50 dark:bg-amber-900/10 rounded-2xl border border-amber-200/50 dark:border-amber-800/30 space-y-3">
+            <label className="text-xs font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest flex items-center gap-2">
+              <Key className="w-4 h-4" />
+              Gemini API Key Cá nhân (Để tránh lỗi 403/404)
+            </label>
+            <input
+              type="password"
+              value={userApiKey}
+              onChange={(e) => setUserApiKey(e.target.value)}
+              placeholder="Nhập API Key Gemini của bạn..."
+              className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-800 rounded-xl focus:ring-2 focus:ring-amber-500 outline-none dark:text-white transition-all text-sm shadow-sm"
+            />
+            <p className="text-[10px] text-amber-600/80 dark:text-amber-500/80 italic font-medium leading-relaxed">
+              * Mã API được lưu trong trình duyệt của bạn và dùng để gọi mô hình Gemini khi tạo giáo án. Nếu để trống, hệ thống sẽ dùng Key mặc định.
+            </p>
+          </div>
+
           {/* Grade selection */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-3">
@@ -3755,25 +3779,40 @@ function LessonPlanSection({
                       </select>
                     </td>
                     <td className="px-4 py-3">
-                      <select
-                        value={row.period}
-                        onChange={(e) => handleRowChange(row.id, 'period', e.target.value)}
-                        className="w-full bg-transparent border-none focus:ring-0 text-xs font-normal text-neutral-900 dark:text-white"
-                      >
-                        <option value="">-</option>
-                        {ppctData
-                          .filter(p => 
-                            normalizeGrade(p.grade) === normalizeGrade(row.grade) && 
-                            String(p.subject).trim().toLowerCase() === String(row.subject).trim().toLowerCase() && 
-                            (row.subSubject ? String(p.subSubject).trim().toLowerCase() === String(row.subSubject).trim().toLowerCase() : true)
-                          )
-                          .sort((a, b) => a.period - b.period)
-                          .map((p, pIdx) => (
-                            <option key={`${p.grade}-${p.subject}-${p.subSubject}-${p.period}-${pIdx}`} value={String(p.period)}>
-                              {p.period}
-                            </option>
+                      <div className="relative group/period">
+                        <input
+                          list={`periods-${row.id}`}
+                          value={row.period}
+                          onChange={(e) => handleRowChange(row.id, 'period', e.target.value)}
+                          className="w-full bg-transparent border-none focus:ring-0 text-xs font-normal text-neutral-900 dark:text-white"
+                          placeholder="Tiết..."
+                        />
+                        <datalist id={`periods-${row.id}`}>
+                          {ppctData
+                            .filter(p => 
+                              normalizeGrade(p.grade) === normalizeGrade(row.grade) && 
+                              String(p.subject).trim().toLowerCase() === String(row.subject).trim().toLowerCase() && 
+                              (row.subSubject ? String(p.subSubject).trim().toLowerCase() === String(row.subSubject).trim().toLowerCase() : true)
+                            )
+                            .sort((a, b) => a.period - b.period)
+                            .map((p, pIdx) => (
+                              <option key={`${p.grade}-${p.subject}-${p.subSubject}-${p.period}-${pIdx}`} value={String(p.period)}>
+                                {p.period} - {p.content}
+                              </option>
+                            ))}
+                        </datalist>
+                        <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center opacity-0 group-hover/period:opacity-100 transition-opacity">
+                          {[1, 2, 3, 4, 5].map(n => (
+                            <button
+                              key={n}
+                              onClick={() => handleRowChange(row.id, 'period', String(n))}
+                              className="w-5 h-5 flex items-center justify-center text-[10px] bg-neutral-100 dark:bg-slate-800 hover:bg-primary hover:text-white rounded ml-0.5"
+                            >
+                              {n}
+                            </button>
                           ))}
-                      </select>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
