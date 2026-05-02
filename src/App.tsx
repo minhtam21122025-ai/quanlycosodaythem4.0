@@ -1422,9 +1422,9 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
 
       const htmlContent = rawHtml;
 
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
       if (!apiKey) {
-        throw new Error('Hệ thống chưa được cấu hình API Key. Vui lòng kiểm tra cài đặt môi trường.');
+        throw new Error('Hệ thống chưa được cấu hình API Key. Nếu bạn đang chạy trên Vercel, vui lòng thêm GEMINI_API_KEY vào Environment Variables trong dashboard Vercel.');
       }
 
       const ai = new GoogleGenAI({ apiKey });
@@ -2170,7 +2170,7 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
     setError('');
     
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
       if (!apiKey) {
         throw new Error('Hệ thống chưa được cấu hình API Key. Vui lòng kiểm tra cài đặt môi trường trên Vercel.');
       }
@@ -3434,7 +3434,7 @@ function LessonPlanSection({
     }
 
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
       if (!apiKey) return;
 
       const ai = new GoogleGenAI({ apiKey });
