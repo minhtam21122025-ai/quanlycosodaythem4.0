@@ -1468,7 +1468,7 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
       `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-1.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -2213,7 +2213,7 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
       `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-1.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -3439,7 +3439,7 @@ function LessonPlanSection({
 
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-1.5-flash",
         contents: `Dựa trên thông tin sau, hãy cho biết nội dung bài học (tên bài dạy) của tiết học này:
       Khối lớp: ${row.grade}
       Môn học: ${row.subject}
