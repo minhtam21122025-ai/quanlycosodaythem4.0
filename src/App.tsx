@@ -2083,6 +2083,7 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
   const [subject, setSubject] = useState('');
   const [subSubject, setSubSubject] = useState('');
   const [lessonName, setLessonName] = useState('');
+  const [semester, setSemester] = useState('Học kì I');
   const [periods, setPeriods] = useState('1');
   const [config, setConfig] = useState({
     multipleChoice: 0,
@@ -2186,13 +2187,14 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
         - Môn: ${subject}
         ${subSubject ? `- Phân môn: ${subSubject}` : ''}
         - Bài dạy: ${lessonName}
+        - Học kì: ${semester}
         - Thời lượng: ${periods} tiết
 
         YÊU CẦU CẤU TRÚC (BẮT BUỘC THEO MẪU):
         1. Tiêu đề: CHỦ ĐỀ: [Tên bài dạy] (Thời lượng: [Số tiết])
         2. PHẦN I. TÓM TẮT LÍ THUYẾT:
            - Viết chi tiết các kiến thức trọng tâm (đánh số 1, 2, 3...). 
-           - Nội dung phải chuyên sâu và dễ hiểu.
+           - Nội dung phải chuyên sâu và dễ hiểu, phù hợp với chương trình ${semester}.
         3. PHẦN II. CÁC DẠNG BÀI:
            - Dạng 1. TN nhiều đáp án: Tạo đúng ${config.multipleChoice} câu hỏi.
            - Dạng 2. TN Đúng sai: Tạo đúng ${config.trueFalse} câu hỏi (Mỗi câu có 4 ý a, b, c, d).
@@ -2243,28 +2245,37 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
       const doc = new DOMParser().parseFromString(htmlContent, 'text/html');
       const children: any[] = [];
 
-      const processNode = (node: Node): any[] => {
+      const processNode = (node: Node, options: { bold?: boolean, color?: string } = {}): any[] => {
         const runs: any[] = [];
         node.childNodes.forEach(child => {
           if (child.nodeType === Node.TEXT_NODE) {
+            const text = child.textContent || "";
+            // Detect questions/exercises: starts with "Câu", "Bài", "Dạng"
+            const isQuestion = /^(Câu|Bài|Dạng)\s+\d+[:.]/.test(text.trim());
+            
             runs.push(new TextRun({
-              text: sanitizeDocxText(child.textContent),
-              size: 26,
-              font: "Times New Roman"
+              text: sanitizeDocxText(text),
+              size: 26, // 13pt
+              font: "Times New Roman",
+              bold: options.bold || isQuestion,
+              color: isQuestion ? "0000FF" : (options.color || "000000")
             }));
           } else if (child.nodeType === Node.ELEMENT_NODE) {
             const element = child as HTMLElement;
-            const isBold = element.tagName === 'B' || element.tagName === 'STRONG' || element.tagName.startsWith('H');
             const tagName = element.tagName.toLowerCase();
+            const textContent = element.textContent?.trim() || "";
+            const isQuestion = /^(Câu|Bài|Dạng)\s+\d+[:.]/.test(textContent);
+            const isBold = options.bold || element.tagName === 'B' || element.tagName === 'STRONG' || element.tagName.startsWith('H');
 
             if (tagName === 'br') {
               runs.push(new TextRun({ text: "", break: 1 }));
             } else {
               runs.push(new TextRun({
                 text: sanitizeDocxText(element.textContent),
-                bold: isBold,
-                size: element.tagName.startsWith('H') ? 30 : 26,
-                font: "Times New Roman"
+                bold: isBold || isQuestion,
+                size: element.tagName.startsWith('H') ? 28 : 26,
+                font: "Times New Roman",
+                color: isQuestion ? "0000FF" : (options.color || "000000")
               }));
             }
           }
@@ -2274,19 +2285,53 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
 
       const convertElementToDocx = (element: HTMLElement) => {
         const tagName = element.tagName.toLowerCase();
-        if (['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tagName)) {
+        const textContent = element.textContent?.trim() || "";
+
+        // Special handling for the main title: CHỦ ĐỀ: ... (Thời lượng: ...)
+        // We match "CHỦ ĐỀ:" and try to split before "(Thời lượng:"
+        if (textContent.startsWith('CHỦ ĐỀ:') && textContent.includes('Thời lượng:')) {
+          const parts = textContent.split('(');
+          const topicName = parts[0].trim();
+          const duration = parts[1] ? '(' + parts[1].trim() : "";
+
           children.push(new Paragraph({
-            children: processNode(element),
-            heading: tagName.startsWith('h') ? HeadingLevel[`HEADING_${tagName.substring(1)}` as keyof typeof HeadingLevel] : undefined,
-            spacing: { after: 200, before: tagName.startsWith('h') ? 400 : 0 }
+            children: [new TextRun({ text: topicName, bold: true, size: 32, font: "Times New Roman", color: "000000" })],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 120 }
+          }));
+          if (duration) {
+            children.push(new Paragraph({
+              children: [new TextRun({ text: duration, bold: true, size: 26, font: "Times New Roman", color: "000000" })],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 400 }
+            }));
+          }
+          return;
+        }
+
+        if (['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tagName)) {
+          const isHeader = tagName.startsWith('h');
+          const isQuestion = /^(Câu|Bài|Dạng)\s+\d+[:.]/.test(textContent);
+
+          children.push(new Paragraph({
+            children: processNode(element, { 
+              bold: isHeader, 
+              color: isQuestion ? "0000FF" : "000000" 
+            }),
+            alignment: isHeader && (tagName === 'h1' || textContent.startsWith('CHỦ ĐỀ:')) ? AlignmentType.CENTER : AlignmentType.LEFT,
+            spacing: { 
+              after: isHeader ? 200 : 120, 
+              before: isHeader ? 240 : 0,
+              line: 312 
+            }
           }));
         } else if (tagName === 'ul' || tagName === 'ol') {
           element.childNodes.forEach(li => {
             if (li.nodeType === Node.ELEMENT_NODE && (li as HTMLElement).tagName.toLowerCase() === 'li') {
               children.push(new Paragraph({
-                children: processNode(li),
+                children: processNode(li as HTMLElement),
                 bullet: tagName === 'ul' ? { level: 0 } : undefined,
-                spacing: { after: 120 }
+                spacing: { after: 120, line: 312 }
               }));
             }
           });
@@ -2296,7 +2341,11 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
             const cells: TableCell[] = [];
             tr.querySelectorAll('td, th').forEach(td => {
               cells.push(new TableCell({
-                children: [new Paragraph({ children: processNode(td) })],
+                children: [new Paragraph({ 
+                  children: processNode(td),
+                  spacing: { after: 0, before: 0 } 
+                })],
+                verticalAlign: VerticalAlign.CENTER,
                 borders: {
                   top: { style: BorderStyle.SINGLE, size: 1 },
                   bottom: { style: BorderStyle.SINGLE, size: 1 },
@@ -2316,7 +2365,23 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
       });
 
       const documentDoc = new Document({
-        sections: [{ children }],
+        sections: [{ 
+          properties: {
+            page: {
+              size: {
+                width: 11906, // A4 width in twips
+                height: 16838, // A4 height in twips
+              },
+              margin: {
+                top: 1134,    // 2cm
+                left: 1417,   // 2.5cm
+                bottom: 1134, // 2cm
+                right: 1134,  // 2cm
+              },
+            },
+          },
+          children 
+        }],
       });
 
       const blob = await Packer.toBlob(documentDoc);
@@ -2410,6 +2475,18 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
                 className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all"
               />
             </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Học kì</label>
+              <select 
+                value={semester}
+                onChange={(e) => setSemester(e.target.value)}
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all font-medium"
+              >
+                <option value="Học kì I">Học kì I</option>
+                <option value="Học kì II">Học kì II</option>
+                <option value="Cả năm">Cả năm</option>
+              </select>
+            </div>
           </div>
 
           <div className="bg-neutral-50 dark:bg-slate-800/30 p-6 rounded-2xl border border-neutral-100 dark:border-slate-800">
@@ -2499,7 +2576,7 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
             </h3>
             <div className="flex flex-wrap gap-2">
               <button 
-                onClick={() => exportToDocx(result, `GiaoAn_${lessonName.replace(/\s+/g, '_')}_ToanBo.docx`)}
+                onClick={() => exportToDocx(result, `${lessonName || "GiaoAn"}.docx`)}
                 className="px-6 py-3 bg-primary text-white rounded-xl font-bold flex items-center gap-2 hover:bg-primary-hover transition-all shadow-lg shadow-primary/20"
               >
                 <Download className="w-5 h-5" />
@@ -2509,7 +2586,7 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
               {lessonParts.length > 1 && lessonParts.map((part, idx) => (
                 <button 
                   key={idx}
-                  onClick={() => exportToDocx(part.content, `GiaoAn_${lessonName.replace(/\s+/g, '_')}_Phan${idx + 1}.docx`)}
+                  onClick={() => exportToDocx(part.content, `${lessonName || "GiaoAn"}_Phan${idx + 1}.docx`)}
                   className="px-4 py-3 bg-neutral-100 dark:bg-slate-800 text-neutral-700 dark:text-slate-200 rounded-xl font-bold flex items-center gap-2 hover:bg-neutral-200 dark:hover:bg-slate-700 transition-all border border-neutral-200 dark:border-slate-700 text-sm"
                   title={part.title}
                 >
@@ -2667,9 +2744,9 @@ function MenuSettingsSection({ menuOrder, setMenuOrder }: { menuOrder: string[],
     { id: 'ai_lesson_plan', label: 'TẠO KHBD NLS, AI', icon: Sparkles },
     { id: 'teacher_lesson_plan', label: 'TẠO KHBD GIÁO VIÊN', icon: ClipboardList },
     { id: 'business', label: 'HỘ KINH DOANH', icon: Building2 },
-    { id: 'students_group', label: 'HỌC SINH', icon: Users },
+    { id: 'students_group', label: 'QUẢN LÝ HỌC SINH', icon: Users },
     { id: 'program', label: 'QUẢN LÝ CHƯƠNG TRÌNH DẠY', icon: BookOpen },
-    { id: 'finance_group', label: 'TÀI CHÍNH', icon: DollarSign },
+    { id: 'finance_group', label: 'QUẢN LÝ TÀI CHÍNH', icon: DollarSign },
   ];
 
   const moveUp = (index: number) => {

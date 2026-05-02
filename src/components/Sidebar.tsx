@@ -33,10 +33,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, currentUser,
     { id: 'ai_lesson_plan', label: 'TẠO KHBD NLS, AI', icon: Sparkles },
     { id: 'teacher_lesson_plan', label: 'TẠO KHBD GIÁO VIÊN', icon: ClipboardList },
     { id: 'business', label: 'HỘ KINH DOANH', icon: Building2 },
-    { id: 'students_group', label: 'HỌC SINH', icon: Users },
+    { id: 'students_group', label: 'QUẢN LÝ HỌC SINH', icon: Users },
     { id: 'program', label: 'QUẢN LÝ CHƯƠNG TRÌNH DẠY', icon: BookOpen },
-    { id: 'finance_group', label: 'TÀI CHÍNH', icon: DollarSign },
-    { id: 'users', label: 'TÀI KHOẢN', icon: Users, adminOnly: true },
+    { id: 'finance_group', label: 'QUẢN LÝ TÀI CHÍNH', icon: DollarSign },
+    { id: 'users', label: 'QUẢN LÝ TÀI KHOẢN', icon: Users, adminOnly: true },
   ];
 
   const menuItems = React.useMemo(() => {
@@ -112,11 +112,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, currentUser,
                   "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group",
                   isActive 
                     ? "bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]" 
-                    : "text-neutral-500 dark:text-slate-400 hover:bg-neutral-50 dark:hover:bg-slate-800/50 hover:text-primary dark:hover:text-white"
+                    : "text-slate-700 dark:text-slate-300 hover:bg-neutral-50 dark:hover:bg-slate-800/50 hover:text-primary dark:hover:text-white"
                 )}
               >
-                <item.icon className={cn("w-5 h-5 shrink-0", isActive ? "text-white" : "text-neutral-400 group-hover:text-primary")} />
-                <span className="text-[13px] font-black tracking-widest uppercase text-left">{item.label}</span>
+                <item.icon className={cn("w-5 h-5 shrink-0", isActive ? "text-white" : "text-slate-500 group-hover:text-primary")} />
+                <span className="text-[13px] font-bold tracking-widest uppercase text-left">{item.label}</span>
                 {isActive && (
                   <motion.div
                     layoutId="active-nav"
