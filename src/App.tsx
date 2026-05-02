@@ -1468,11 +1468,11 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
       `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
-        contents: prompt,
+        model: "gemini-flash-latest",
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: {
           responseMimeType: "application/json",
-          maxOutputTokens: 8192, 
+          maxOutputTokens: 8192,
           responseSchema: {
             type: Type.OBJECT,
             properties: {
@@ -2213,8 +2213,8 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
       `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
-        contents: prompt,
+        model: "gemini-flash-latest",
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: {
           responseMimeType: "application/json",
           maxOutputTokens: 8192,
@@ -3439,16 +3439,15 @@ function LessonPlanSection({
 
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
-        contents: `Dựa trên thông tin sau, hãy cho biết nội dung bài học (tên bài dạy) của tiết học này:
+        model: "gemini-flash-latest",
+        contents: [{ role: 'user', parts: [{ text: `Dựa trên thông tin sau, hãy cho biết nội dung bài học (tên bài dạy) của tiết học này:
       Khối lớp: ${row.grade}
       Môn học: ${row.subject}
       Phân môn: ${row.subSubject}
       Tiết theo PPCT: ${row.period}
-      Trả về duy nhất tên bài học, không thêm gì khác.`,
+      Trả về duy nhất tên bài học, không thêm gì khác.` }] }]
       });
-
-      const text = response.text;
+      const text = response.text || '';
 
       if (text) {
         handleRowChange(rowId, 'content', text.trim());
