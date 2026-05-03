@@ -305,32 +305,32 @@ const DEFAULT_CLASSES: ClassSubject[] = [
   { id: 'c6-2', grade: '6', subject: 'Toán', subSubject: 'Đại số' },
   { id: 'c6-3', grade: '6', subject: 'Toán', subSubject: 'Hình học' },
   { id: 'c6-4', grade: '6', subject: 'Ngữ văn', subSubject: '' },
-  { id: 'c6-7', grade: '6', subject: 'Khoa học tự nhiên', subSubject: 'Hóa học' },
-  { id: 'c6-8', grade: '6', subject: 'Khoa học tự nhiên', subSubject: 'Sinh học' },
+  { id: 'c6-7', grade: '6', subject: 'KHTN', subSubject: 'Hóa học' },
+  { id: 'c6-8', grade: '6', subject: 'KHTN', subSubject: 'Sinh học' },
 
   // Lớp 7
   { id: 'c7-1', grade: '7', subject: 'Toán', subSubject: 'Số học' },
   { id: 'c7-2', grade: '7', subject: 'Toán', subSubject: 'Đại số' },
   { id: 'c7-3', grade: '7', subject: 'Toán', subSubject: 'Hình học' },
   { id: 'c7-4', grade: '7', subject: 'Ngữ văn', subSubject: '' },
-  { id: 'c7-7', grade: '7', subject: 'Khoa học tự nhiên', subSubject: 'Hóa học' },
-  { id: 'c7-8', grade: '7', subject: 'Khoa học tự nhiên', subSubject: 'Sinh học' },
+  { id: 'c7-7', grade: '7', subject: 'KHTN', subSubject: 'Hóa học' },
+  { id: 'c7-8', grade: '7', subject: 'KHTN', subSubject: 'Sinh học' },
 
   // Lớp 8
   { id: 'c8-1', grade: '8', subject: 'Toán', subSubject: 'Số học' },
   { id: 'c8-2', grade: '8', subject: 'Toán', subSubject: 'Đại số' },
   { id: 'c8-3', grade: '8', subject: 'Toán', subSubject: 'Hình học' },
   { id: 'c8-4', grade: '8', subject: 'Ngữ văn', subSubject: '' },
-  { id: 'c8-7', grade: '8', subject: 'Khoa học tự nhiên', subSubject: 'Hóa học' },
-  { id: 'c8-8', grade: '8', subject: 'Khoa học tự nhiên', subSubject: 'Sinh học' },
+  { id: 'c8-7', grade: '8', subject: 'KHTN', subSubject: 'Hóa học' },
+  { id: 'c8-8', grade: '8', subject: 'KHTN', subSubject: 'Sinh học' },
 
   // Lớp 9
   { id: 'c9-1', grade: '9', subject: 'Toán', subSubject: 'Số học' },
   { id: 'c9-2', grade: '9', subject: 'Toán', subSubject: 'Đại số' },
   { id: 'c9-3', grade: '9', subject: 'Toán', subSubject: 'Hình học' },
   { id: 'c9-4', grade: '9', subject: 'Ngữ văn', subSubject: '' },
-  { id: 'c9-7', grade: '9', subject: 'Khoa học tự nhiên', subSubject: 'Hóa học' },
-  { id: 'c9-8', grade: '9', subject: 'Khoa học tự nhiên', subSubject: 'Sinh học' },
+  { id: 'c9-7', grade: '9', subject: 'KHTN', subSubject: 'Hóa học' },
+  { id: 'c9-8', grade: '9', subject: 'KHTN', subSubject: 'Sinh học' },
 ];
 
 const DEFAULT_PPCT: PPCTItem[] = [
@@ -571,13 +571,41 @@ export default function App() {
         }
         
         // Restore defaults if requested or if data is missing
-        setClasses(data.classes && data.classes.length > 0 ? data.classes : DEFAULT_CLASSES);
-        setPpctData(data.ppctData && data.ppctData.length > 0 ? data.ppctData : DEFAULT_PPCT);
+        const migrateSubject = (item: any) => {
+          if (item.subject === 'Khoa học tự nhiên') {
+            item.subject = 'KHTN';
+          }
+          if (item.subject === 'KHTN') {
+            if (item.subSubject === 'Vật lý') item.subSubject = 'Vật lí';
+          }
+          if (item.subject === 'Toán') {
+            if (item.subSubject === 'Số học và Đại số' || item.subSubject === 'Số và Đại số') {
+              item.subSubject = 'Đại số';
+            }
+            if (item.subSubject === 'Hình học và Đo lường' || item.subSubject === 'Hình học và đo lường') {
+              item.subSubject = 'Hình học';
+            }
+          }
+          return item;
+        };
+
+        const loadedClasses = (data.classes && data.classes.length > 0 ? data.classes : DEFAULT_CLASSES).map(migrateSubject);
+        const loadedPpct = (data.ppctData && data.ppctData.length > 0 ? data.ppctData : DEFAULT_PPCT).map(migrateSubject);
+        
+        setClasses(loadedClasses);
+        setPpctData(loadedPpct);
         
         if (data.students) setStudents(data.students);
         if (data.incomeData) setIncomeData(data.incomeData);
         if (data.expenseData) setExpenseData(data.expenseData);
-        if (data.lessonPlans) setLessonPlans(data.lessonPlans);
+        
+        if (data.lessonPlans) {
+          const migratedPlans = data.lessonPlans.map((plan: LessonPlan) => ({
+            ...plan,
+            rows: plan.rows.map(migrateSubject)
+          }));
+          setLessonPlans(migratedPlans);
+        }
         if (data.financialConfig) setFinancialConfig(data.financialConfig);
       } catch (e) {
         console.error("Failed to parse saved data", e);
@@ -713,7 +741,7 @@ export default function App() {
       case 'ai_lesson_plan':
         return <AILessonPlanSection classes={classes} currentUser={currentUser} />;
       case 'teacher_lesson_plan':
-        return <TeacherLessonPlanSection currentUser={currentUser} />;
+        return <TeacherLessonPlanSection currentUser={currentUser} ppctData={ppctData} />;
       case 'business':
         return (
           <BusinessConfigSection 
@@ -1220,7 +1248,7 @@ const CURRICULUM_2018_DATA: Record<string, { subject: string; subSubjects: strin
     { subject: 'Toán', subSubjects: ['Số học', 'Đại số', 'Hình học'] },
     { subject: 'Ngữ văn', subSubjects: [] },
     { subject: 'Tiếng Anh', subSubjects: [] },
-    { subject: 'Khoa học tự nhiên', subSubjects: ['Vật lí', 'Hóa học', 'Sinh học'] },
+    { subject: 'KHTN', subSubjects: ['Vật lí', 'Hóa học', 'Sinh học'] },
     { subject: 'Lịch sử và Địa lí', subSubjects: ['Lịch sử', 'Địa lí'] },
     { subject: 'Giáo dục công dân', subSubjects: [] },
     { subject: 'Công nghệ', subSubjects: [] },
@@ -1235,7 +1263,7 @@ const CURRICULUM_2018_DATA: Record<string, { subject: string; subSubjects: strin
     { subject: 'Toán', subSubjects: ['Số học', 'Đại số', 'Hình học'] },
     { subject: 'Ngữ văn', subSubjects: [] },
     { subject: 'Tiếng Anh', subSubjects: [] },
-    { subject: 'Khoa học tự nhiên', subSubjects: ['Vật lí', 'Hóa học', 'Sinh học'] },
+    { subject: 'KHTN', subSubjects: ['Vật lí', 'Hóa học', 'Sinh học'] },
     { subject: 'Lịch sử và Địa lí', subSubjects: ['Lịch sử', 'Địa lí'] },
     { subject: 'Giáo dục công dân', subSubjects: [] },
     { subject: 'Công nghệ', subSubjects: [] },
@@ -1250,7 +1278,7 @@ const CURRICULUM_2018_DATA: Record<string, { subject: string; subSubjects: strin
     { subject: 'Toán', subSubjects: ['Số học', 'Đại số', 'Hình học'] },
     { subject: 'Ngữ văn', subSubjects: [] },
     { subject: 'Tiếng Anh', subSubjects: [] },
-    { subject: 'Khoa học tự nhiên', subSubjects: ['Vật lí', 'Hóa học', 'Sinh học'] },
+    { subject: 'KHTN', subSubjects: ['Vật lí', 'Hóa học', 'Sinh học'] },
     { subject: 'Lịch sử và Địa lí', subSubjects: ['Lịch sử', 'Địa lí'] },
     { subject: 'Giáo dục công dân', subSubjects: [] },
     { subject: 'Công nghệ', subSubjects: [] },
@@ -1265,7 +1293,7 @@ const CURRICULUM_2018_DATA: Record<string, { subject: string; subSubjects: strin
     { subject: 'Toán', subSubjects: ['Số học', 'Đại số', 'Hình học'] },
     { subject: 'Ngữ văn', subSubjects: [] },
     { subject: 'Tiếng Anh', subSubjects: [] },
-    { subject: 'Khoa học tự nhiên', subSubjects: ['Vật lí', 'Hóa học', 'Sinh học'] },
+    { subject: 'KHTN', subSubjects: ['Vật lí', 'Hóa học', 'Sinh học'] },
     { subject: 'Lịch sử và Địa lí', subSubjects: ['Lịch sử', 'Địa lí'] },
     { subject: 'Giáo dục công dân', subSubjects: [] },
     { subject: 'Công nghệ', subSubjects: [] },
@@ -1277,7 +1305,7 @@ const CURRICULUM_2018_DATA: Record<string, { subject: string; subSubjects: strin
     { subject: 'Nội dung giáo dục địa phương', subSubjects: [] },
   ],
   '10': [
-    { subject: 'Toán', subSubjects: [] },
+    { subject: 'Toán', subSubjects: ['Số học', 'Đại số', 'Hình học'] },
     { subject: 'Ngữ văn', subSubjects: [] },
     { subject: 'Tiếng Anh', subSubjects: [] },
     { subject: 'Giáo dục thể chất', subSubjects: [] },
@@ -1296,7 +1324,7 @@ const CURRICULUM_2018_DATA: Record<string, { subject: string; subSubjects: strin
     { subject: 'Mỹ thuật', subSubjects: [] },
   ],
   '11': [
-    { subject: 'Toán', subSubjects: [] },
+    { subject: 'Toán', subSubjects: ['Số học', 'Đại số', 'Hình học'] },
     { subject: 'Ngữ văn', subSubjects: [] },
     { subject: 'Tiếng Anh', subSubjects: [] },
     { subject: 'Giáo dục thể chất', subSubjects: [] },
@@ -1315,7 +1343,7 @@ const CURRICULUM_2018_DATA: Record<string, { subject: string; subSubjects: strin
     { subject: 'Mỹ thuật', subSubjects: [] },
   ],
   '12': [
-    { subject: 'Toán', subSubjects: [] },
+    { subject: 'Toán', subSubjects: ['Số học', 'Đại số', 'Hình học'] },
     { subject: 'Ngữ văn', subSubjects: [] },
     { subject: 'Tiếng Anh', subSubjects: [] },
     { subject: 'Giáo dục thể chất', subSubjects: [] },
@@ -2071,13 +2099,31 @@ function AILessonPlanSection({ classes, currentUser }: { classes: ClassSubject[]
   );
 }
 
-function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | null }) {
+function TeacherLessonPlanSection({ currentUser, ppctData }: { currentUser: UserAccount | null, ppctData: PPCTItem[] }) {
   const [grade, setGrade] = useState('');
   const [subject, setSubject] = useState('');
   const [subSubject, setSubSubject] = useState('');
   const [lessonName, setLessonName] = useState('');
   const [semester, setSemester] = useState('Học kì I');
-  const [periods, setPeriods] = useState('1');
+  const [periods, setPeriods] = useState('');
+
+  // Auto-update lesson name when inputs change
+  useEffect(() => {
+    if (grade && subject && periods) {
+      const match = ppctData.find(p => {
+        const pSub = String(p.subSubject || '').toLowerCase().replace(/y/g, 'i').trim();
+        const sSub = String(subSubject || '').toLowerCase().replace(/y/g, 'i').trim();
+        
+        return normalizeGrade(p.grade) === normalizeGrade(grade) &&
+          p.subject === subject &&
+          (subSubject === '' || pSub === sSub) &&
+          String(p.period) === String(periods)
+      });
+      if (match) {
+        setLessonName(match.content);
+      }
+    }
+  }, [grade, subject, subSubject, periods, ppctData]);
   const [userApiKey, setUserApiKey] = useState(() => localStorage.getItem('teacher_ai_api_key') || '');
   const [config, setConfig] = useState({
     multipleChoice: 0,
@@ -2137,7 +2183,7 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
     { name: 'Ngữ văn', levels: [2, 3] },
     { name: 'Tiếng Việt', levels: [1] },
     { name: 'Tiếng Anh', levels: [1, 2, 3] },
-    { name: 'Khoa học tự nhiên', levels: [2] },
+    { name: 'KHTN', levels: [2] },
     { name: 'Lịch sử và Địa lý', levels: [1, 2] },
     { name: 'Vật lý', levels: [3] },
     { name: 'Hóa học', levels: [3] },
@@ -2448,12 +2494,15 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
                 ))}
               </select>
             </div>
-            {/* Subject selection */}
-            <div className="space-y-3">
-              <label className="text-sm font-black text-neutral-900 dark:text-white uppercase tracking-wider pl-1 font-sans">Chọn Môn học</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1 font-sans">Chọn Môn học</label>
               <select 
                 value={subject}
-                onChange={(e) => setSubject(e.target.value)}
+                onChange={(e) => {
+                  setSubject(e.target.value);
+                  setSubSubject('');
+                }}
                 disabled={!grade}
                 className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all font-bold disabled:opacity-50"
               >
@@ -2463,19 +2512,36 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
                 ))}
               </select>
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Phân môn</label>
-              <input 
-                type="text"
-                value={subSubject}
-                onChange={(e) => setSubSubject(e.target.value)}
-                placeholder="Ví dụ: Hình học (để trống nếu không có)"
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all font-medium"
-              />
+              <div className="flex gap-2">
+                <select 
+                  value={subSubject}
+                  onChange={(e) => setSubSubject(e.target.value)}
+                  disabled={!subject}
+                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all font-medium disabled:opacity-50"
+                >
+                  <option value="">-- Chọn phân môn --</option>
+                  {subject === 'Toán' ? (
+                    ['Số học', 'Đại số', 'Hình học'].map(ss => (
+                      <option key={ss} value={ss}>{ss}</option>
+                    ))
+                  ) : CURRICULUM_2018_DATA[normalizeGrade(grade)]?.find(s => s.subject === subject)?.subSubjects.map(ss => (
+                    <option key={ss} value={ss}>{ss}</option>
+                  ))}
+                  <option value="custom">-- Nhập khác --</option>
+                </select>
+                {subSubject === 'custom' && (
+                  <input 
+                    type="text"
+                    onChange={(e) => setSubSubject(e.target.value)}
+                    placeholder="Nhập phân môn..."
+                    className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all"
+                  />
+                )}
+              </div>
             </div>
+          </div>
             <div className="space-y-2">
               <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Tên bài dạy <span className="text-red-500">*</span></label>
               <input 
@@ -2495,7 +2561,8 @@ function TeacherLessonPlanSection({ currentUser }: { currentUser: UserAccount | 
                 type="number"
                 value={periods}
                 onChange={(e) => setPeriods(e.target.value)}
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all"
+                placeholder="Nhập số tiết..."
+                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all text-center font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
             <div className="space-y-2">
@@ -2999,15 +3066,48 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
         const ws = wb.Sheets[wsname];
         const jsonData = XLSX.utils.sheet_to_json(ws) as any[];
         
-        const mappedData: PPCTItem[] = jsonData.map(row => ({
-          id: crypto.randomUUID(),
-          grade: normalizeGrade(row['Lớp'] || row['Khối'] || activeGrade),
-          subject: String(row['Môn'] || row['Môn học'] || '').trim(),
-          subSubject: String(row['Phân môn'] || '').trim(),
-          period: Number(row['Tiết theo PPCT'] || row['Tiết'] || 0),
-          content: String(row['Nội dung'] || row['Tên bài dạy'] || row['Nội dung bài học'] || '').trim(),
-          notes: String(row['Ghi chú'] || '').trim()
-        })).filter(item => item.subject && item.content);
+        const mappedData: PPCTItem[] = jsonData.map(row => {
+          const getRowValue = (keys: string[]) => {
+            for (const key of keys) {
+              if (row[key] !== undefined) return row[key];
+              const foundKey = Object.keys(row).find(k => k.trim().toLowerCase() === key.toLowerCase());
+              if (foundKey) return row[foundKey];
+            }
+            return undefined;
+          };
+
+          let subject = String(getRowValue(['Môn', 'Môn học', 'Môn Học', 'Subject']) || '').trim();
+          let subSubject = String(getRowValue(['Phân môn', 'Phân Môn', 'Sub-subject', 'SubSubject', 'Phân môn học']) || '').trim();
+          
+          // Normalization
+          if (subject.toLowerCase() === 'khoa học tự nhiên' || subject.toLowerCase() === 'khtn') subject = 'KHTN';
+          if (subject.toLowerCase() === 'toán') subject = 'Toán';
+          if (subject.toLowerCase() === 'ngữ văn') subject = 'Ngữ văn';
+          
+          if (subject === 'KHTN') {
+            if (subSubject.toLowerCase() === 'vật lý' || subSubject.toLowerCase() === 'vật lí') subSubject = 'Vật lí';
+            if (subSubject.toLowerCase() === 'sinh học') subSubject = 'Sinh học';
+            if (subSubject.toLowerCase() === 'hóa học') subSubject = 'Hóa học';
+          }
+          
+          if (subject === 'Toán') {
+            if (subSubject === 'Số học và Đại số' || subSubject === 'Số và Đại số') subSubject = 'Đại số';
+            if (subSubject === 'Hình học và Đo lường' || subSubject === 'Hình học và đo lường') subSubject = 'Hình học';
+            if (subSubject.toLowerCase() === 'số học') subSubject = 'Số học';
+            if (subSubject.toLowerCase() === 'đại số') subSubject = 'Đại số';
+            if (subSubject.toLowerCase() === 'hình học') subSubject = 'Hình học';
+          }
+
+          return {
+            id: crypto.randomUUID(),
+            grade: normalizeGrade(getRowValue(['Lớp', 'Khối', 'Grade', 'Level']) || activeGrade),
+            subject,
+            subSubject,
+            period: Number(getRowValue(['Tiết theo PPCT', 'Tiết', 'Period']) || 0),
+            content: String(getRowValue(['Nội dung', 'Tên bài dạy', 'Nội dung bài học', 'Content', 'Lesson Name']) || '').trim(),
+            notes: String(getRowValue(['Ghi chú', 'Notes']) || '').trim()
+          };
+        }).filter(item => item.subject && item.content);
 
         if (mappedData.length === 0) {
           alert("Không tìm thấy dữ liệu hợp lệ trong file Excel. Vui lòng kiểm tra lại định dạng file mẫu.");
@@ -3240,32 +3340,67 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
             <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
               {filteredData.map((item, idx) => (
                 <tr key={item.id} className="hover:bg-neutral-50/30 dark:hover:bg-slate-900/30 transition-colors group">
+                    <td className="px-6 py-4">
+                      <input
+                        type="number"
+                        value={item.period || ''}
+                        onChange={(e) => handleChange(item.id, 'period', Number(e.target.value))}
+                        disabled={!isAdmin}
+                        className="w-full bg-transparent border-none focus:ring-0 text-sm font-normal text-neutral-900 dark:text-white text-center font-mono disabled:opacity-80 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        placeholder="..."
+                      />
+                    </td>
                   <td className="px-6 py-4">
-                    <input
-                      type="number"
-                      value={item.period}
-                      onChange={(e) => handleChange(item.id, 'period', Number(e.target.value))}
-                      disabled={!isAdmin}
-                      className="w-full bg-transparent border-none focus:ring-0 text-sm font-normal text-neutral-900 dark:text-white text-center font-mono disabled:opacity-80"
-                    />
-                  </td>
-                  <td className="px-6 py-4">
-                    <input
+                    <select
                       value={item.subject}
                       onChange={(e) => handleChange(item.id, 'subject', e.target.value)}
                       disabled={!isAdmin}
                       className="w-full bg-transparent border-none focus:ring-0 text-sm font-normal text-primary disabled:opacity-80"
-                      placeholder="Môn học"
-                    />
+                    >
+                      <option value="">-- Môn học --</option>
+                      {CURRICULUM_2018_DATA[normalizeGrade(activeGrade)]?.map(s => (
+                        <option key={s.subject} value={s.subject}>{s.subject}</option>
+                      )) || (
+                        <option value={item.subject}>{item.subject}</option>
+                      )}
+                    </select>
                   </td>
                   <td className="px-6 py-4">
-                    <input
-                      value={item.subSubject}
-                      onChange={(e) => handleChange(item.id, 'subSubject', e.target.value)}
-                      disabled={!isAdmin}
-                      className="w-full bg-transparent border-none focus:ring-0 text-sm text-neutral-500 dark:text-slate-400 italic disabled:opacity-80"
-                      placeholder="Phân môn"
-                    />
+                    <div className="flex flex-col gap-1">
+                      <select
+                        value={
+                          !item.subSubject ? "" :
+                          (CURRICULUM_2018_DATA[normalizeGrade(activeGrade)]?.find(s => s.subject === item.subject)?.subSubjects.includes(item.subSubject) 
+                            ? item.subSubject 
+                            : "custom")
+                        }
+                        onChange={(e) => {
+                          if (e.target.value === "custom") {
+                            handleChange(item.id, "subSubject", "Mới...");
+                          } else {
+                            handleChange(item.id, "subSubject", e.target.value);
+                          }
+                        }}
+                        disabled={!isAdmin}
+                        className="w-full bg-transparent border-none focus:ring-0 text-sm text-neutral-500 dark:text-slate-400 italic disabled:opacity-80"
+                      >
+                        <option value="">-- Phân môn --</option>
+                        {CURRICULUM_2018_DATA[normalizeGrade(activeGrade)]?.find(s => s.subject === item.subject)?.subSubjects.map(ss => (
+                          <option key={ss} value={ss}>{ss}</option>
+                        ))}
+                        <option value="custom">-- Nhập khác --</option>
+                      </select>
+                      {item.subSubject && (item.subSubject === "custom" || item.subSubject === "Mới..." || !CURRICULUM_2018_DATA[normalizeGrade(activeGrade)]?.find(s => s.subject === item.subject)?.subSubjects.includes(item.subSubject)) && (
+                        <input
+                          type="text"
+                          value={item.subSubject === "custom" || item.subSubject === "Mới..." ? "" : item.subSubject}
+                          onChange={(e) => handleChange(item.id, "subSubject", e.target.value)}
+                          disabled={!isAdmin}
+                          placeholder="Tên phân môn..."
+                          className="w-full bg-transparent border-b border-neutral-100 dark:border-slate-800 focus:ring-0 text-[10px] text-neutral-400 dark:text-slate-500 px-1 italic"
+                        />
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <input
@@ -3779,40 +3914,13 @@ function LessonPlanSection({
                       </select>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="relative group/period">
-                        <input
-                          list={`periods-${row.id}`}
-                          value={row.period}
-                          onChange={(e) => handleRowChange(row.id, 'period', e.target.value)}
-                          className="w-full bg-transparent border-none focus:ring-0 text-xs font-normal text-neutral-900 dark:text-white"
-                          placeholder="Tiết..."
-                        />
-                        <datalist id={`periods-${row.id}`}>
-                          {ppctData
-                            .filter(p => 
-                              normalizeGrade(p.grade) === normalizeGrade(row.grade) && 
-                              String(p.subject).trim().toLowerCase() === String(row.subject).trim().toLowerCase() && 
-                              (row.subSubject ? String(p.subSubject).trim().toLowerCase() === String(row.subSubject).trim().toLowerCase() : true)
-                            )
-                            .sort((a, b) => a.period - b.period)
-                            .map((p, pIdx) => (
-                              <option key={`${p.grade}-${p.subject}-${p.subSubject}-${p.period}-${pIdx}`} value={String(p.period)}>
-                                {p.period} - {p.content}
-                              </option>
-                            ))}
-                        </datalist>
-                        <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center opacity-0 group-hover/period:opacity-100 transition-opacity">
-                          {[1, 2, 3, 4, 5].map(n => (
-                            <button
-                              key={n}
-                              onClick={() => handleRowChange(row.id, 'period', String(n))}
-                              className="w-5 h-5 flex items-center justify-center text-[10px] bg-neutral-100 dark:bg-slate-800 hover:bg-primary hover:text-white rounded ml-0.5"
-                            >
-                              {n}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                      <input
+                        type="number"
+                        value={row.period}
+                        onChange={(e) => handleRowChange(row.id, 'period', e.target.value)}
+                        className="w-full bg-transparent border-none focus:ring-0 text-xs font-normal text-neutral-900 dark:text-white text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        placeholder="Tiết..."
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
