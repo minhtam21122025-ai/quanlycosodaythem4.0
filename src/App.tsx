@@ -3658,7 +3658,7 @@ function LessonPlanSection({
             rows: [
               new TableRow({
                 children: [
-                  "Thứ, ngày", "Ca học", "Lớp", "Môn học", "Phân môn", "Tiết PPCT", "Tên bài dạy", "Ghi chú"
+                  "Thứ, ngày tháng", "Ca học", "Lớp", "Môn học", "Phân môn", "Tiết PPCT", "Tên bài dạy", "Ghi chú"
                 ].map(text => new TableCell({
                   children: [new Paragraph({ 
                     alignment: AlignmentType.CENTER, 
@@ -3674,7 +3674,8 @@ function LessonPlanSection({
                 let lastDay = "";
                 
                 rowsToExport.forEach((row) => {
-                  const dayText = row.day || row.date || '';
+                  const dayStr = row.day + (row.date ? ` (${row.date})` : '');
+                  const dayText = sanitizeDocxText(dayStr);
                   const isNewDay = dayText !== lastDay;
                   if (isNewDay) lastDay = dayText;
 
@@ -3684,7 +3685,7 @@ function LessonPlanSection({
                     rowChildren.push(new TableCell({
                       children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: sanitizeDocxText(dayText), size: 20 })] })],
                       verticalAlign: VerticalAlign.CENTER,
-                      rowSpan: rowsToExport.filter(r => (r.day || r.date || '') === dayText).length,
+                      rowSpan: rowsToExport.filter(r => (r.day + (r.date ? ` (${r.date})` : '')) === dayStr).length,
                     }));
                   }
 
@@ -3827,13 +3828,33 @@ function LessonPlanSection({
                   setEditingPlan({ ...editingPlan, startDate: '', endDate: '' });
                   return;
                 }
-                const start = parseISO(e.target.value);
-                if (isNaN(start.getTime())) return;
-                const end = endOfWeek(start, { weekStartsOn: 1 });
+                const selectedDate = parseISO(e.target.value);
+                if (isNaN(selectedDate.getTime())) return;
+                const start = startOfWeek(selectedDate, { weekStartsOn: 1 });
+                const end = endOfWeek(selectedDate, { weekStartsOn: 1 });
+                
+                // Update all existing rows with new dates based on their day
+                const updatedRows = editingPlan.rows.map(row => {
+                  const dayName = String(row.day || '').toLowerCase().trim();
+                  const dayMap: Record<string, number> = {
+                    'thứ 2': 0, 'thứ hai': 0, 't2': 0, '2': 0,
+                    'thứ 3': 1, 'thứ ba': 1, 't3': 1, '3': 1,
+                    'thứ 4': 2, 'thứ tư': 2, 't4': 2, '4': 2,
+                    'thứ 5': 3, 'thứ năm': 3, 't5': 3, '5': 3,
+                    'thứ 6': 4, 'thứ sáu': 4, 't6': 4, '6': 4,
+                    'thứ 7': 5, 'thứ bảy': 5, 't7': 5, '7': 5,
+                    'chủ nhật': 6, 'cn': 6, '8': 6
+                  };
+                  const offset = dayMap[dayName] ?? 0;
+                  const newDate = addDays(start, offset);
+                  return { ...row, date: format(newDate, 'dd/MM/yyyy') };
+                });
+
                 setEditingPlan({ 
                   ...editingPlan, 
-                  startDate: e.target.value,
-                  endDate: format(end, 'yyyy-MM-dd')
+                  startDate: format(start, 'yyyy-MM-dd'),
+                  endDate: format(end, 'yyyy-MM-dd'),
+                  rows: updatedRows
                 });
               }}
               className="w-full bg-neutral-50 dark:bg-slate-900 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary transition-all"
@@ -4110,7 +4131,7 @@ function ClassJournalSection({
             rows: [
               new TableRow({
                 children: [
-                  "Thứ ngày tháng", "Buổi", "Lớp", "Môn học", "Phân môn", "Tiết theo KHDH", "Tên bài, nội dung công việc", "Sĩ số", "Nhận xét của giáo viên", "Giáo viên dạy/ký tên"
+                  "Thứ ngày tháng", "Buổi", "Lớp", "Môn học", "Phân môn", "Tiết theo KHDH", "Tên bài, nội dung công việc", "Nhận xét của giáo viên", "Giáo viên dạy/ký tên"
                 ].map(text => new TableCell({
                   children: [new Paragraph({ 
                     alignment: AlignmentType.CENTER, 
@@ -4125,7 +4146,8 @@ function ClassJournalSection({
                 const tableRows: TableRow[] = [];
                 let lastDay = "";
                 
-                rowsToExport.forEach((row) => {
+                const remarksList = ["Chú ý", "Nghiêm túc", "Lớp học tốt"];
+                rowsToExport.forEach((row, rowIndex) => {
                   const dayStr = row.day + (row.date ? ` (${row.date})` : '');
                   const dayText = sanitizeDocxText(dayStr);
                   const isNewDay = dayText !== lastDay;
@@ -4162,8 +4184,11 @@ function ClassJournalSection({
                     }));
                   });
 
-                  // Content, Attendance, Comments, Signature - Left aligned
-                  [row.content, row.attendance || '', row.comments || '', row.signature || ''].forEach(text => {
+                  // Content, Comments, Signature - Left aligned
+                  const autoRemark = row.comments || remarksList[rowIndex % remarksList.length];
+                  const teacherName = row.signature || selectedPlan.teacherName;
+                  
+                  [row.content, autoRemark, teacherName].forEach(text => {
                     rowChildren.push(new TableCell({
                       children: [new Paragraph({ children: [new TextRun({ text: sanitizeDocxText(text), size: 20 })] })],
                       verticalAlign: VerticalAlign.CENTER,
@@ -4284,7 +4309,9 @@ function ClassJournalSection({
               >
                 <option value="">-- Chọn lịch báo giảng --</option>
                 {plans.map(p => (
-                  <option key={p.id} value={p.id}>{p.teacherName} - Tuần {p.week} ({p.startDate} - {p.endDate})</option>
+                  <option key={p.id} value={p.id}>
+                    {p.teacherName} - Tuần {p.week} ({safeFormat(p.startDate, 'dd/MM/yyyy')} - {safeFormat(p.endDate, 'dd/MM/yyyy')})
+                  </option>
                 ))}
               </select>
               <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-400">
@@ -4292,6 +4319,30 @@ function ClassJournalSection({
               </div>
             </div>
           </div>
+          {selectedPlan && (
+            <div className="mt-4">
+              <button
+                onClick={() => {
+                  const remarksList = ["Chú ý", "Nghiêm túc", "Lớp học tốt"];
+                  const newPlans = plans.map(p => {
+                    if (p.id === selectedPlanId) {
+                      const newRows = p.rows.map((row, idx) => ({
+                        ...row,
+                        comments: row.comments || remarksList[idx % remarksList.length],
+                        signature: row.signature || p.teacherName
+                      }));
+                      return { ...p, rows: newRows };
+                    }
+                    return p;
+                  });
+                  setPlans(newPlans);
+                }}
+                className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
+              >
+                <Sparkles className="w-3 h-3" /> Tự động điền nhận xét & chữ ký cho lịch này
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="p-0">
@@ -4305,7 +4356,6 @@ function ClassJournalSection({
                     <th className="px-4 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest w-20">Lớp</th>
                     <th className="px-4 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest w-32">Môn</th>
                     <th className="px-4 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest">Nội dung bài dạy</th>
-                    <th className="px-4 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest w-24">Sĩ số</th>
                     <th className="px-4 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest w-64">Nhận xét</th>
                     <th className="px-4 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest w-40">Chữ ký</th>
                   </tr>
@@ -4325,14 +4375,6 @@ function ClassJournalSection({
                       </td>
                       <td className="px-4 py-4 text-sm font-medium text-neutral-600 dark:text-slate-300">{row.subject}</td>
                       <td className="px-4 py-4 text-sm text-neutral-900 dark:text-white leading-relaxed font-medium">{row.content}</td>
-                      <td className="px-3 py-3">
-                        <input
-                          value={row.attendance || ''}
-                          onChange={(e) => handleRowChange(row.id, 'attendance', e.target.value)}
-                          placeholder="20/20"
-                          className="w-full bg-transparent border border-transparent group-hover:border-neutral-200 dark:group-hover:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/10 rounded-lg px-2 py-1.5 text-sm transition-all outline-none dark:text-white font-bold"
-                        />
-                      </td>
                       <td className="px-3 py-3">
                         <input
                           value={row.comments || ''}
