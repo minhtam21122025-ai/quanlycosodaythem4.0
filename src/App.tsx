@@ -3201,14 +3201,21 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
 
     WEEKEND.forEach((day, idx) => {
       const date = addDays(start, 5 + idx);
-      [
+      const shifts = day === 'Thứ 7' ? [
+        'Ca 1 (7h-9h)', 
+        'Ca 2 (9h-11h)', 
+        'Ca 3 (17h-19h)', 
+        'Ca 4 (19h-21h)'
+      ] : [
         'Ca 1 (7h-9h)', 
         'Ca 2 (9h-11h)', 
         'Ca 3 (14h-16h)', 
         'Ca 4 (16h-18h)', 
         'Ca 5 (18h-20h)', 
         'Ca 6 (20h-22h)'
-      ].forEach(shift => {
+      ];
+
+      shifts.forEach(shift => {
         rows.push({
           id: crypto.randomUUID(),
           day,
@@ -3492,14 +3499,21 @@ function LessonPlanSection({
 
     WEEKEND.forEach((day, idx) => {
       const date = addDays(start, 5 + idx);
-      [
+      const shifts = day === 'Thứ 7' ? [
+        'Ca 1 (7h-9h)', 
+        'Ca 2 (9h-11h)', 
+        'Ca 3 (17h-19h)', 
+        'Ca 4 (19h-21h)'
+      ] : [
         'Ca 1 (7h-9h)', 
         'Ca 2 (9h-11h)', 
         'Ca 3 (14h-16h)', 
         'Ca 4 (16h-18h)', 
         'Ca 5 (18h-20h)', 
         'Ca 6 (20h-22h)'
-      ].forEach(shift => {
+      ];
+
+      shifts.forEach(shift => {
         rows.push({
           id: crypto.randomUUID(),
           day,
@@ -3627,19 +3641,20 @@ function LessonPlanSection({
         children: [
           new Paragraph({
             children: [
-              new TextRun({ text: sanitizeDocxText(`Hộ kinh doanh: ${businessInfo.name}`), size: 22 }),
+              new TextRun({ text: sanitizeDocxText(`Hộ kinh doanh: ${businessInfo.name}`), bold: true, size: 22 }),
             ],
           }),
           new Paragraph({
             children: [
-              new TextRun({ text: sanitizeDocxText(`Địa chỉ: ${businessInfo.address}`), size: 22 }),
+              new TextRun({ text: sanitizeDocxText(`Địa chỉ: ${businessInfo.address}`), bold: true, size: 22 }),
             ],
           }),
           new Paragraph({
-            text: "KẾ HOẠCH DẠY HỌC CỦA GIÁO VIÊN",
-            heading: HeadingLevel.HEADING_1,
             alignment: AlignmentType.CENTER,
             spacing: { before: 400, after: 200 },
+            children: [
+              new TextRun({ text: "KẾ HOẠCH DẠY HỌC CỦA GIÁO VIÊN", bold: true, size: 28 }),
+            ],
           }),
           new Paragraph({
             alignment: AlignmentType.CENTER,
@@ -3650,7 +3665,7 @@ function LessonPlanSection({
           new Paragraph({
             alignment: AlignmentType.CENTER,
             children: [
-              new TextRun({ text: sanitizeDocxText(`Tuần: ${plan.week} - Từ ngày: ${safeFormat(plan.startDate, 'dd/MM/yyyy')} - Đến ngày: ${safeFormat(plan.endDate, 'dd/MM/yyyy')}`), size: 22 }),
+              new TextRun({ text: sanitizeDocxText(`Tuần: ${plan.week} - Từ ngày: ${safeFormat(plan.startDate, 'dd/MM/yyyy')} - Đến ngày: ${safeFormat(plan.endDate, 'dd/MM/yyyy')}`), bold: true, size: 22 }),
             ],
           }),
           new Table({
@@ -4106,24 +4121,25 @@ function ClassJournalSection({
         children: [
           new Paragraph({
             children: [
-              new TextRun({ text: sanitizeDocxText(`Hộ kinh doanh: ${businessInfo.name}`), size: 22 }),
+              new TextRun({ text: sanitizeDocxText(`Hộ kinh doanh: ${businessInfo.name}`), bold: true, size: 22 }),
             ],
           }),
           new Paragraph({
             children: [
-              new TextRun({ text: sanitizeDocxText(`Địa chỉ: ${businessInfo.address}`), size: 22 }),
+              new TextRun({ text: sanitizeDocxText(`Địa chỉ: ${businessInfo.address}`), bold: true, size: 22 }),
             ],
-          }),
-          new Paragraph({
-            text: "SỔ ĐẦU BÀI",
-            heading: HeadingLevel.HEADING_1,
-            alignment: AlignmentType.CENTER,
-            spacing: { before: 400, after: 200 },
           }),
           new Paragraph({
             alignment: AlignmentType.CENTER,
+            spacing: { before: 400, after: 200 },
             children: [
-              new TextRun({ text: sanitizeDocxText(`Tuần: ${selectedPlan.week} - Từ ngày: ${safeFormat(selectedPlan.startDate, 'dd/MM/yyyy')} - Đến ngày: ${safeFormat(selectedPlan.endDate, 'dd/MM/yyyy')}`), size: 22 }),
+              new TextRun({ text: "SỔ ĐẦU BÀI", bold: true, size: 28 }),
+            ],
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({ text: sanitizeDocxText(`Tuần: ${selectedPlan.week} - Từ ngày: ${safeFormat(selectedPlan.startDate, 'dd/MM/yyyy')} - Đến ngày: ${safeFormat(selectedPlan.endDate, 'dd/MM/yyyy')}`), bold: true, size: 22 }),
             ],
           }),
           new Table({
