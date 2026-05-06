@@ -2463,30 +2463,29 @@ function TeacherLessonPlanSection({ currentUser, ppctData }: { currentUser: User
         <div className="space-y-8">
           {/* API Key Input */}
           <div className="p-6 bg-amber-50/50 dark:bg-amber-900/10 rounded-2xl border border-amber-200/50 dark:border-amber-800/30 space-y-3">
-            <label className="text-xs font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest flex items-center gap-2">
+            <label className="text-sm font-semibold text-neutral-800 dark:text-amber-400 flex items-center gap-2">
               <Key className="w-4 h-4" />
-              Gemini API Key Cá nhân (Để tránh lỗi 403/404)
+              Gemini API Key Cá nhân
             </label>
             <input
               type="password"
               value={userApiKey}
               onChange={(e) => setUserApiKey(e.target.value)}
               placeholder="Nhập API Key Gemini của bạn..."
-              className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-800 rounded-xl focus:ring-2 focus:ring-amber-500 outline-none dark:text-white transition-all text-sm shadow-sm"
+              className="w-full px-4 py-4 bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-800 rounded-xl focus:ring-2 focus:ring-amber-500 outline-none dark:text-white transition-all text-base font-semibold shadow-sm"
             />
             <p className="text-[10px] text-amber-600/80 dark:text-amber-500/80 italic font-medium leading-relaxed">
               * Mã API được lưu trong trình duyệt của bạn và dùng để gọi mô hình Gemini khi tạo giáo án. Nếu để trống, hệ thống sẽ dùng Key mặc định.
             </p>
           </div>
 
-          {/* Grade selection */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-3">
-              <label className="text-sm font-black text-neutral-900 dark:text-white uppercase tracking-wider pl-1">Chọn Khối lớp</label>
+              <label className="text-sm font-semibold text-neutral-900 dark:text-white pl-1">Chọn Khối lớp</label>
               <select 
                 value={grade}
                 onChange={(e) => { setGrade(e.target.value); setSubject(''); }}
-                className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all font-bold"
+                className="w-full px-4 py-4 bg-white dark:bg-slate-800 border border-neutral-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all text-base font-semibold"
               >
                 <option value="">-- Chọn khối lớp --</option>
                 {grades_list.map(g => (
@@ -2495,8 +2494,8 @@ function TeacherLessonPlanSection({ currentUser, ppctData }: { currentUser: User
               </select>
             </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1 font-sans">Chọn Môn học</label>
+            <div className="space-y-3">
+              <label className="text-sm font-semibold text-neutral-900 dark:text-white pl-1 font-sans">Chọn Môn học</label>
               <select 
                 value={subject}
                 onChange={(e) => {
@@ -2504,7 +2503,7 @@ function TeacherLessonPlanSection({ currentUser, ppctData }: { currentUser: User
                   setSubSubject('');
                 }}
                 disabled={!grade}
-                className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all font-bold disabled:opacity-50"
+                className="w-full px-4 py-4 bg-white dark:bg-slate-800 border border-neutral-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all text-base font-semibold disabled:opacity-50"
               >
                 <option value="">-- Chọn môn học --</option>
                 {getSubjectList().map(s => (
@@ -2512,14 +2511,14 @@ function TeacherLessonPlanSection({ currentUser, ppctData }: { currentUser: User
                 ))}
               </select>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Phân môn</label>
+            <div className="space-y-3">
+              <label className="text-sm font-semibold text-neutral-900 dark:text-white pl-1">Phân môn</label>
               <div className="flex gap-2">
                 <select 
                   value={subSubject}
                   onChange={(e) => setSubSubject(e.target.value)}
                   disabled={!subject}
-                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all font-medium disabled:opacity-50"
+                  className="w-full px-4 py-4 bg-white dark:bg-slate-800 border border-neutral-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all text-base font-semibold disabled:opacity-50"
                 >
                   <option value="">-- Chọn phân môn --</option>
                   {subject === 'Toán' ? (
@@ -2542,35 +2541,35 @@ function TeacherLessonPlanSection({ currentUser, ppctData }: { currentUser: User
               </div>
             </div>
           </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Tên bài dạy <span className="text-red-500">*</span></label>
+            <div className="space-y-3">
+              <label className="text-sm font-semibold text-neutral-900 dark:text-white pl-1">Tên bài dạy <span className="text-red-500 font-bold">*</span></label>
               <input 
                 type="text"
                 value={lessonName}
                 onChange={(e) => setLessonName(e.target.value)}
                 placeholder="Ví dụ: Cấu tạo nguyên tử"
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all font-medium"
+                className="w-full px-4 py-4 bg-white dark:bg-slate-800 border border-neutral-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all text-base font-semibold"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Số tiết dạy</label>
+            <div className="space-y-3">
+              <label className="text-sm font-semibold text-neutral-900 dark:text-white pl-1">Số tiết dạy</label>
               <input 
                 type="number"
                 value={periods}
                 onChange={(e) => setPeriods(e.target.value)}
                 placeholder="Nhập số tiết..."
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all text-center font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="w-full px-4 py-4 bg-white dark:bg-slate-800 border border-neutral-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all text-center text-base font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-neutral-700 dark:text-slate-300 ml-1">Học kì</label>
+            <div className="space-y-3">
+              <label className="text-sm font-semibold text-neutral-900 dark:text-white pl-1">Học kì</label>
               <select 
                 value={semester}
                 onChange={(e) => setSemester(e.target.value)}
-                className="w-full px-4 py-3 bg-neutral-50 dark:bg-slate-800/50 border border-neutral-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all font-medium"
+                className="w-full px-4 py-4 bg-white dark:bg-slate-800 border border-neutral-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary outline-none dark:text-white transition-all text-base font-semibold"
               >
                 <option value="Học kì I">Học kì I</option>
                 <option value="Học kì II">Học kì II</option>
@@ -2580,52 +2579,54 @@ function TeacherLessonPlanSection({ currentUser, ppctData }: { currentUser: User
           </div>
 
           <div className="bg-neutral-50 dark:bg-slate-800/30 p-6 rounded-2xl border border-neutral-100 dark:border-slate-800">
-            <h3 className="text-sm font-black text-neutral-900 dark:text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Settings className="w-4 h-4 text-primary" />
+            <h3 className="text-base font-semibold text-neutral-900 dark:text-white mb-6 flex items-center gap-2">
+              <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                <Settings className="w-5 h-5 text-primary" />
+              </div>
               Cấu hình số câu hỏi bài tập
             </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-neutral-500 uppercase">TN nhiều đáp án</label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-neutral-600 dark:text-slate-400">TN nhiều đáp án</label>
                 <input 
                   type="number"
                   value={config.multipleChoice}
                   onChange={(e) => setConfig({...config, multipleChoice: parseInt(e.target.value) || 0})}
-                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-lg outline-none text-sm dark:text-white"
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-700 rounded-xl outline-none text-base font-medium dark:text-white focus:ring-2 focus:ring-primary transition-all shadow-sm"
                 />
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-neutral-500 uppercase">TN Đúng/Sai</label>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-neutral-600 dark:text-slate-400">TN Đúng/Sai</label>
                 <input 
                   type="number"
                   value={config.trueFalse}
                   onChange={(e) => setConfig({...config, trueFalse: parseInt(e.target.value) || 0})}
-                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-lg outline-none text-sm dark:text-white"
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-700 rounded-xl outline-none text-base font-medium dark:text-white focus:ring-2 focus:ring-primary transition-all shadow-sm"
                 />
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-neutral-500 uppercase">TN trả lời ngắn</label>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-neutral-600 dark:text-slate-400">TN trả lời ngắn</label>
                 <input 
                   type="number"
                   value={config.shortAnswer}
                   onChange={(e) => setConfig({...config, shortAnswer: parseInt(e.target.value) || 0})}
-                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-lg outline-none text-sm dark:text-white"
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-700 rounded-xl outline-none text-base font-medium dark:text-white focus:ring-2 focus:ring-primary transition-all shadow-sm"
                 />
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-neutral-500 uppercase">Tự luận</label>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-neutral-600 dark:text-slate-400">Tự luận</label>
                 <input 
                   type="number"
                   value={config.essay}
                   onChange={(e) => setConfig({...config, essay: parseInt(e.target.value) || 0})}
-                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-700 rounded-lg outline-none text-sm dark:text-white"
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-700 rounded-xl outline-none text-base font-medium dark:text-white focus:ring-2 focus:ring-primary transition-all shadow-sm"
                 />
               </div>
             </div>
           </div>
 
           {error && (
-            <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl text-sm font-bold flex items-center gap-3 border border-red-100 dark:border-red-900/30">
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl text-sm font-semibold flex items-center gap-3 border border-red-100 dark:border-red-900/30">
               <Info className="w-5 h-5" />
               {error}
             </div>
@@ -2635,7 +2636,7 @@ function TeacherLessonPlanSection({ currentUser, ppctData }: { currentUser: User
             onClick={generatePlan}
             disabled={isGenerating}
             className={cn(
-              "w-full py-5 rounded-2xl font-black text-xl transition-all flex items-center justify-center gap-3 shadow-xl",
+              "w-full py-5 rounded-2xl font-bold text-lg transition-all flex items-center justify-center gap-3 shadow-xl",
               isGenerating
                 ? "bg-neutral-100 dark:bg-slate-800 text-neutral-400 cursor-not-allowed"
                 : "bg-primary text-white hover:bg-primary-hover active:scale-[0.98] shadow-primary/30"
@@ -2646,7 +2647,7 @@ function TeacherLessonPlanSection({ currentUser, ppctData }: { currentUser: User
             ) : (
               <Sparkles className="w-7 h-7" />
             )}
-            {isGenerating ? "Hệ thống đang biên soạn..." : "BIÊN SOẠN GIÁO ÁN THÔNG MINH"}
+            {isGenerating ? "Hệ thống đang biên soạn..." : "Biên soạn giáo án thông minh"}
           </button>
         </div>
       </motion.div>
@@ -3244,6 +3245,31 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
     setActiveTab('lesson-plan');
   };
 
+  const exportAllPPCT = () => {
+    if (ppctData.length === 0) {
+      alert("Không có dữ liệu để xuất.");
+      return;
+    }
+    const exportData = [...ppctData].sort((a, b) => {
+      const gradeA = normalizeGrade(a.grade);
+      const gradeB = normalizeGrade(b.grade);
+      if (gradeA !== gradeB) return gradeA.localeCompare(gradeB, undefined, { numeric: true });
+      if (a.subject !== b.subject) return a.subject.localeCompare(b.subject);
+      return a.period - b.period;
+    }).map(item => ({
+      'Lớp': item.grade,
+      'Môn': item.subject,
+      'Phân môn': item.subSubject,
+      'Tiết theo PPCT': item.period,
+      'Nội dung': item.content,
+      'Ghi chú': item.notes
+    }));
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Phân phối chương trình");
+    XLSX.writeFile(wb, "Phan_Phoi_Chuong_Trinh_Tong_Hop.xlsx");
+  };
+
   const grades = Array.from(new Set(classes.map(c => c.grade))).sort();
   const filteredData = ppctData.filter(item => normalizeGrade(item.grade) === normalizeGrade(activeGrade));
 
@@ -3284,6 +3310,13 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
             <Download className="w-4 h-4" />
             Tải file mẫu
           </button>
+          <button 
+            onClick={exportAllPPCT}
+            className="px-6 py-3 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all font-bold text-sm flex items-center gap-2"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            Xuất PPCT các lớp
+          </button>
           {isAdmin && (
             <>
               <label className="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 font-bold text-sm flex items-center gap-3 cursor-pointer">
@@ -3306,16 +3339,16 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-1.5 p-1.5 bg-neutral-100 dark:bg-slate-800 rounded-2xl w-fit">
           {(grades.length > 0 ? grades : ['6', '7', '8', '9']).map((grade) => (
-            <button
-              key={grade}
-              onClick={() => setActiveGrade(grade)}
-              className={cn(
-                "px-6 py-2.5 rounded-xl text-sm font-bold transition-all",
-                normalizeGrade(activeGrade) === normalizeGrade(grade) 
-                  ? "bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm" 
-                  : "text-neutral-500 dark:text-slate-400 hover:text-neutral-900 dark:hover:text-slate-200"
-              )}
-            >
+              <button
+                key={grade}
+                onClick={() => setActiveGrade(grade)}
+                className={cn(
+                  "px-6 py-3 rounded-xl text-base font-bold transition-all",
+                  normalizeGrade(activeGrade) === normalizeGrade(grade) 
+                    ? "bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm" 
+                    : "text-neutral-500 dark:text-slate-400 hover:text-neutral-900 dark:hover:text-slate-200"
+                )}
+              >
               Khối {grade}
             </button>
           ))}
@@ -3336,24 +3369,24 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[1000px]">
             <thead>
-              <tr className="bg-neutral-50/50 dark:bg-slate-900/50 border-b border-neutral-100 dark:border-slate-800">
-                <th className="px-6 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-16 text-center">Tiết</th>
-                <th className="px-6 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-40">Môn học</th>
-                <th className="px-6 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-40">Phân môn</th>
-                <th className="px-6 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Nội dung bài dạy</th>
-                <th className="px-6 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-20"></th>
+              <tr className="bg-neutral-100 dark:bg-slate-900 border-b-2 border-neutral-200 dark:border-slate-800">
+                <th className="px-6 py-5 text-xs font-semibold text-neutral-900 dark:text-white w-16 text-center">Tiết</th>
+                <th className="px-6 py-5 text-xs font-semibold text-neutral-900 dark:text-white w-40">Môn học</th>
+                <th className="px-6 py-5 text-xs font-semibold text-neutral-900 dark:text-white w-40">Phân môn</th>
+                <th className="px-6 py-5 text-xs font-semibold text-neutral-900 dark:text-white">Nội dung bài dạy</th>
+                <th className="px-6 py-5 text-xs font-semibold text-neutral-900 dark:text-white w-20"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
+            <tbody className="divide-y divide-neutral-200 dark:divide-slate-800">
               {filteredData.map((item, idx) => (
-                <tr key={item.id} className="hover:bg-neutral-50/30 dark:hover:bg-slate-900/30 transition-colors group">
+                <tr key={item.id} className="hover:bg-neutral-50/50 dark:hover:bg-slate-900/30 transition-colors group">
                     <td className="px-6 py-4">
                       <input
                         type="number"
                         value={item.period || ''}
                         onChange={(e) => handleChange(item.id, 'period', Number(e.target.value))}
                         disabled={!isAdmin}
-                        className="w-full bg-transparent border-none focus:ring-0 text-sm font-normal text-neutral-900 dark:text-white text-center font-mono disabled:opacity-80 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className="w-full bg-transparent border-none focus:ring-0 text-base font-semibold text-neutral-900 dark:text-white text-center font-mono disabled:opacity-80 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         placeholder="..."
                       />
                     </td>
@@ -3362,7 +3395,7 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
                       value={item.subject}
                       onChange={(e) => handleChange(item.id, 'subject', e.target.value)}
                       disabled={!isAdmin}
-                      className="w-full bg-transparent border-none focus:ring-0 text-sm font-normal text-primary disabled:opacity-80"
+                      className="w-full bg-transparent border-none focus:ring-0 text-base font-semibold text-primary disabled:opacity-80 cursor-pointer"
                     >
                       <option value="">-- Môn học --</option>
                       {CURRICULUM_2018_DATA[normalizeGrade(activeGrade)]?.map(s => (
@@ -3389,7 +3422,7 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
                           }
                         }}
                         disabled={!isAdmin}
-                        className="w-full bg-transparent border-none focus:ring-0 text-sm text-neutral-500 dark:text-slate-400 italic disabled:opacity-80"
+                        className="w-full bg-transparent border-none focus:ring-0 text-base font-bold text-neutral-600 dark:text-slate-400 italic disabled:opacity-80 cursor-pointer"
                       >
                         <option value="">-- Phân môn --</option>
                         {CURRICULUM_2018_DATA[normalizeGrade(activeGrade)]?.find(s => s.subject === item.subject)?.subSubjects.map(ss => (
@@ -3414,7 +3447,7 @@ function PPCTSection({ ppctData, setPpctData, classes, setPlans, plans, setActiv
                       value={item.content}
                       onChange={(e) => handleChange(item.id, 'content', e.target.value)}
                       disabled={!isAdmin}
-                      className="w-full bg-transparent border-none focus:ring-0 text-sm text-neutral-700 dark:text-slate-300 font-medium disabled:opacity-80"
+                      className="w-full bg-transparent border-none focus:ring-0 text-base text-neutral-900 dark:text-white font-semibold disabled:opacity-80"
                       placeholder="Nội dung bài dạy"
                     />
                   </td>
@@ -3816,25 +3849,25 @@ function LessonPlanSection({
         </div>
 
         <div className="saas-card grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="space-y-2">
-            <label className="text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Họ tên giáo viên</label>
+          <div className="space-y-3">
+            <label className="text-sm font-semibold text-neutral-900 dark:text-white pl-1">Họ tên giáo viên</label>
             <input
               value={editingPlan.teacherName}
               onChange={(e) => setEditingPlan({ ...editingPlan, teacherName: e.target.value })}
               placeholder="Nhập họ tên..."
-              className="w-full bg-neutral-50 dark:bg-slate-900 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary transition-all"
+              className="w-full bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-700 rounded-xl px-4 py-4 text-base font-bold focus:ring-2 focus:ring-primary transition-all shadow-sm"
             />
           </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Tuần</label>
+          <div className="space-y-3">
+            <label className="text-sm font-semibold text-neutral-900 dark:text-white pl-1">Tuần</label>
             <input
               value={editingPlan.week}
               onChange={(e) => setEditingPlan({ ...editingPlan, week: e.target.value })}
-              className="w-full bg-neutral-50 dark:bg-slate-900 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary transition-all"
+              className="w-full bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-700 rounded-xl px-4 py-4 text-base font-bold focus:ring-2 focus:ring-primary transition-all shadow-sm"
             />
           </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Ngày bắt đầu</label>
+          <div className="space-y-3">
+            <label className="text-sm font-semibold text-neutral-900 dark:text-white pl-1">Ngày bắt đầu</label>
             <input
               type="date"
               value={editingPlan.startDate}
@@ -3872,16 +3905,16 @@ function LessonPlanSection({
                   rows: updatedRows
                 });
               }}
-              className="w-full bg-neutral-50 dark:bg-slate-900 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary transition-all"
+              className="w-full bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-700 rounded-xl px-4 py-4 text-base font-bold focus:ring-2 focus:ring-primary transition-all shadow-sm"
             />
           </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Ngày kết thúc</label>
+          <div className="space-y-3">
+            <label className="text-sm font-semibold text-neutral-900 dark:text-white pl-1">Ngày kết thúc</label>
             <input
               type="date"
               readOnly
               value={editingPlan.endDate}
-              className="w-full bg-neutral-100 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm text-neutral-500 cursor-not-allowed"
+              className="w-full bg-neutral-100 dark:bg-slate-800 border border-neutral-300 dark:border-slate-700 rounded-xl px-4 py-4 text-base font-bold text-neutral-600 dark:text-slate-400 cursor-not-allowed shadow-none"
             />
           </div>
         </div>
@@ -3890,34 +3923,34 @@ function LessonPlanSection({
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[1000px]">
               <thead>
-                <tr className="bg-neutral-50/50 dark:bg-slate-900/50 border-b border-neutral-100 dark:border-slate-800">
-                  <th className="px-4 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-24">Thứ, ngày</th>
-                  <th className="px-4 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-24">Ca dạy</th>
-                  <th className="px-4 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-20">Lớp</th>
-                  <th className="px-4 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-32">Môn</th>
-                  <th className="px-4 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-32">Phân môn</th>
-                  <th className="px-4 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-20">Tiết</th>
-                  <th className="px-4 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest">Nội dung bài dạy</th>
-                  <th className="px-4 py-4 text-[10px] font-normal text-neutral-400 dark:text-slate-500 uppercase tracking-widest w-24">Ghi chú</th>
+                <tr className="bg-neutral-100 dark:bg-slate-900 border-b-2 border-neutral-200 dark:border-slate-800">
+                  <th className="px-4 py-5 text-xs font-semibold text-neutral-900 dark:text-white w-24">Thứ, ngày</th>
+                  <th className="px-4 py-5 text-xs font-semibold text-neutral-900 dark:text-white w-24">Ca dạy</th>
+                  <th className="px-4 py-5 text-xs font-semibold text-neutral-900 dark:text-white w-20">Lớp</th>
+                  <th className="px-4 py-5 text-xs font-semibold text-neutral-900 dark:text-white w-32">Môn</th>
+                  <th className="px-4 py-5 text-xs font-semibold text-neutral-900 dark:text-white w-32">Phân môn</th>
+                  <th className="px-4 py-5 text-xs font-semibold text-neutral-900 dark:text-white w-20">Tiết</th>
+                  <th className="px-4 py-5 text-xs font-semibold text-neutral-900 dark:text-white">Nội dung bài dạy</th>
+                  <th className="px-4 py-5 text-xs font-semibold text-neutral-900 dark:text-white w-24">Ghi chú</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
+              <tbody className="divide-y divide-neutral-200 dark:divide-slate-800 font-sans">
                 {editingPlan.rows.map((row) => (
-                  <tr key={row.id} className="hover:bg-neutral-50/50 dark:hover:bg-slate-900/30 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="text-xs font-normal text-neutral-900 dark:text-white">{row.day}</div>
-                      <div className="text-[10px] text-neutral-400 dark:text-slate-500">{row.date}</div>
+                  <tr key={row.id} className="hover:bg-neutral-50/80 dark:hover:bg-slate-900/30 transition-colors">
+                    <td className="px-4 py-4">
+                      <div className="text-sm font-semibold text-neutral-900 dark:text-white">{row.day}</div>
+                      <div className="text-xs text-neutral-500 dark:text-slate-400 font-medium">{row.date}</div>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="text-[10px] font-medium text-neutral-500 dark:text-slate-400 bg-neutral-100 dark:bg-slate-800 px-2 py-1 rounded-lg w-fit">
+                    <td className="px-4 py-4">
+                      <div className="text-xs font-semibold text-primary bg-primary/10 px-3 py-1.5 rounded-lg w-fit whitespace-nowrap">
                         {row.shift}
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-4">
                       <select
                         value={row.grade}
                         onChange={(e) => handleRowChange(row.id, 'grade', e.target.value)}
-                        className="w-full bg-transparent border-none focus:ring-0 text-xs font-normal text-primary"
+                        className="w-full bg-transparent border-none focus:ring-0 text-sm font-semibold text-primary cursor-pointer"
                       >
                         <option value="">-</option>
                         {Array.from(new Set(classes.map(c => c.grade))).map(g => (
@@ -3925,11 +3958,11 @@ function LessonPlanSection({
                         ))}
                       </select>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-4">
                       <select
                         value={row.subject}
                         onChange={(e) => handleRowChange(row.id, 'subject', e.target.value)}
-                        className="w-full bg-transparent border-none focus:ring-0 text-xs font-medium text-neutral-700 dark:text-slate-300"
+                        className="w-full bg-transparent border-none focus:ring-0 text-sm font-semibold text-neutral-800 dark:text-slate-200 cursor-pointer"
                       >
                         <option value="">-</option>
                         {Array.from(new Set(classes.filter(c => c.grade === row.grade).map(c => c.subject))).map(s => (
@@ -3937,11 +3970,11 @@ function LessonPlanSection({
                         ))}
                       </select>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-4">
                       <select
                         value={row.subSubject}
                         onChange={(e) => handleRowChange(row.id, 'subSubject', e.target.value)}
-                        className="w-full bg-transparent border-none focus:ring-0 text-xs text-neutral-500 dark:text-slate-400"
+                        className="w-full bg-transparent border-none focus:ring-0 text-sm font-medium text-neutral-600 dark:text-slate-400 cursor-pointer"
                       >
                         <option value="">-</option>
                         {classes.filter(c => c.grade === row.grade && c.subject === row.subject).map(c => (
@@ -3949,40 +3982,40 @@ function LessonPlanSection({
                         ))}
                       </select>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-4">
                       <input
                         type="number"
                         value={row.period}
                         onChange={(e) => handleRowChange(row.id, 'period', e.target.value)}
-                        className="w-full bg-transparent border-none focus:ring-0 text-xs font-normal text-neutral-900 dark:text-white text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className="w-full bg-transparent border-none focus:ring-0 text-sm font-semibold text-neutral-900 dark:text-white text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         placeholder="Tiết..."
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-4">
                       <div className="flex items-center gap-2">
                         <input
                           value={row.content}
                           onChange={(e) => handleRowChange(row.id, 'content', e.target.value)}
                           placeholder="Nội dung bài học..."
-                          className="flex-1 bg-transparent border-none focus:ring-0 text-xs text-neutral-700 dark:text-slate-300 placeholder-neutral-300 dark:placeholder-slate-700"
+                          className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-neutral-800 dark:text-slate-200 placeholder-neutral-300 dark:placeholder-slate-700"
                         />
                         {row.grade && row.subject && row.period && (
                           <button
                             onClick={() => autoFillContent(row.id)}
-                            className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-all"
+                            className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-all"
                             title="AI Tự điền nội dung"
                           >
-                            <Sparkles className="w-3.5 h-3.5" />
+                            <Sparkles className="w-5 h-5" />
                           </button>
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-4">
                       <input
                         value={row.notes}
                         onChange={(e) => handleRowChange(row.id, 'notes', e.target.value)}
                         placeholder="..."
-                        className="w-full bg-transparent border-none focus:ring-0 text-xs text-neutral-500 dark:text-slate-400"
+                        className="w-full bg-transparent border-none focus:ring-0 text-sm font-medium text-neutral-600 dark:text-slate-500"
                       />
                     </td>
                   </tr>
@@ -4041,12 +4074,12 @@ function LessonPlanSection({
                 </div>
               </div>
               
-              <h3 className="text-lg font-normal text-neutral-900 dark:text-white mb-1">
+              <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-1">
                 {plan.teacherName || 'Giáo viên chưa định danh'}
               </h3>
               <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-slate-400 mb-6">
-                <span className="bg-neutral-100 dark:bg-slate-800 px-2 py-1 rounded-lg font-normal">Tuần {plan.week}</span>
-                <span>{safeFormat(plan.startDate, 'dd/MM/yyyy')} - {safeFormat(plan.endDate, 'dd/MM/yyyy')}</span>
+                <span className="bg-neutral-100 dark:bg-slate-800 px-2 py-1 rounded-lg font-bold">Tuần {plan.week}</span>
+                <span className="font-semibold">{safeFormat(plan.startDate, 'dd/MM/yyyy')} - {safeFormat(plan.endDate, 'dd/MM/yyyy')}</span>
               </div>
 
               <button
@@ -4286,7 +4319,7 @@ function ClassJournalSection({
     >
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">Sổ đầu bài</h2>
+          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white tracking-tight">Sổ đầu bài</h2>
           <p className="text-neutral-500 dark:text-slate-400 mt-1 font-medium">Ghi chép tình hình lớp học dựa trên lịch báo giảng.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -4316,12 +4349,12 @@ function ClassJournalSection({
       <div className="saas-card p-0 overflow-hidden">
         <div className="p-6 border-b border-neutral-100 dark:border-slate-800 bg-neutral-50/50 dark:bg-slate-800/30">
           <div className="max-w-md">
-            <label className="text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest block mb-2">Chọn lịch báo giảng để ghi sổ</label>
+            <label className="text-sm font-semibold text-neutral-900 dark:text-white block mb-3">Chọn lịch báo giảng để ghi sổ</label>
             <div className="relative">
               <select
                 value={selectedPlanId}
                 onChange={(e) => setSelectedPlanId(e.target.value)}
-                className="w-full pl-4 pr-10 py-3 bg-white dark:bg-slate-900 rounded-xl border border-neutral-200 dark:border-slate-700 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none text-sm font-bold text-neutral-900 dark:text-white"
+                className="w-full pl-4 pr-10 py-4 bg-white dark:bg-slate-900 rounded-xl border border-neutral-300 dark:border-slate-700 focus:ring-2 focus:ring-primary outline-none transition-all appearance-none text-base font-bold text-neutral-900 dark:text-white"
               >
                 <option value="">-- Chọn lịch báo giảng --</option>
                 {plans.map(p => (
@@ -4366,37 +4399,37 @@ function ClassJournalSection({
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[1200px]">
                 <thead>
-                  <tr className="bg-neutral-50 dark:bg-slate-800/50 border-b border-neutral-200 dark:border-slate-800">
-                    <th className="px-4 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest w-32">Thứ, ngày</th>
-                    <th className="px-4 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest w-28">Buổi</th>
-                    <th className="px-4 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest w-20">Lớp</th>
-                    <th className="px-4 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest w-32">Môn</th>
-                    <th className="px-4 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest">Nội dung bài dạy</th>
-                    <th className="px-4 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest w-64">Nhận xét</th>
-                    <th className="px-4 py-4 text-[11px] font-black text-neutral-500 dark:text-slate-400 uppercase tracking-widest w-40">Chữ ký</th>
+                  <tr className="bg-neutral-100 dark:bg-slate-800 border-b-2 border-neutral-200 dark:border-slate-800">
+                    <th className="px-4 py-5 text-xs font-semibold text-neutral-900 dark:text-white w-32">Thứ, ngày</th>
+                    <th className="px-4 py-5 text-xs font-semibold text-neutral-900 dark:text-white w-28">Buổi</th>
+                    <th className="px-4 py-5 text-xs font-semibold text-neutral-900 dark:text-white w-20">Lớp</th>
+                    <th className="px-4 py-5 text-xs font-semibold text-neutral-900 dark:text-white w-32">Môn</th>
+                    <th className="px-4 py-5 text-xs font-semibold text-neutral-900 dark:text-white">Nội dung bài dạy</th>
+                    <th className="px-4 py-5 text-xs font-semibold text-neutral-900 dark:text-white w-64">Nhận xét</th>
+                    <th className="px-4 py-5 text-xs font-semibold text-neutral-900 dark:text-white w-40">Chữ ký</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
+                <tbody className="divide-y divide-neutral-200 dark:divide-slate-800">
                   {selectedPlan.rows.filter(r => r.grade).map((row) => (
                     <tr key={row.id} className="hover:bg-neutral-50 dark:hover:bg-slate-800/50 transition-colors group">
-                      <td className="px-4 py-4">
-                        <div className="font-bold text-neutral-900 dark:text-white text-sm">{row.day}</div>
-                        <div className="text-[11px] text-neutral-400 dark:text-slate-500 font-bold mt-0.5">{row.date}</div>
+                      <td className="px-4 py-5">
+                        <div className="font-semibold text-neutral-900 dark:text-white text-base">{row.day}</div>
+                        <div className="text-xs text-neutral-500 dark:text-slate-400 font-medium mt-0.5">{row.date}</div>
                       </td>
-                      <td className="px-4 py-4 text-sm font-medium text-neutral-600 dark:text-slate-300">{row.shift}</td>
-                      <td className="px-4 py-4">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-primary/10 text-primary text-[10px] font-black border border-primary/20 uppercase tracking-wider">
+                      <td className="px-4 py-5 text-sm font-semibold text-neutral-800 dark:text-slate-200">{row.shift}</td>
+                      <td className="px-4 py-5">
+                        <span className="inline-flex items-center px-3 py-1 rounded-lg bg-primary/10 text-primary text-xs font-semibold border border-primary/20 uppercase tracking-wider">
                           {row.grade}
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-sm font-medium text-neutral-600 dark:text-slate-300">{row.subject}</td>
-                      <td className="px-4 py-4 text-sm text-neutral-900 dark:text-white leading-relaxed font-medium">{row.content}</td>
+                      <td className="px-4 py-5 text-sm font-semibold text-neutral-800 dark:text-slate-200">{row.subject}</td>
+                      <td className="px-4 py-5 text-sm text-neutral-900 dark:text-white leading-relaxed font-semibold">{row.content}</td>
                       <td className="px-3 py-3">
                         <input
                           value={row.comments || ''}
                           onChange={(e) => handleRowChange(row.id, 'comments', e.target.value)}
                           placeholder="Lớp học tốt..."
-                          className="w-full bg-transparent border border-transparent group-hover:border-neutral-200 dark:group-hover:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/10 rounded-lg px-2 py-1.5 text-sm transition-all outline-none dark:text-white font-medium"
+                          className="w-full bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/10 rounded-lg px-2 py-2 text-sm transition-all outline-none dark:text-white font-semibold"
                         />
                       </td>
                       <td className="px-3 py-3">
@@ -4404,7 +4437,7 @@ function ClassJournalSection({
                           value={row.signature || ''}
                           onChange={(e) => handleRowChange(row.id, 'signature', e.target.value)}
                           placeholder="Ký tên"
-                          className="w-full bg-transparent border border-transparent group-hover:border-neutral-200 dark:group-hover:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/10 rounded-lg px-2 py-1.5 text-sm transition-all outline-none dark:text-white font-bold italic"
+                          className="w-full bg-white dark:bg-slate-900 border border-neutral-300 dark:border-slate-700 focus:border-primary focus:ring-2 focus:ring-primary/10 rounded-lg px-2 py-2 text-sm transition-all outline-none dark:text-white font-semibold italic"
                         />
                       </td>
                     </tr>
